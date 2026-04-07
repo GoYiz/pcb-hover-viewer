@@ -538,6 +538,11 @@ export default function PcbCanvas({
     drawMinimap(scene, width, height);
   }, [focusComponentId, width, height]);
 
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+
+    const direct = new Set(directIds);
     const traceSet = new Set(traceHighlightIds);
     const prev = prevRef.current;
 
