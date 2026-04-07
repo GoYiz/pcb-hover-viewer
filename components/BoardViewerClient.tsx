@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import PcbCanvas from "@/components/PcbCanvas";
+import ThreeBoardCanvas from "@/components/ThreeBoardCanvas";
 import { fetchComponents, fetchGeometry } from "@/lib/api";
 import { useViewerStore } from "@/store/viewerStore";
 import type { ComponentItem, TraceItem } from "@/types/pcb";
@@ -27,6 +28,7 @@ export default function BoardViewerClient({
   const [layerMode, setLayerMode] = useState<"all" | "fcu" | "bcu">("all");
   const [search, setSearch] = useState("");
   const [focusComponentId, setFocusComponentId] = useState<string | undefined>(undefined);
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
 
   const visibleLayers = useMemo(() => {
     if (layerMode === "fcu") return ["F.Cu"];
@@ -183,6 +185,21 @@ export default function BoardViewerClient({
           </button>
         </div>
 
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={() => setViewMode("2d")}
+            style={{ padding: "6px 10px", borderRadius: 8, border: viewMode === "2d" ? "1px solid #22d3ee" : "1px solid #334155", background: viewMode === "2d" ? "#155e75" : "#111827", color: "#e2e8f0" }}
+          >
+            2D
+          </button>
+          <button
+            onClick={() => setViewMode("3d")}
+            style={{ padding: "6px 10px", borderRadius: 8, border: viewMode === "3d" ? "1px solid #22d3ee" : "1px solid #334155", background: viewMode === "3d" ? "#155e75" : "#111827", color: "#e2e8f0" }}
+          >
+            3D
+          </button>
+        </div>
+
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -213,21 +230,39 @@ export default function BoardViewerClient({
 
       {!loading && !error && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 16 }}>
-          <PcbCanvas
-            width={CANVAS_W}
-            height={CANVAS_H}
-            boardWidthMm={boardWidthMm}
-            boardHeightMm={boardHeightMm}
-            components={components}
-            traces={traces}
-            visibleLayers={visibleLayers}
-            focusComponentId={focusComponentId}
-            hoveredId={highlight.targetId}
-            hoveredType={highlight.targetType}
-            directIds={highlight.directComponentIds}
-            traceHighlightIds={highlight.traceIds}
-            onHoverFeature={(type, id) => setHoveredFeature(type, id)}
-          />
+          {viewMode === "2d" ? (
+            <PcbCanvas
+              width={CANVAS_W}
+              height={CANVAS_H}
+              boardWidthMm={boardWidthMm}
+              boardHeightMm={boardHeightMm}
+              components={components}
+              traces={traces}
+              visibleLayers={visibleLayers}
+              focusComponentId={focusComponentId}
+              hoveredId={highlight.targetId}
+              hoveredType={highlight.targetType}
+              directIds={highlight.directComponentIds}
+              traceHighlightIds={highlight.traceIds}
+              onHoverFeature={(type, id) => setHoveredFeature(type, id)}
+            />
+          ) : (
+            <ThreeBoardCanvas
+              width={CANVAS_W}
+              height={CANVAS_H}
+              boardWidthMm={boardWidthMm}
+              boardHeightMm={boardHeightMm}
+              components={components}
+              traces={traces}
+              visibleLayers={visibleLayers}
+              focusComponentId={focusComponentId}
+              hoveredId={highlight.targetId}
+              hoveredType={highlight.targetType}
+              directIds={highlight.directComponentIds}
+              traceHighlightIds={highlight.traceIds}
+              onHoverFeature={(type, id) => setHoveredFeature(type, id)}
+            />
+          )}
 
           <aside
             style={{
@@ -239,6 +274,9 @@ export default function BoardViewerClient({
             }}
           >
             <h3 style={{ marginTop: 0 }}>关系面板</h3>
+            <p style={{ marginTop: -4, opacity: 0.7 }}>
+              当前视图：<strong>{viewMode === "2d" ? "2D(Pixi)" : "3D(Three)"}</strong>
+            </p>
             {!hoveredFeatureId && <p style={{ opacity: 0.8 }}>将鼠标悬停在元件或线路上查看关系。</p>}
 
             {hoveredComponent && (
