@@ -11,6 +11,8 @@ type Props = {
   boardHeightMm: number;
   components: ComponentItem[];
   traces: TraceItem[];
+  visibleLayers: string[];
+  focusComponentId?: string;
   hoveredId?: string;
   hoveredType?: "component" | "trace";
   directIds: string[];
@@ -205,7 +207,21 @@ function drawBox(scene: Scene) {
   scene.boxLayer.addChild(box);
 }
 
-export default function PcbCanvas({ width, height, boardWidthMm, boardHeightMm, components, traces, hoveredId, hoveredType, directIds, traceHighlightIds, onHoverFeature }: Props) {
+export default function PcbCanvas({
+  width,
+  height,
+  boardWidthMm,
+  boardHeightMm,
+  components,
+  traces,
+  visibleLayers,
+  focusComponentId,
+  hoveredId,
+  hoveredType,
+  directIds,
+  traceHighlightIds,
+  onHoverFeature,
+}: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<Scene | null>(null);
   const onHoverRef = useRef(onHoverFeature);
@@ -438,6 +454,7 @@ export default function PcbCanvas({ width, height, boardWidthMm, boardHeightMm, 
     scene.borderLayer.addChild(border);
 
     for (const t of traces) {
+      if (visibleLayers.length && !visibleLayers.includes(String(t.layerId))) continue;
       const points = t.path.map(([x, y]) => [mapX(x, boardWidthMm, width), mapY(y, boardHeightMm, height)] as [number, number]);
       const base = new PIXI.Graphics();
       const hit = new PIXI.Graphics();
@@ -501,13 +518,26 @@ export default function PcbCanvas({ width, height, boardWidthMm, boardHeightMm, 
     applyCamera(scene);
     drawMinimap(scene, width, height);
     prevRef.current = { hoveredId: undefined, hoveredType: undefined, direct: new Set(), traces: new Set() };
-  }, [components, traces, boardWidthMm, boardHeightMm, width, height]);
+  }, [components, traces, visibleLayers, boardWidthMm, boardHeightMm, width, height]);
 
   useEffect(() => {
+    if (!focusComponentId) return;
     const scene = sceneRef.current;
     if (!scene) return;
+    const node = scene.compNodes.get(focusComponentId);
+    if (!node) return;
 
-    const direct = new Set(directIds);
+    const cx = node.rect.x + node.rect.w / 2;
+    const cy = node.rect.y + node.rect.h / 2;
+    const targetScale = Math.max(1.2, scene.camera.scale);
+
+    scene.camera.scale = Math.min(MAX_SCALE, targetScale);
+    scene.camera.x = width / 2 - cx * scene.camera.scale;
+    scene.camera.y = height / 2 - cy * scene.camera.scale;
+    applyCamera(scene);
+    drawMinimap(scene, width, height);
+  }, [focusComponentId, width, height]);
+
     const traceSet = new Set(traceHighlightIds);
     const prev = prevRef.current;
 

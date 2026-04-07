@@ -24,6 +24,15 @@ export default function BoardViewerClient({
   const [traces, setTraces] = useState<TraceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [layerMode, setLayerMode] = useState<"all" | "fcu" | "bcu">("all");
+  const [search, setSearch] = useState("");
+  const [focusComponentId, setFocusComponentId] = useState<string | undefined>(undefined);
+
+  const visibleLayers = useMemo(() => {
+    if (layerMode === "fcu") return ["F.Cu"];
+    if (layerMode === "bcu") return ["B.Cu"];
+    return ["F.Cu", "B.Cu"];
+  }, [layerMode]);
 
   const hoveredFeatureId = useViewerStore((s) => s.hoveredFeatureId);
   const hoveredFeatureType = useViewerStore((s) => s.hoveredFeatureType);
@@ -122,6 +131,13 @@ export default function BoardViewerClient({
     });
   }, [hoveredFeatureId, hoveredFeatureType, relationIndex, setHighlight]);
 
+  useEffect(() => {
+    if (!focusComponentId) return;
+    const timer = window.setTimeout(() => setFocusComponentId(undefined), 100);
+    return () => window.clearTimeout(timer);
+  }, [focusComponentId]);
+
+
   const hoveredComponent = useMemo(
     () => (hoveredFeatureType === "component" ? components.find((c) => c.id === hoveredFeatureId) : undefined),
     [components, hoveredFeatureId, hoveredFeatureType],
@@ -132,12 +148,65 @@ export default function BoardViewerClient({
     [traces, hoveredFeatureId, hoveredFeatureType],
   );
 
+  const searchMatches = useMemo(() => {
+    const kw = search.trim().toUpperCase();
+    if (!kw) return [] as ComponentItem[];
+    return components.filter((c) => c.refdes.toUpperCase().includes(kw)).slice(0, 8);
+  }, [components, search]);
+
   return (
     <div style={{ padding: 20 }}>
       <h2 style={{ margin: 0 }}>{boardName}</h2>
       <p style={{ marginTop: 6, opacity: 0.8 }}>
         boardId: {boardId} · size: {boardWidthMm}mm × {boardHeightMm}mm
       </p>
+
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "10px 0 14px" }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={() => setLayerMode("all")}
+            style={{ padding: "6px 10px", borderRadius: 8, border: layerMode === "all" ? "1px solid #22d3ee" : "1px solid #334155", background: layerMode === "all" ? "#0e7490" : "#111827", color: "#e2e8f0" }}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setLayerMode("fcu")}
+            style={{ padding: "6px 10px", borderRadius: 8, border: layerMode === "fcu" ? "1px solid #22d3ee" : "1px solid #334155", background: layerMode === "fcu" ? "#0e7490" : "#111827", color: "#e2e8f0" }}
+          >
+            F.Cu
+          </button>
+          <button
+            onClick={() => setLayerMode("bcu")}
+            style={{ padding: "6px 10px", borderRadius: 8, border: layerMode === "bcu" ? "1px solid #22d3ee" : "1px solid #334155", background: layerMode === "bcu" ? "#0e7490" : "#111827", color: "#e2e8f0" }}
+          >
+            B.Cu
+          </button>
+        </div>
+
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="搜索元件，如 U1200"
+          style={{ minWidth: 220, padding: "7px 10px", borderRadius: 8, border: "1px solid #334155", background: "#0b1220", color: "#e2e8f0" }}
+        />
+
+        {searchMatches.length > 0 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {searchMatches.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => {
+                  setFocusComponentId(c.id);
+                  setHoveredFeature("component", c.id);
+                }}
+                style={{ padding: "6px 9px", borderRadius: 8, border: "1px solid #334155", background: "#1f2937", color: "#c7d2fe" }}
+              >
+                {c.refdes}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {loading && <p>加载中...</p>}
       {error && <p style={{ color: "#f87171" }}>{error}</p>}
@@ -151,6 +220,8 @@ export default function BoardViewerClient({
             boardHeightMm={boardHeightMm}
             components={components}
             traces={traces}
+            visibleLayers={visibleLayers}
+            focusComponentId={focusComponentId}
             hoveredId={highlight.targetId}
             hoveredType={highlight.targetType}
             directIds={highlight.directComponentIds}
