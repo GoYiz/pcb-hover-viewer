@@ -1,0 +1,44 @@
+{
+  "examples": [
+    {
+      "id": "ch552g_dev_board",
+      "name": "CH552G Dev Board",
+      "source": "https://raw.githubusercontent.com/blueOkiris/ch552g-dev-board/main/pcb/ch552g-dev-board.kicad_pcb",
+      "file": "/examples/ch552g_dev_board.json",
+      "components": 9,
+      "traces": 0
+    },
+    {
+      "id": "kl2_dev_board",
+      "name": "KL2 Dev Board",
+      "source": "https://raw.githubusercontent.com/kcuzner/kl2-dev/master/kicad/kl2-dev.kicad_pcb",
+      "file": "/examples/kl2_dev_board.json",
+      "components": 18,
+      "traces": 0
+    },
+    {
+      "id": "esp32_s3_dev_board",
+      "name": "ESP32-S3 Dev Board",
+      "source": "https://raw.githubusercontent.com/chof747/esp32-s3-dev-board/main/esp32-s3-dev-board.kicad_pcb",
+      "file": "/examples/esp32_s3_dev_board.json",
+      "components": 15,
+      "traces": 0
+    },
+    {
+      "id": "mcp3561_dev_board",
+      "name": "MCP3561 Dev Board",
+      "source": "https://raw.githubusercontent.com/edmundsj/MCP3561DevBoard/master/kicad/MCP3561DevBoard.kicad_pcb",
+      "file": "/examples/mcp3561_dev_board.json",
+      "components": 52,
+      "traces": 0
+    },
+    {
+      "id": "arm_ke04_dev_board",
+      "name": "ARM KE04 Dev Board",
+      "source": "https://raw.githubusercontent.com/twitchyliquid64/arm-ke04-dev/master/arm_devboard_mke.kicad_pcb",
+      "file": "/examples/arm_ke04_dev_board.json",
+      "components": 27,
+      "traces": 0
+    }
+  ]
+}

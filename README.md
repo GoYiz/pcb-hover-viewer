@@ -14,6 +14,7 @@
 - 元件与走线几何 API
 - 关系查询 API（component -> direct/net/trace）
 - 板卡查看页 `/board/[id]`
+- **互联网默认示例页 `/examples`（Python 抓取并预处理）**
 - Hover 元件联动高亮：
   - 目标元件高亮
   - 直接关联元件高亮

@@ -20,6 +20,18 @@ export default function HomePage() {
         >
           打开 Demo 板卡
         </Link>
+
+        <Link
+          href="/examples"
+          style={{
+            background: "#0f766e",
+            padding: "10px 14px",
+            borderRadius: 8,
+            fontWeight: 600,
+          }}
+        >
+          打开互联网默认示例
+        </Link>
       </div>
     </main>
   );

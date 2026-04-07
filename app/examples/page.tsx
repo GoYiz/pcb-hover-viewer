@@ -1,0 +1,15 @@
+import ExamplesClient from "@/components/ExamplesClient";
+import { getExampleById, getExamplesIndex } from "@/lib/examples";
+import type { ExampleBoardData } from "@/lib/examples";
+
+export default function ExamplesPage() {
+  const index = getExamplesIndex();
+  const examples: Record<string, ExampleBoardData> = {};
+
+  for (const item of index) {
+    const data = getExampleById(item.id);
+    if (data) examples[item.id] = data;
+  }
+
+  return <ExamplesClient index={index} examples={examples} />;
+}
