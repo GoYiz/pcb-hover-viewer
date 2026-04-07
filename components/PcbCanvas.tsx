@@ -11,7 +11,7 @@ type Props = {
   boardHeightMm: number;
   components: ComponentItem[];
   traces: TraceItem[];
-  visibleLayers: string[];
+  visibleLayers?: string[];
   focusComponentId?: string;
   hoveredId?: string;
   hoveredType?: "component" | "trace";
@@ -214,7 +214,7 @@ export default function PcbCanvas({
   boardHeightMm,
   components,
   traces,
-  visibleLayers,
+  visibleLayers = ["F.Cu", "B.Cu"],
   focusComponentId,
   hoveredId,
   hoveredType,
