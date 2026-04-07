@@ -25,8 +25,9 @@ export default function BoardViewerClient({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const hoveredComponentId = useViewerStore((s) => s.hoveredComponentId);
-  const setHoveredComponentId = useViewerStore((s) => s.setHoveredComponentId);
+  const hoveredFeatureId = useViewerStore((s) => s.hoveredFeatureId);
+  const hoveredFeatureType = useViewerStore((s) => s.hoveredFeatureType);
+  const setHoveredFeature = useViewerStore((s) => s.setHoveredFeature);
   const highlight = useViewerStore((s) => s.highlight);
   const setHighlight = useViewerStore((s) => s.setHighlight);
 
@@ -59,9 +60,10 @@ export default function BoardViewerClient({
     let alive = true;
 
     async function loadRelations() {
-      if (!hoveredComponentId) {
+      if (!hoveredFeatureId || !hoveredFeatureType) {
         setHighlight({
           targetId: undefined,
+          targetType: undefined,
           directComponentIds: [],
           traceIds: [],
           netIds: [],
@@ -70,10 +72,11 @@ export default function BoardViewerClient({
       }
 
       try {
-        const rel = await fetchRelations(boardId, hoveredComponentId);
+        const rel = await fetchRelations(boardId, hoveredFeatureType, hoveredFeatureId);
         if (!alive) return;
         setHighlight({
-          targetId: hoveredComponentId,
+          targetId: hoveredFeatureId,
+          targetType: hoveredFeatureType,
           directComponentIds: rel.direct
             .filter((d) => d.targetType === "component")
             .map((d) => d.targetId),
@@ -89,11 +92,16 @@ export default function BoardViewerClient({
     return () => {
       alive = false;
     };
-  }, [boardId, hoveredComponentId, setHighlight]);
+  }, [boardId, hoveredFeatureId, hoveredFeatureType, setHighlight]);
 
   const hoveredComponent = useMemo(
-    () => components.find((c) => c.id === hoveredComponentId),
-    [components, hoveredComponentId],
+    () => (hoveredFeatureType === "component" ? components.find((c) => c.id === hoveredFeatureId) : undefined),
+    [components, hoveredFeatureId, hoveredFeatureType],
+  );
+
+  const hoveredTrace = useMemo(
+    () => (hoveredFeatureType === "trace" ? traces.find((t) => t.id === hoveredFeatureId) : undefined),
+    [traces, hoveredFeatureId, hoveredFeatureType],
   );
 
   return (
@@ -116,9 +124,10 @@ export default function BoardViewerClient({
             components={components}
             traces={traces}
             hoveredId={highlight.targetId}
+            hoveredType={highlight.targetType}
             directIds={highlight.directComponentIds}
             traceHighlightIds={highlight.traceIds}
-            onHoverComponent={(id) => setHoveredComponentId(id)}
+            onHoverFeature={(type, id) => setHoveredFeature(type, id)}
           />
 
           <aside
@@ -131,7 +140,7 @@ export default function BoardViewerClient({
             }}
           >
             <h3 style={{ marginTop: 0 }}>关系面板</h3>
-            {!hoveredComponent && <p style={{ opacity: 0.8 }}>将鼠标悬停在元件上查看关系。</p>}
+            {!hoveredFeatureId && <p style={{ opacity: 0.8 }}>将鼠标悬停在元件或线路上查看关系。</p>}
 
             {hoveredComponent && (
               <div style={{ display: "grid", gap: 10 }}>
@@ -142,25 +151,30 @@ export default function BoardViewerClient({
                   <strong>Footprint：</strong> {hoveredComponent.footprint || "-"}
                 </div>
                 <div>
-                  <strong>直接关联元件：</strong>
-                  <ul>
-                    {highlight.directComponentIds.length === 0 && <li>无</li>}
-                    {highlight.directComponentIds.map((id) => (
-                      <li key={id}>{id}</li>
-                    ))}
-                  </ul>
+                  <strong>直接关联元件：</strong> {highlight.directComponentIds.length}
                 </div>
                 <div>
-                  <strong>关联 Net：</strong>
-                  <ul>
-                    {highlight.netIds.length === 0 && <li>无</li>}
-                    {highlight.netIds.map((id) => (
-                      <li key={id}>{id}</li>
-                    ))}
-                  </ul>
+                  <strong>关联 Net：</strong> {highlight.netIds.join(", ") || "无"}
                 </div>
                 <div>
                   <strong>高亮 Trace：</strong> {highlight.traceIds.length}
+                </div>
+              </div>
+            )}
+
+            {hoveredTrace && (
+              <div style={{ display: "grid", gap: 10 }}>
+                <div>
+                  <strong>目标线路：</strong> {hoveredTrace.id}
+                </div>
+                <div>
+                  <strong>Net：</strong> {hoveredTrace.netId}
+                </div>
+                <div>
+                  <strong>同网络关联元件：</strong> {highlight.directComponentIds.length}
+                </div>
+                <div>
+                  <strong>同网络高亮线路：</strong> {highlight.traceIds.length}
                 </div>
               </div>
             )}

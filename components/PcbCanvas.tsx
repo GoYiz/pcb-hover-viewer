@@ -10,9 +10,10 @@ type Props = {
   components: ComponentItem[];
   traces: TraceItem[];
   hoveredId?: string;
+  hoveredType?: "component" | "trace";
   directIds: string[];
   traceHighlightIds: string[];
-  onHoverComponent: (id?: string) => void;
+  onHoverFeature: (type?: "component" | "trace", id?: string) => void;
 };
 
 const PAD = 20;
@@ -33,16 +34,18 @@ export default function PcbCanvas({
   components,
   traces,
   hoveredId,
+  hoveredType,
   directIds,
   traceHighlightIds,
-  onHoverComponent,
+  onHoverFeature,
 }: Props) {
   return (
     <svg width={width} height={height} style={{ background: "#071025", borderRadius: 12, border: "1px solid #1e3a8a" }}>
       <rect x={PAD} y={PAD} width={width - PAD * 2} height={height - PAD * 2} fill="none" stroke="#1e40af" strokeWidth={2} />
 
       {traces.map((trace) => {
-        const highlighted = traceHighlightIds.includes(trace.id);
+        const isTarget = hoveredType === "trace" && hoveredId === trace.id;
+        const highlighted = isTarget || traceHighlightIds.includes(trace.id);
         const d = trace.path
           .map(([x, y], i) => `${i === 0 ? "M" : "L"} ${mapX(x, boardWidthMm, width)} ${mapY(y, boardHeightMm, height)}`)
           .join(" ");
@@ -52,16 +55,19 @@ export default function PcbCanvas({
             key={trace.id}
             d={d}
             fill="none"
-            stroke={highlighted ? "#22d3ee" : "#3b82f6"}
+            stroke={isTarget ? "#f43f5e" : highlighted ? "#22d3ee" : "#3b82f6"}
             strokeOpacity={highlighted ? 1 : 0.35}
-            strokeWidth={highlighted ? 4 : 2}
+            strokeWidth={isTarget ? 5 : highlighted ? 4 : 2}
+            onMouseEnter={() => onHoverFeature("trace", trace.id)}
+            onMouseLeave={() => onHoverFeature(undefined, undefined)}
+            style={{ cursor: "pointer" }}
           />
         );
       })}
 
       {components.map((c) => {
         const [bx, by, bw, bh] = c.bbox;
-        const isTarget = hoveredId === c.id;
+        const isTarget = hoveredType === "component" && hoveredId === c.id;
         const isDirect = directIds.includes(c.id);
         const fill = isTarget ? "#f43f5e" : isDirect ? "#22d3ee" : "#94a3b8";
         const opacity = isTarget ? 1 : isDirect ? 0.92 : 0.45;
@@ -72,7 +78,12 @@ export default function PcbCanvas({
         const h = (bh / boardHeightMm) * (height - PAD * 2);
 
         return (
-          <g key={c.id} onMouseEnter={() => onHoverComponent(c.id)} onMouseLeave={() => onHoverComponent(undefined)} style={{ cursor: "pointer" }}>
+          <g
+            key={c.id}
+            onMouseEnter={() => onHoverFeature("component", c.id)}
+            onMouseLeave={() => onHoverFeature(undefined, undefined)}
+            style={{ cursor: "pointer" }}
+          >
             <rect x={x} y={y} width={w} height={h} rx={2} fill={fill} fillOpacity={opacity} />
             <text x={x} y={Math.max(14, y - 4)} fill="#e2e8f0" fontSize={11}>
               {c.refdes}
@@ -82,7 +93,7 @@ export default function PcbCanvas({
       })}
 
       <text x={24} y={height - 10} fill="#cbd5e1" fontSize={12}>
-        Target(粉) / Direct(青) / Normal(灰)
+        Hover 元件或线路：Target(粉) / Related(青) / Normal(灰)
       </text>
     </svg>
   );

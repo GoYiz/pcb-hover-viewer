@@ -17,23 +17,29 @@ export default function ExamplesClient({
   examples: ExampleMap;
 }) {
   const [activeId, setActiveId] = useState(index[0]?.id || "");
+  const [hoveredType, setHoveredType] = useState<"component" | "trace" | undefined>(undefined);
   const [hoveredId, setHoveredId] = useState<string | undefined>(undefined);
 
   const active = examples[activeId];
 
   const relation = useMemo(() => {
-    if (!active || !hoveredId) {
+    if (!active || !hoveredId || !hoveredType) {
       return { directIds: [] as string[], traceIds: [] as string[], netIds: [] as string[] };
     }
 
-    const target = active.components.find((c) => c.id === hoveredId);
-    if (!target) return { directIds: [], traceIds: [], netIds: [] };
+    let netIds: string[] = [];
 
-    const netIds = (target.nets || []).map((n) => String(n.id));
+    if (hoveredType === "component") {
+      const target = active.components.find((c) => c.id === hoveredId);
+      netIds = (target?.nets || []).map((n) => String(n.id));
+    } else {
+      const t = active.traces.find((tr) => tr.id === hoveredId);
+      if (t) netIds = [String(t.netId)];
+    }
 
     const directIds = active.components
       .filter((c) => {
-        if (c.id === hoveredId) return false;
+        if (hoveredType === "component" && c.id === hoveredId) return false;
         const cNets = (c.nets || []).map((n) => String(n.id));
         return cNets.some((nid) => netIds.includes(nid));
       })
@@ -42,7 +48,7 @@ export default function ExamplesClient({
     const traceIds = active.traces.filter((t) => netIds.includes(String(t.netId))).map((t) => t.id);
 
     return { directIds, traceIds, netIds };
-  }, [active, hoveredId]);
+  }, [active, hoveredId, hoveredType]);
 
   return (
     <div style={{ padding: 20 }}>
@@ -55,6 +61,7 @@ export default function ExamplesClient({
             key={item.id}
             onClick={() => {
               setActiveId(item.id);
+              setHoveredType(undefined);
               setHoveredId(undefined);
             }}
             style={{
@@ -81,15 +88,21 @@ export default function ExamplesClient({
             components={active.components}
             traces={active.traces}
             hoveredId={hoveredId}
+            hoveredType={hoveredType}
             directIds={relation.directIds}
             traceHighlightIds={relation.traceIds}
-            onHoverComponent={setHoveredId}
+            onHoverFeature={(type, id) => {
+              setHoveredType(type);
+              setHoveredId(id);
+            }}
           />
 
           <aside style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: 14 }}>
             <h3 style={{ marginTop: 0 }}>示例信息</h3>
             <p><strong>名称：</strong>{active.board.name}</p>
             <p><strong>尺寸：</strong>{active.board.widthMm}mm × {active.board.heightMm}mm</p>
+            <p><strong>元件数：</strong>{active.components.length}</p>
+            <p><strong>线路段：</strong>{active.traces.length}</p>
             <p>
               <strong>数据来源：</strong>
               <a href={index.find((i) => i.id === activeId)?.source} target="_blank" style={{ color: "#67e8f9" }}>
@@ -97,12 +110,14 @@ export default function ExamplesClient({
               </a>
             </p>
             <hr style={{ borderColor: "#334155" }} />
-            {!hoveredId && <p style={{ opacity: 0.8 }}>悬停元件查看关联关系。</p>}
+            {!hoveredId && <p style={{ opacity: 0.8 }}>悬停元件或线路查看关联关系。</p>}
             {hoveredId && (
               <>
-                <p><strong>目标：</strong>{hoveredId}</p>
+                <p><strong>目标类型：</strong>{hoveredType}</p>
+                <p><strong>目标 ID：</strong>{hoveredId}</p>
                 <p><strong>直接关联元件：</strong>{relation.directIds.length}</p>
                 <p><strong>关联网络：</strong>{relation.netIds.join(", ") || "无"}</p>
+                <p><strong>关联线路：</strong>{relation.traceIds.length}</p>
               </>
             )}
           </aside>

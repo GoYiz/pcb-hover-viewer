@@ -2,26 +2,30 @@ import { create } from "zustand";
 
 type HighlightSet = {
   targetId?: string;
+  targetType?: "component" | "trace";
   directComponentIds: string[];
   traceIds: string[];
   netIds: string[];
 };
 
 type ViewerState = {
-  hoveredComponentId?: string;
+  hoveredFeatureId?: string;
+  hoveredFeatureType?: "component" | "trace";
   highlight: HighlightSet;
-  setHoveredComponentId: (id?: string) => void;
+  setHoveredFeature: (type?: "component" | "trace", id?: string) => void;
   setHighlight: (payload: HighlightSet) => void;
 };
 
 export const useViewerStore = create<ViewerState>((set) => ({
-  hoveredComponentId: undefined,
+  hoveredFeatureId: undefined,
+  hoveredFeatureType: undefined,
   highlight: {
     targetId: undefined,
+    targetType: undefined,
     directComponentIds: [],
     traceIds: [],
     netIds: [],
   },
-  setHoveredComponentId: (id) => set({ hoveredComponentId: id }),
+  setHoveredFeature: (type, id) => set({ hoveredFeatureType: type, hoveredFeatureId: id }),
   setHighlight: (payload) => set({ highlight: payload }),
 }));

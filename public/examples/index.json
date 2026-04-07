@@ -14,7 +14,7 @@
       "source": "https://raw.githubusercontent.com/kcuzner/kl2-dev/master/kicad/kl2-dev.kicad_pcb",
       "file": "/examples/kl2_dev_board.json",
       "components": 18,
-      "traces": 0
+      "traces": 243
     },
     {
       "id": "esp32_s3_dev_board",
@@ -30,7 +30,7 @@
       "source": "https://raw.githubusercontent.com/edmundsj/MCP3561DevBoard/master/kicad/MCP3561DevBoard.kicad_pcb",
       "file": "/examples/mcp3561_dev_board.json",
       "components": 52,
-      "traces": 0
+      "traces": 336
     },
     {
       "id": "arm_ke04_dev_board",
@@ -38,7 +38,7 @@
       "source": "https://raw.githubusercontent.com/twitchyliquid64/arm-ke04-dev/master/arm_devboard_mke.kicad_pcb",
       "file": "/examples/arm_ke04_dev_board.json",
       "components": 27,
-      "traces": 0
+      "traces": 217
     }
   ]
 }

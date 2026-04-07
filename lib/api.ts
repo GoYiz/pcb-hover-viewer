@@ -12,8 +12,12 @@ export async function fetchGeometry(boardId: string, layer = "TOP") {
   return (await res.json()) as { boardId: string; layer: string; traces: TraceItem[] };
 }
 
-export async function fetchRelations(boardId: string, componentId: string) {
-  const res = await fetch(`/api/boards/${boardId}/relations/component/${componentId}`, {
+export async function fetchRelations(
+  boardId: string,
+  featureType: "component" | "trace",
+  featureId: string,
+) {
+  const res = await fetch(`/api/boards/${boardId}/relations/${featureType}/${featureId}`, {
     cache: "no-store",
   });
   if (!res.ok) throw new Error("Failed to fetch relations");

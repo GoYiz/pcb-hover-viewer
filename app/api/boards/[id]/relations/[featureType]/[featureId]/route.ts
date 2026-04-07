@@ -25,19 +25,21 @@ export async function GET(
     },
   });
 
-  const nets =
-    featureType === "component"
-      ? await prisma.pin.findMany({
-          where: {
-            componentId: featureId,
-          },
-          select: {
-            netId: true,
-          },
-        })
-      : [];
+  let uniqueNetIds: string[] = [];
 
-  const uniqueNetIds = [...new Set(nets.map((n) => n.netId))];
+  if (featureType === "component") {
+    const nets = await prisma.pin.findMany({
+      where: { componentId: featureId },
+      select: { netId: true },
+    });
+    uniqueNetIds = [...new Set(nets.map((n) => n.netId))];
+  } else if (featureType === "trace") {
+    const trace = await prisma.trace.findFirst({
+      where: { boardId: id, id: featureId },
+      select: { netId: true },
+    });
+    if (trace?.netId) uniqueNetIds = [trace.netId];
+  }
 
   const traces = uniqueNetIds.length
     ? await prisma.trace.findMany({
@@ -52,12 +54,38 @@ export async function GET(
       })
     : [];
 
+  const relatedComponents = uniqueNetIds.length
+    ? await prisma.pin.findMany({
+        where: {
+          netId: { in: uniqueNetIds },
+          component: { boardId: id },
+        },
+        select: {
+          componentId: true,
+        },
+      })
+    : [];
+
+  const uniqueComponentIds = [...new Set(relatedComponents.map((r) => r.componentId))].filter(
+    (cid) => !(featureType === "component" && cid === featureId),
+  );
+
+  const mergedDirect = [
+    ...direct,
+    ...uniqueComponentIds.map((cid) => ({
+      targetType: "component",
+      targetId: cid,
+      relationType: "electrical",
+      weight: 1,
+    })),
+  ];
+
   return NextResponse.json({
     target: {
       type: featureType,
       id: featureId,
     },
-    direct,
+    direct: mergedDirect,
     nets: uniqueNetIds,
     traces,
   });

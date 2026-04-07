@@ -119,7 +119,7 @@ def parse_board(text: str, board_id: str, board_name: str):
         m_start = re.search(r'\(start\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\)', seg)
         m_end = re.search(r'\(end\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\)', seg)
         m_w = re.search(r'\(width\s+(-?\d+(?:\.\d+)?)\)', seg)
-        m_layer = re.search(r'\(layer\s+"([^"]+)"\)', seg)
+        m_layer = re.search(r'\(layer\s+"?([^"\s\)]+)"?\)', seg)
         m_net = re.search(r'\(net\s+(\d+)\)', seg)
 
         if not (m_start and m_end and m_w and m_layer and m_net):
