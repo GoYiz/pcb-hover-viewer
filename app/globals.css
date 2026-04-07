@@ -11,6 +11,25 @@ body {
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+@keyframes traceFlow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -36;
+  }
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 1px rgba(244, 63, 94, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(244, 63, 94, 0.95));
+  }
+}
+
 a {
   color: #fff;
   text-decoration: none;

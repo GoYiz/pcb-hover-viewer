@@ -58,9 +58,13 @@ export default function PcbCanvas({
             stroke={isTarget ? "#f43f5e" : highlighted ? "#22d3ee" : "#3b82f6"}
             strokeOpacity={highlighted ? 1 : 0.35}
             strokeWidth={isTarget ? 5 : highlighted ? 4 : 2}
+            strokeDasharray={highlighted ? "10 8" : undefined}
             onMouseEnter={() => onHoverFeature("trace", trace.id)}
             onMouseLeave={() => onHoverFeature(undefined, undefined)}
-            style={{ cursor: "pointer" }}
+            style={{
+              cursor: "pointer",
+              ...(highlighted ? { animation: "traceFlow 1.2s linear infinite" } : {}),
+            }}
           />
         );
       })}
@@ -84,7 +88,16 @@ export default function PcbCanvas({
             onMouseLeave={() => onHoverFeature(undefined, undefined)}
             style={{ cursor: "pointer" }}
           >
-            <rect x={x} y={y} width={w} height={h} rx={2} fill={fill} fillOpacity={opacity} />
+            <rect
+              x={x}
+              y={y}
+              width={w}
+              height={h}
+              rx={2}
+              fill={fill}
+              fillOpacity={opacity}
+              style={isTarget ? { animation: "pulseGlow 1.1s ease-in-out infinite" } : undefined}
+            />
             <text x={x} y={Math.max(14, y - 4)} fill="#e2e8f0" fontSize={11}>
               {c.refdes}
             </text>
