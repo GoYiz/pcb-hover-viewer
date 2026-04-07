@@ -20,6 +20,7 @@ export type ComponentItem = {
   y: number;
   rotation: number;
   bbox: [number, number, number, number];
+  netIds?: string[];
 };
 
 export type TraceItem = {

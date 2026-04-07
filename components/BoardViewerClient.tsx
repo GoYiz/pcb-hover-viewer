@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PcbCanvas from "@/components/PcbCanvas";
-import { fetchComponents, fetchGeometry, fetchRelations } from "@/lib/api";
+import { fetchComponents, fetchGeometry } from "@/lib/api";
 import { useViewerStore } from "@/store/viewerStore";
 import type { ComponentItem, TraceItem } from "@/types/pcb";
 
@@ -30,12 +30,9 @@ export default function BoardViewerClient({
   const setHoveredFeature = useViewerStore((s) => s.setHoveredFeature);
   const highlight = useViewerStore((s) => s.highlight);
   const setHighlight = useViewerStore((s) => s.setHighlight);
-  const relationCacheRef = useRef<Map<string, Awaited<ReturnType<typeof fetchRelations>>>>(new Map());
-  const hoverTimerRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     let alive = true;
-    relationCacheRef.current.clear();
 
     async function load() {
       try {
@@ -59,27 +56,33 @@ export default function BoardViewerClient({
     };
   }, [boardId]);
 
-  useEffect(() => {
-    let alive = true;
+  const relationIndex = useMemo(() => {
+    const netToComponents = new Map<string, Set<string>>();
+    const netToTraces = new Map<string, Set<string>>();
+    const traceToNet = new Map<string, string>();
+    const compToNets = new Map<string, Set<string>>();
 
-    const clearTimer = () => {
-      if (hoverTimerRef.current) {
-        window.clearTimeout(hoverTimerRef.current);
-        hoverTimerRef.current = undefined;
+    for (const c of components) {
+      const nets = new Set((c.netIds || []).map((n) => String(n)));
+      compToNets.set(c.id, nets);
+      for (const net of nets) {
+        if (!netToComponents.has(net)) netToComponents.set(net, new Set());
+        netToComponents.get(net)!.add(c.id);
       }
-    };
-
-    async function resolveRelations(type: "component" | "trace", id: string) {
-      const cacheKey = `${boardId}:${type}:${id}`;
-      const cached = relationCacheRef.current.get(cacheKey);
-      if (cached) return cached;
-      const rel = await fetchRelations(boardId, type, id);
-      relationCacheRef.current.set(cacheKey, rel);
-      return rel;
     }
 
+    for (const t of traces) {
+      const net = String(t.netId);
+      traceToNet.set(t.id, net);
+      if (!netToTraces.has(net)) netToTraces.set(net, new Set());
+      netToTraces.get(net)!.add(t.id);
+    }
+
+    return { netToComponents, netToTraces, traceToNet, compToNets };
+  }, [components, traces]);
+
+  useEffect(() => {
     if (!hoveredFeatureId || !hoveredFeatureType) {
-      clearTimer();
       setHighlight({
         targetId: undefined,
         targetType: undefined,
@@ -87,36 +90,37 @@ export default function BoardViewerClient({
         traceIds: [],
         netIds: [],
       });
-      return () => {
-        alive = false;
-        clearTimer();
-      };
+      return;
     }
 
-    clearTimer();
-    hoverTimerRef.current = window.setTimeout(async () => {
-      try {
-        const rel = await resolveRelations(hoveredFeatureType, hoveredFeatureId);
-        if (!alive) return;
-        setHighlight({
-          targetId: hoveredFeatureId,
-          targetType: hoveredFeatureType,
-          directComponentIds: rel.direct
-            .filter((d) => d.targetType === "component")
-            .map((d) => d.targetId),
-          traceIds: rel.traces.map((t) => t.id),
-          netIds: rel.nets,
-        });
-      } catch {
-        if (!alive) return;
-      }
-    }, 28);
+    const netSet = new Set<string>();
 
-    return () => {
-      alive = false;
-      clearTimer();
-    };
-  }, [boardId, hoveredFeatureId, hoveredFeatureType, setHighlight]);
+    if (hoveredFeatureType === "component") {
+      const nets = relationIndex.compToNets.get(hoveredFeatureId) || new Set();
+      nets.forEach((n) => netSet.add(n));
+    } else {
+      const net = relationIndex.traceToNet.get(hoveredFeatureId);
+      if (net) netSet.add(net);
+    }
+
+    const compSet = new Set<string>();
+    const traceSet = new Set<string>();
+
+    for (const net of netSet) {
+      (relationIndex.netToComponents.get(net) || new Set()).forEach((id) => compSet.add(id));
+      (relationIndex.netToTraces.get(net) || new Set()).forEach((id) => traceSet.add(id));
+    }
+
+    if (hoveredFeatureType === "component") compSet.delete(hoveredFeatureId);
+
+    setHighlight({
+      targetId: hoveredFeatureId,
+      targetType: hoveredFeatureType,
+      directComponentIds: [...compSet],
+      traceIds: [...traceSet],
+      netIds: [...netSet],
+    });
+  }, [hoveredFeatureId, hoveredFeatureType, relationIndex, setHighlight]);
 
   const hoveredComponent = useMemo(
     () => (hoveredFeatureType === "component" ? components.find((c) => c.id === hoveredFeatureId) : undefined),

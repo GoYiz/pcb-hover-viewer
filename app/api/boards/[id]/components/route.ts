@@ -38,6 +38,11 @@ export async function GET(
       y: true,
       rotation: true,
       bboxJson: true,
+      pins: {
+        select: {
+          netId: true,
+        },
+      },
     },
     orderBy: { refdes: "asc" },
     take: search ? 50 : 1000,
@@ -53,6 +58,7 @@ export async function GET(
       y: c.y,
       rotation: c.rotation,
       bbox: parseBBox(c.bboxJson),
+      netIds: [...new Set(c.pins.map((p) => p.netId))],
     })),
   });
 }
