@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import PcbCanvas from "@/components/PcbCanvas";
 import { fetchComponents, fetchGeometry, fetchRelations } from "@/lib/api";
 import { useViewerStore } from "@/store/viewerStore";
@@ -30,9 +30,12 @@ export default function BoardViewerClient({
   const setHoveredFeature = useViewerStore((s) => s.setHoveredFeature);
   const highlight = useViewerStore((s) => s.highlight);
   const setHighlight = useViewerStore((s) => s.setHighlight);
+  const relationCacheRef = useRef<Map<string, Awaited<ReturnType<typeof fetchRelations>>>>(new Map());
+  const hoverTimerRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     let alive = true;
+    relationCacheRef.current.clear();
 
     async function load() {
       try {
@@ -59,20 +62,41 @@ export default function BoardViewerClient({
   useEffect(() => {
     let alive = true;
 
-    async function loadRelations() {
-      if (!hoveredFeatureId || !hoveredFeatureType) {
-        setHighlight({
-          targetId: undefined,
-          targetType: undefined,
-          directComponentIds: [],
-          traceIds: [],
-          netIds: [],
-        });
-        return;
+    const clearTimer = () => {
+      if (hoverTimerRef.current) {
+        window.clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = undefined;
       }
+    };
 
+    async function resolveRelations(type: "component" | "trace", id: string) {
+      const cacheKey = `${boardId}:${type}:${id}`;
+      const cached = relationCacheRef.current.get(cacheKey);
+      if (cached) return cached;
+      const rel = await fetchRelations(boardId, type, id);
+      relationCacheRef.current.set(cacheKey, rel);
+      return rel;
+    }
+
+    if (!hoveredFeatureId || !hoveredFeatureType) {
+      clearTimer();
+      setHighlight({
+        targetId: undefined,
+        targetType: undefined,
+        directComponentIds: [],
+        traceIds: [],
+        netIds: [],
+      });
+      return () => {
+        alive = false;
+        clearTimer();
+      };
+    }
+
+    clearTimer();
+    hoverTimerRef.current = window.setTimeout(async () => {
       try {
-        const rel = await fetchRelations(boardId, hoveredFeatureType, hoveredFeatureId);
+        const rel = await resolveRelations(hoveredFeatureType, hoveredFeatureId);
         if (!alive) return;
         setHighlight({
           targetId: hoveredFeatureId,
@@ -86,11 +110,11 @@ export default function BoardViewerClient({
       } catch {
         if (!alive) return;
       }
-    }
+    }, 28);
 
-    loadRelations();
     return () => {
       alive = false;
+      clearTimer();
     };
   }, [boardId, hoveredFeatureId, hoveredFeatureType, setHighlight]);
 
