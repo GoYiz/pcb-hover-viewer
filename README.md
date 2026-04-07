@@ -1,16 +1,16 @@
 # PCB Hover Viewer
 
-在线查看手机主板并进行元件关系高亮分析的 Web 应用。
+在线查看手机主板并进行“hover 关系高亮”的 Web 应用。
 
-## 已完成
-- 完整架构设计文档：`docs/ARCHITECTURE.md`
+## 技术栈（当前确定）
+- **Next.js（全栈）**
+- **SQLite3（MVP/中早期）**
+- PixiJS（前端高性能 2D 渲染）
 
-## 目标能力
-- 主板多层可视化
-- 元件 hover 关系高亮与动画
-- Net / 功能组 / 邻接关系联动
+## 架构决策
+- 在线 API：使用 Next.js Route Handlers
+- 数据库：SQLite3（后续可迁移 PostgreSQL）
+- Python：仅作为可选离线预处理工具，不作为在线主后端
 
-## 下一步
-1. 初始化前端（React + TypeScript + PixiJS）
-2. 构建数据预处理管线
-3. 实现关系高亮 MVP
+## 文档
+- 架构设计文档：`docs/ARCHITECTURE.md`
