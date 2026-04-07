@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Board {
+  id         String      @id
+  name       String
+  version    String
+  widthMm    Float
+  heightMm   Float
+  createdAt  DateTime    @default(now())
+  layers     Layer[]
+  components Component[]
+  nets       Net[]
+  traces     Trace[]
+  relations  RelationEdge[]
+}
+
+model Layer {
+  id        String   @id
+  boardId   String
+  name      String
+  zIndex    Int
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  pins      Pin[]
+  traces    Trace[]
+
+  @@index([boardId, name])
+}
+
+model Component {
+  id         String   @id
+  boardId    String
+  refdes     String
+  footprint  String?
+  x          Float
+  y          Float
+  rotation   Float
+  bboxJson   String
+  board      Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  pins       Pin[]
+
+  @@index([boardId, refdes])
+}
+
+model Net {
+  id        String   @id
+  boardId   String
+  netName   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  pins      Pin[]
+  traces    Trace[]
+
+  @@index([boardId, netName])
+}
+
+model Pin {
+  id           String     @id
+  componentId  String
+  netId        String
+  x            Float
+  y            Float
+  layerId      String
+  component    Component  @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  net          Net        @relation(fields: [netId], references: [id], onDelete: Cascade)
+  layer        Layer      @relation(fields: [layerId], references: [id], onDelete: Cascade)
+
+  @@index([componentId])
+  @@index([netId])
+}
+
+model Trace {
+  id        String   @id
+  boardId   String
+  netId     String
+  layerId   String
+  pathJson  String
+  width     Float
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  net       Net      @relation(fields: [netId], references: [id], onDelete: Cascade)
+  layer     Layer    @relation(fields: [layerId], references: [id], onDelete: Cascade)
+
+  @@index([boardId, netId])
+}
+
+model RelationEdge {
+  id            String   @id
+  boardId       String
+  sourceType    String
+  sourceId      String
+  targetType    String
+  targetId      String
+  relationType  String
+  weight        Float
+  board         Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId, sourceType, sourceId])
+}

@@ -2,15 +2,54 @@
 
 在线查看手机主板并进行“hover 关系高亮”的 Web 应用。
 
-## 技术栈（当前确定）
-- **Next.js（全栈）**
-- **SQLite3（MVP/中早期）**
-- PixiJS（前端高性能 2D 渲染）
+## 技术栈
+- Next.js（App Router）
+- TypeScript
+- SQLite3 + Prisma
+- Zustand
+- （可选）PixiJS
 
-## 架构决策
-- 在线 API：使用 Next.js Route Handlers
-- 数据库：SQLite3（后续可迁移 PostgreSQL）
-- Python：仅作为可选离线预处理工具，不作为在线主后端
+## 核心能力（当前实现）
+- 板卡列表/元信息 API
+- 元件与走线几何 API
+- 关系查询 API（component -> direct/net/trace）
+- 板卡查看页 `/board/[id]`
+- Hover 元件联动高亮：
+  - 目标元件高亮
+  - 直接关联元件高亮
+  - 关联 Trace 高亮
+- 关系侧边栏信息展示
 
-## 文档
-- 架构设计文档：`docs/ARCHITECTURE.md`
+## 快速开始
+```bash
+npm install
+npm run db:generate
+npm run db:push
+npm run db:seed
+npm run dev
+```
+
+打开：`http://localhost:3000/board/iphone-mainboard-demo`
+
+## 目录结构
+```text
+app/
+  api/boards/...        # API 路由
+  board/[id]/page.tsx   # 查看器页面
+components/
+  BoardViewerClient.tsx
+  PcbCanvas.tsx
+lib/
+  prisma.ts
+  api.ts
+prisma/
+  schema.prisma
+  seed.ts
+store/
+  viewerStore.ts
+types/
+  pcb.ts
+```
+
+## 架构文档
+- `docs/ARCHITECTURE.md`
