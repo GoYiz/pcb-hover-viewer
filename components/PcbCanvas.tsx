@@ -110,7 +110,7 @@ export default function PcbCanvas({
         });
         overlayLayer.add(selectionBar);
 
-        const topToolbar = new Rect({ x: 24, y: 40, width: 554, height: 30, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
+        const topToolbar = new Rect({ x: 24, y: 40, width: 710, height: 30, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
         overlayLayer.add(topToolbar);
         const sideToolbar = new Rect({ x: 24, y: 80, width: 58, height: 126, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
         overlayLayer.add(sideToolbar);
@@ -504,7 +504,9 @@ export default function PcbCanvas({
           const clearMeaBtn = createToolbarButton(266, 46, 64, 18, "ClrMeas", false, "rgba(127,29,29,0.72)");
           const shotBtn = createToolbarButton(336, 46, 46, 18, "Shot", false, "rgba(22,163,74,0.80)");
           const exportTxtBtn = createToolbarButton(388, 46, 54, 18, "ExpTxt", false, "rgba(2,132,199,0.80)");
-          const helpBtn = createToolbarButton(448, 46, 42, 18, helpRef.visible ? "Hide?" : "Help", helpRef.visible, "rgba(14,165,233,0.82)");
+          const measCsvBtn = createToolbarButton(448, 46, 62, 18, "MeasCSV", false, "rgba(8,145,178,0.82)");
+          const selJsonBtn = createToolbarButton(516, 46, 58, 18, "SelJSON", false, "rgba(79,70,229,0.82)");
+          const helpBtn = createToolbarButton(580, 46, 42, 18, helpRef.visible ? "Hide?" : "Help", helpRef.visible, "rgba(14,165,233,0.82)");
           for (const node of [selectBtn.bg, selectBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "select"; renderVisibility(); });
           for (const node of [measureBtn.bg, measureBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "measure"; renderVisibility(); });
           for (const node of [panBtn.bg, panBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "pan"; renderVisibility(); });
@@ -515,6 +517,8 @@ export default function PcbCanvas({
           for (const node of [clearMeaBtn.bg, clearMeaBtn.text]) node.on("pointer.tap", () => { clearAllMeasures(); renderVisibility(); });
           for (const node of [shotBtn.bg, shotBtn.text]) node.on("pointer.tap", () => { exportCanvasShot(); });
           for (const node of [exportTxtBtn.bg, exportTxtBtn.text]) node.on("pointer.tap", () => { exportWorkbenchText(); });
+          for (const node of [measCsvBtn.bg, measCsvBtn.text]) node.on("pointer.tap", () => { exportMeasurementsCsv(); });
+          for (const node of [selJsonBtn.bg, selJsonBtn.text]) node.on("pointer.tap", () => { exportSelectionJson(); });
           for (const node of [helpBtn.bg, helpBtn.text]) node.on("pointer.tap", () => { toggleHelp(); renderToolbars(); });
         };
 
@@ -758,6 +762,78 @@ export default function PcbCanvas({
           const blob = new Blob([buildWorkbenchExportText()], { type: "text/plain;charset=utf-8" });
           const href = URL.createObjectURL(blob);
           triggerDownload(`${boardSlug}-workbench-export.txt`, href);
+          window.setTimeout(() => URL.revokeObjectURL(href), 1500);
+        };
+
+        const buildMeasurementsCsv = () => {
+          const rows = [
+            ["index", "p1_x_mm", "p1_y_mm", "p2_x_mm", "p2_y_mm", "dx_mm", "dy_mm", "distance_mm"],
+            ...measureHistory.map((item, index) => [
+              String(index + 1),
+              item.p1.x.toFixed(4),
+              item.p1.y.toFixed(4),
+              item.p2.x.toFixed(4),
+              item.p2.y.toFixed(4),
+              item.dxMm.toFixed(4),
+              item.dyMm.toFixed(4),
+              item.distanceMm.toFixed(4),
+            ]),
+          ];
+          return rows.map((row) => row.join(",")).join("\n");
+        };
+
+        const exportMeasurementsCsv = () => {
+          const boardSlug = getExportSlug();
+          const blob = new Blob([buildMeasurementsCsv()], { type: "text/csv;charset=utf-8" });
+          const href = URL.createObjectURL(blob);
+          triggerDownload(`${boardSlug}-measurements.csv`, href);
+          window.setTimeout(() => URL.revokeObjectURL(href), 1500);
+        };
+
+        const buildSelectionJson = () => {
+          const selectedComponents = Array.from(selectedCompIds).map((id) => {
+            const comp = components.find((c) => c.id === id);
+            if (!comp) return { id, missing: true };
+            return {
+              kind: "component",
+              id: comp.id,
+              refdes: comp.refdes,
+              footprint: comp.footprint,
+              x: comp.x,
+              y: comp.y,
+              rotation: comp.rotation,
+              bbox: comp.bbox,
+              netIds: comp.netIds || [],
+            };
+          });
+          const selectedTraces = Array.from(selectedTraceIds).map((id) => {
+            const trace = traces.find((tr) => tr.id === id);
+            if (!trace) return { id, missing: true };
+            return {
+              kind: "trace",
+              id: trace.id,
+              netId: trace.netId,
+              layerId: trace.layerId,
+              width: trace.width,
+              points: trace.path.length,
+              path: trace.path,
+            };
+          });
+          return JSON.stringify({
+            board: getExportSlug(),
+            tool: toolModeRef.value,
+            zoom: Number(scaleRef.value.toFixed(3)),
+            offset: { x: Number(offsetRef.x.toFixed(1)), y: Number(offsetRef.y.toFixed(1)) },
+            selectedComponents,
+            selectedTraces,
+          }, null, 2);
+        };
+
+        const exportSelectionJson = () => {
+          const boardSlug = getExportSlug();
+          const blob = new Blob([buildSelectionJson()], { type: "application/json;charset=utf-8" });
+          const href = URL.createObjectURL(blob);
+          triggerDownload(`${boardSlug}-selection.json`, href);
           window.setTimeout(() => URL.revokeObjectURL(href), 1500);
         };
 
