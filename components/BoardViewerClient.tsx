@@ -1,13 +1,13 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import ThreeBoardCanvas from "@/components/ThreeBoardCanvas";
+import dynamic from "next/dynamic";
 import { fetchBoardComponents, fetchBoardGeometry, fetchBoardMeta } from "@/lib/api";
 import { useViewerStore } from "@/store/viewerStore";
 import type { ComponentItem, TraceItem } from "@/types/pcb";
 
 const PcbCanvas = dynamic(() => import("@/components/PcbCanvas"), { ssr: false });
+const ThreeBoardCanvas = dynamic(() => import("@/components/ThreeBoardCanvas"), { ssr: false });
 
 const CANVAS_W = 980;
 const CANVAS_H = 680;
@@ -27,14 +27,21 @@ type Props = {
   initialTraces?: TraceItem[];
 };
 
-export default function BoardViewerClient({ boardId, boardName, boardWidthMm: initialBoardWidthMm, boardHeightMm: initialBoardHeightMm, initialComponents, initialTraces }: Props) {
+export default function BoardViewerClient({
+  boardId,
+  boardName,
+  boardWidthMm: initialBoardWidthMm,
+  boardHeightMm: initialBoardHeightMm,
+  initialComponents,
+  initialTraces,
+}: Props) {
   const [components, setComponents] = useState<ComponentItem[]>(initialComponents || []);
   const [traces, setTraces] = useState<TraceItem[]>(initialTraces || []);
   const [boardWidthMm, setBoardWidthMm] = useState(initialBoardWidthMm || 160);
   const [boardHeightMm, setBoardHeightMm] = useState(initialBoardHeightMm || 90);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!(initialComponents?.length && initialTraces?.length));
   const [error, setError] = useState<string | null>(null);
-    const [layerMode, setLayerMode] = useState<"all" | "fcu" | "bcu">("all");
+  const [layerMode, setLayerMode] = useState<"all" | "fcu" | "bcu">("all");
   const [viewMode, setViewMode] = useState<"leafer" | "three">("leafer");
   const [search, setSearch] = useState("");
   const [focusComponentId, setFocusComponentId] = useState<string | undefined>();
@@ -119,13 +126,7 @@ export default function BoardViewerClient({ boardId, boardName, boardWidthMm: in
     const directComponentIds = [...new Set(netIds.flatMap((n) => [...(netToComponents.get(n) || new Set())]))].filter((id) => !(hoveredFeatureType === "component" && id === hoveredFeatureId));
     const traceIds = [...new Set(netIds.flatMap((n) => [...(netToTraces.get(n) || new Set())]))];
 
-    setHighlight({
-      targetId: hoveredFeatureId,
-      targetType: hoveredFeatureType,
-      directComponentIds,
-      traceIds,
-      netIds,
-    });
+    setHighlight({ targetId: hoveredFeatureId, targetType: hoveredFeatureType, directComponentIds, traceIds, netIds });
   }, [components, traces, hoveredFeatureId, hoveredFeatureType, setHighlight]);
 
   const searchMatches = useMemo(() => {
@@ -192,12 +193,7 @@ export default function BoardViewerClient({ boardId, boardName, boardWidthMm: in
             <button className={viewMode === "three" ? "segmented-active" : ""} onClick={() => setViewMode("three")}>Three</button>
           </div>
 
-          <input
-            className="workbench-search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search refdes, e.g. U1200"
-          />
+          <input className="workbench-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search refdes, e.g. U1200" />
         </div>
 
         {searchMatches.length > 0 && (
@@ -300,6 +296,7 @@ export default function BoardViewerClient({ boardId, boardName, boardWidthMm: in
             <ul className="tips-list">
               <li>Mouse wheel to zoom</li>
               <li>Drag to pan / orbit</li>
+              <li>Shift + drag for box zoom in 2D</li>
               <li>Leafer is now the default 2D renderer</li>
               <li>Hover trace or component to inspect graph</li>
             </ul>
