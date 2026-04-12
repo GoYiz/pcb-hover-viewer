@@ -212,11 +212,17 @@ export default function PcbCanvas({
         overlayLayer.add(measureHistoryLayer);
 
         const measureLine = new Line({ points: [0, 0, 0, 0], stroke: "#a78bfa", strokeWidth: 2, visible: false });
+        const measureProjH = new Line({ points: [0, 0, 0, 0], stroke: "rgba(34,211,238,0.8)", strokeWidth: 1.5, dashPattern: [6, 4], visible: false });
+        const measureProjV = new Line({ points: [0, 0, 0, 0], stroke: "rgba(56,189,248,0.8)", strokeWidth: 1.5, dashPattern: [6, 4], visible: false });
+        const measureProjLabel = new Text({ x: 0, y: 0, text: "", fill: "#a5f3fc", fontSize: 11, visible: false });
         const measureLabel = new Text({ x: 0, y: 0, text: "", fill: "#ddd6fe", fontSize: 12, visible: false });
         const measureP1 = new Rect({ x: 0, y: 0, width: 6, height: 6, fill: "#c4b5fd", cornerRadius: 3, visible: false });
         const measureP2 = new Rect({ x: 0, y: 0, width: 6, height: 6, fill: "#c4b5fd", cornerRadius: 3, visible: false });
         const snapMarker = new Rect({ x: 0, y: 0, width: 10, height: 10, stroke: "#f472b6", strokeWidth: 1.5, fill: "rgba(244,114,182,0.10)", cornerRadius: 5, visible: false });
         overlayLayer.add(measureLine);
+        overlayLayer.add(measureProjH);
+        overlayLayer.add(measureProjV);
+        overlayLayer.add(measureProjLabel);
         overlayLayer.add(measureLabel);
         overlayLayer.add(measureP1);
         overlayLayer.add(measureP2);
@@ -549,6 +555,9 @@ export default function PcbCanvas({
         const updateMeasureOverlay = () => {
           if (!measureRef.p1) {
             measureLine.visible = false;
+            measureProjH.visible = false;
+            measureProjV.visible = false;
+            measureProjLabel.visible = false;
             measureLabel.visible = false;
             measureP1.visible = false;
             measureP2.visible = false;
@@ -565,6 +574,9 @@ export default function PcbCanvas({
           const end = measureRef.p2 || measureRef.preview;
           if (!end) {
             measureLine.visible = false;
+            measureProjH.visible = false;
+            measureProjV.visible = false;
+            measureProjLabel.visible = false;
             measureLabel.visible = false;
             measureP2.visible = false;
             measureRef.distanceMm = null;
@@ -578,6 +590,11 @@ export default function PcbCanvas({
           measureP2.y = end.y - 3;
           measureLine.visible = true;
           measureLine.points = [measureRef.p1.x, measureRef.p1.y, end.x, end.y];
+          measureProjH.visible = true;
+          measureProjV.visible = true;
+          measureProjLabel.visible = true;
+          measureProjH.points = [measureRef.p1.x, measureRef.p1.y, end.x, measureRef.p1.y];
+          measureProjV.points = [end.x, measureRef.p1.y, end.x, end.y];
           const a = unmapPoint(measureRef.p1.x, measureRef.p1.y, width, height, boardWidthMm, boardHeightMm);
           const b = unmapPoint(end.x, end.y, width, height, boardWidthMm, boardHeightMm);
           measureRef.dxMm = b.x - a.x;
@@ -587,6 +604,9 @@ export default function PcbCanvas({
           measureLabel.text = `ΔX ${Math.abs(measureRef.dxMm).toFixed(2)} · ΔY ${Math.abs(measureRef.dyMm).toFixed(2)} · D ${measureRef.distanceMm.toFixed(2)} mm`;
           measureLabel.x = (measureRef.p1.x + end.x) / 2 + 8;
           measureLabel.y = (measureRef.p1.y + end.y) / 2 - 18;
+          measureProjLabel.text = `ΔX ${Math.abs(measureRef.dxMm).toFixed(2)} · ΔY ${Math.abs(measureRef.dyMm).toFixed(2)}`;
+          measureProjLabel.x = Math.min(measureRef.p1.x, end.x) + 8;
+          measureProjLabel.y = Math.min(measureRef.p1.y, end.y) + 8;
           updateHud();
         };
 
