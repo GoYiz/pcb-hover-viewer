@@ -104,7 +104,7 @@ export default function PcbCanvas({
         const hint = new Text({
           x: 24,
           y: 18,
-          text: "Drag pan · Wheel zoom · Shift box select · Alt+Shift box zoom · Double click to measure · Esc clears · Snap on points · Hold Shift for orthogonal",
+          text: "Drag pan · Wheel zoom · Shift box select · Alt+Shift box zoom · Double click to measure · Enter commit · Backspace undo · Esc clear · Snap on points · Hold Shift for orthogonal",
           fill: "#64748b",
           fontSize: 11,
         });
@@ -126,6 +126,9 @@ export default function PcbCanvas({
           visible: false,
         });
         overlayLayer.add(box);
+
+        const measureHistoryLayer = new Group();
+        overlayLayer.add(measureHistoryLayer);
 
         const measureLine = new Line({ points: [0, 0, 0, 0], stroke: "#a78bfa", strokeWidth: 2, visible: false });
         const measureLabel = new Text({ x: 0, y: 0, text: "", fill: "#ddd6fe", fontSize: 12, visible: false });
@@ -152,6 +155,7 @@ export default function PcbCanvas({
         const dragRef = { active: false, x: 0, y: 0 };
         const boxRef = { active: false, sx: 0, sy: 0, ex: 0, ey: 0, mode: "select" as "select" | "zoom" };
         const measureRef = { p1: null as null | { x: number; y: number }, p2: null as null | { x: number; y: number }, preview: null as null | { x: number; y: number }, distanceMm: null as null | number, dxMm: null as null | number, dyMm: null as null | number, snap: null as null | { x: number; y: number } };
+        const measureHistory: Array<{ p1: { x: number; y: number }; p2: { x: number; y: number }; dxMm: number; dyMm: number; distanceMm: number }> = [];
         const snapPoints: Array<{ x: number; y: number }> = [];
         const SNAP_RADIUS = 12;
 
@@ -167,8 +171,8 @@ export default function PcbCanvas({
         const updateHud = () => {
           const label = visibleLayers.length === 0 || visibleLayers.length === 2 ? "All" : visibleLayers.join(" + ");
           const count = selectedCompIds.size + selectedTraceIds.size;
-          const measureText = measureRef.distanceMm == null ? "—" : `ΔX ${Math.abs(measureRef.dxMm || 0).toFixed(2)} · ΔY ${Math.abs(measureRef.dyMm || 0).toFixed(2)} · D ${measureRef.distanceMm.toFixed(2)} mm`;
-          hud.text = `Layer: ${label} · Zoom ${scaleRef.value.toFixed(2)}x · Selected ${count} · Measure ${measureText}`;
+          const currentMeasureText = measureRef.distanceMm == null ? "—" : `ΔX ${Math.abs(measureRef.dxMm || 0).toFixed(2)} · ΔY ${Math.abs(measureRef.dyMm || 0).toFixed(2)} · D ${measureRef.distanceMm.toFixed(2)} mm`;
+          hud.text = `Layer: ${label} · Zoom ${scaleRef.value.toFixed(2)}x · Selected ${count} · Measures ${measureHistory.length} · Current ${currentMeasureText}`;
           hud.x = width - 18 - Math.max(320, String(hud.text).length * 6.7);
         };
 
@@ -198,6 +202,46 @@ export default function PcbCanvas({
           const dx = x - measureRef.p1.x;
           const dy = y - measureRef.p1.y;
           return Math.abs(dx) >= Math.abs(dy) ? { x, y: measureRef.p1.y } : { x: measureRef.p1.x, y };
+        };
+
+        const resetCurrentMeasure = () => {
+          measureRef.p1 = null;
+          measureRef.p2 = null;
+          measureRef.preview = null;
+          measureRef.snap = null;
+          measureRef.distanceMm = null;
+          measureRef.dxMm = null;
+          measureRef.dyMm = null;
+          snapMarker.visible = false;
+        };
+
+        const renderMeasureHistory = () => {
+          measureHistoryLayer.clear();
+          for (const item of measureHistory) {
+            const line = new Line({ points: [item.p1.x, item.p1.y, item.p2.x, item.p2.y], stroke: "rgba(167,139,250,0.75)", strokeWidth: 1.6 });
+            const p1 = new Rect({ x: item.p1.x - 2.5, y: item.p1.y - 2.5, width: 5, height: 5, fill: "rgba(196,181,253,0.85)", cornerRadius: 2.5 });
+            const p2 = new Rect({ x: item.p2.x - 2.5, y: item.p2.y - 2.5, width: 5, height: 5, fill: "rgba(196,181,253,0.85)", cornerRadius: 2.5 });
+            const label = new Text({ x: (item.p1.x + item.p2.x) / 2 + 8, y: (item.p1.y + item.p2.y) / 2 - 18, text: `ΔX ${Math.abs(item.dxMm).toFixed(2)} · ΔY ${Math.abs(item.dyMm).toFixed(2)} · D ${item.distanceMm.toFixed(2)} mm`, fill: "rgba(221,214,254,0.88)", fontSize: 11 });
+            measureHistoryLayer.add(line);
+            measureHistoryLayer.add(label);
+            measureHistoryLayer.add(p1);
+            measureHistoryLayer.add(p2);
+          }
+        };
+
+        const commitCurrentMeasure = () => {
+          if (!measureRef.p1 || !measureRef.p2 || measureRef.distanceMm == null || measureRef.dxMm == null || measureRef.dyMm == null) return;
+          measureHistory.push({ p1: { ...measureRef.p1 }, p2: { ...measureRef.p2 }, dxMm: measureRef.dxMm, dyMm: measureRef.dyMm, distanceMm: measureRef.distanceMm });
+          renderMeasureHistory();
+          resetCurrentMeasure();
+          updateMeasureOverlay();
+        };
+
+        const popLastMeasure = () => {
+          if (!measureHistory.length) return;
+          measureHistory.pop();
+          renderMeasureHistory();
+          updateHud();
         };
 
         const updateMeasureOverlay = () => {
@@ -512,6 +556,7 @@ export default function PcbCanvas({
             measureRef.preview = null;
           }
           updateMeasureOverlay();
+          if (measureRef.p1 && measureRef.p2) commitCurrentMeasure();
           leafer.forceRender?.();
         };
 
@@ -529,16 +574,26 @@ export default function PcbCanvas({
         };
 
         const onKeyDown = (e: KeyboardEvent) => {
+          if (e.key === "Enter") {
+            commitCurrentMeasure();
+            leafer.forceRender?.();
+            return;
+          }
+          if (e.key === "Backspace") {
+            e.preventDefault();
+            popLastMeasure();
+            leafer.forceRender?.();
+            return;
+          }
           if (e.key === "Escape") {
-            measureRef.p1 = null;
-            measureRef.p2 = null;
-            measureRef.preview = null;
-            measureRef.snap = null;
-            snapMarker.visible = false;
-            measureRef.distanceMm = null;
-            measureRef.dxMm = null;
-            measureRef.dyMm = null;
-            updateMeasureOverlay();
+            if (measureRef.p1 || measureRef.p2 || measureRef.preview) {
+              resetCurrentMeasure();
+              updateMeasureOverlay();
+            } else if (measureHistory.length) {
+              measureHistory.length = 0;
+              renderMeasureHistory();
+              updateHud();
+            }
             leafer.forceRender?.();
           }
         };
