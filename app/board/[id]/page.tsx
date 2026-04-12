@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import BoardViewerClient from "@/components/BoardViewerClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function BoardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
