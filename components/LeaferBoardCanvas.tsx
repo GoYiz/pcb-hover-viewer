@@ -252,8 +252,12 @@ export default function LeaferBoardCanvas({
     const app = appRef.current;
     const rect = focusComponentId ? compMap.current.get(focusComponentId) : null;
     if (!app || !rect) return;
-    const cx = rect.x + rect.width / 2;
-    const cy = rect.y + rect.height / 2;
+    const x = Number(rect.x || 0);
+    const y = Number(rect.y || 0);
+    const w = Number(rect.width || 0);
+    const h = Number(rect.height || 0);
+    const cx = x + w / 2;
+    const cy = y + h / 2;
     cameraRef.current.scale = Math.max(1.2, cameraRef.current.scale);
     cameraRef.current.x = width / 2 - cx * cameraRef.current.scale;
     cameraRef.current.y = height / 2 - cy * cameraRef.current.scale;
