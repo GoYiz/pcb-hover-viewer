@@ -107,6 +107,8 @@ export default function PcbCanvas({
         overlayLayer.add(sideToolbar);
         const toolbarLayer = new Group();
         overlayLayer.add(toolbarLayer);
+        const helpLayer = new Group();
+        overlayLayer.add(helpLayer);
 
         const hud = new Text({
           x: width - 320,
@@ -120,7 +122,7 @@ export default function PcbCanvas({
         const hint = new Text({
           x: 24,
           y: 18,
-          text: "Drag pan · Wheel zoom · Shift box select · Shift+Cmd/Ctrl append box select · Alt+Shift+Cmd/Ctrl subtract box select · Alt+Shift box zoom · Cmd/Ctrl click append select · Double click to measure",
+          text: "Drag pan · Wheel zoom · Shift box select · Shift+Cmd/Ctrl append box select · Alt+Shift+Cmd/Ctrl subtract box select · Alt+Shift box zoom · Cmd/Ctrl click append select · Double click to measure · ? help",
           fill: "#64748b",
           fontSize: 11,
         });
@@ -259,6 +261,7 @@ export default function PcbCanvas({
         const snapPoints: Array<{ x: number; y: number }> = [];
         const SNAP_RADIUS = 12;
         const toolModeRef = { value: "select" as "select" | "measure" | "pan" };
+        const helpRef = { visible: false };
 
         const applyCamera = () => {
           for (const layer of [gridLayer, boardLayer, traceLayer, compLayer]) {
@@ -294,6 +297,39 @@ export default function PcbCanvas({
           toolbarLayer.add(bg);
           toolbarLayer.add(text);
           return { bg, text };
+        };
+
+        const renderHelpOverlay = () => {
+          helpLayer.clear();
+          if (!helpRef.visible) return;
+          const panel = new Rect({ x: width / 2 - 250, y: height / 2 - 165, width: 500, height: 330, cornerRadius: 16, fill: "rgba(2,6,23,0.92)", stroke: "rgba(148,163,184,0.28)", strokeWidth: 1.2 });
+          const title = new Text({ x: width / 2 - 226, y: height / 2 - 138, text: "Keyboard & Interaction Help", fill: "#e2e8f0", fontSize: 16 });
+          const body = new Text({ x: width / 2 - 226, y: height / 2 - 104, text: [
+            "?  Toggle help",
+            "Esc  Clear current measure / clear all measurements / close help",
+            "Wheel  Zoom",
+            "Drag  Pan",
+            "Shift + Drag  Box select",
+            "Shift + Cmd/Ctrl + Drag  Append box select",
+            "Alt + Shift + Drag  Box zoom",
+            "Alt + Shift + Cmd/Ctrl + Drag  Subtract box select",
+            "Cmd/Ctrl + Click  Append/toggle selection",
+            "Double click  Measure two points",
+            "Shift during measure  Orthogonal constraint",
+            "Enter  Commit current measure",
+            "Backspace  Delete last measure",
+          ].join("\n"), fill: "#cbd5e1", fontSize: 12 });
+          const footer = new Text({ x: width / 2 - 226, y: height / 2 + 128, text: "Tap Help or press ? again to close", fill: "#94a3b8", fontSize: 11 });
+          helpLayer.add(panel);
+          helpLayer.add(title);
+          helpLayer.add(body);
+          helpLayer.add(footer);
+        };
+
+        const toggleHelp = () => {
+          helpRef.visible = !helpRef.visible;
+          renderHelpOverlay();
+          leafer.forceRender?.();
         };
 
         const getSelectionBounds = () => {
@@ -356,6 +392,7 @@ export default function PcbCanvas({
           const zoomBtn = createToolbarButton(144, 46, 52, 18, "ZoomSel", false, "rgba(30,64,175,0.78)");
           const clearSelBtn = createToolbarButton(202, 46, 58, 18, "ClrSel", false, "rgba(127,29,29,0.72)");
           const clearMeaBtn = createToolbarButton(266, 46, 64, 18, "ClrMeas", false, "rgba(127,29,29,0.72)");
+          const helpBtn = createToolbarButton(336, 46, 42, 18, helpRef.visible ? "Hide?" : "Help", helpRef.visible, "rgba(14,165,233,0.82)");
           for (const node of [selectBtn.bg, selectBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "select"; renderVisibility(); });
           for (const node of [measureBtn.bg, measureBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "measure"; renderVisibility(); });
           for (const node of [panBtn.bg, panBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "pan"; renderVisibility(); });
@@ -364,6 +401,7 @@ export default function PcbCanvas({
           for (const node of [zoomBtn.bg, zoomBtn.text]) node.on("pointer.tap", () => { zoomToSelection(); renderVisibility(); });
           for (const node of [clearSelBtn.bg, clearSelBtn.text]) node.on("pointer.tap", () => { clearSelection(); renderVisibility(); });
           for (const node of [clearMeaBtn.bg, clearMeaBtn.text]) node.on("pointer.tap", () => { clearAllMeasures(); renderVisibility(); });
+          for (const node of [helpBtn.bg, helpBtn.text]) node.on("pointer.tap", () => { toggleHelp(); renderToolbars(); });
         };
 
         const renderSelectionPanel = () => {
@@ -883,6 +921,7 @@ export default function PcbCanvas({
           renderMeasurePanel();
           renderSelectionPanel();
           renderToolbars();
+          renderHelpOverlay();
         };
 
         renderToolbars();
@@ -1043,6 +1082,12 @@ export default function PcbCanvas({
         };
 
         const onKeyDown = (e: KeyboardEvent) => {
+          if (e.key === "?") {
+            e.preventDefault();
+            toggleHelp();
+            renderToolbars();
+            return;
+          }
           if (e.key === "Enter") {
             commitCurrentMeasure();
             leafer.forceRender?.();
@@ -1055,7 +1100,11 @@ export default function PcbCanvas({
             return;
           }
           if (e.key === "Escape") {
-            if (measureRef.p1 || measureRef.p2 || measureRef.preview) {
+            if (helpRef.visible) {
+              helpRef.visible = false;
+              renderHelpOverlay();
+              renderToolbars();
+            } else if (measureRef.p1 || measureRef.p2 || measureRef.preview) {
               resetCurrentMeasure();
               updateMeasureOverlay();
             } else if (measureHistory.length) {
