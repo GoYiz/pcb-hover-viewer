@@ -110,7 +110,7 @@ export default function PcbCanvas({
         });
         overlayLayer.add(selectionBar);
 
-        const topToolbar = new Rect({ x: 24, y: 40, width: 710, height: 30, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
+        const topToolbar = new Rect({ x: 24, y: 40, width: 860, height: 30, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
         overlayLayer.add(topToolbar);
         const sideToolbar = new Rect({ x: 24, y: 80, width: 58, height: 126, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
         overlayLayer.add(sideToolbar);
@@ -298,6 +298,7 @@ export default function PcbCanvas({
         const snapPoints: Array<{ x: number; y: number }> = [];
         const SNAP_RADIUS = 12;
         const toolModeRef = { value: "select" as "select" | "measure" | "pan" };
+        const selectionFilterRef = { value: "all" as "all" | "component" | "trace" };
         const helpRef = { visible: false };
 
         const readUrlState = () => {
@@ -358,7 +359,8 @@ export default function PcbCanvas({
           hud.text = `Layer: ${label} · Zoom ${scaleRef.value.toFixed(2)}x · Tool ${toolModeRef.value} · Selected ${count} · Measures ${measureHistory.length} · Current ${currentMeasureText}`;
           hud.x = width - 18 - Math.max(320, String(hud.text).length * 6.7);
           const modeText = boxRef.active ? (boxRef.mode === "zoom" ? " · Box Zoom" : boxRef.mode === "subtract" ? " · Box Subtract" : boxRef.append ? " · Box Append" : " · Box Replace") : "";
-          selectionBar.text = `Selection · ${selectedCompIds.size} components · ${selectedTraceIds.size} traces · Total ${count}${modeText}`;
+          const filterLabel = selectionFilterRef.value === "all" ? "All" : selectionFilterRef.value === "component" ? "Comp" : "Trace";
+          selectionBar.text = `Selection · Filter ${filterLabel} · ${selectedCompIds.size} components · ${selectedTraceIds.size} traces · Total ${count}${modeText}`;
           const nextBridge = {
             tool: toolModeRef.value,
             zoom: scaleRef.value,
@@ -506,7 +508,10 @@ export default function PcbCanvas({
           const exportTxtBtn = createToolbarButton(388, 46, 54, 18, "ExpTxt", false, "rgba(2,132,199,0.80)");
           const measCsvBtn = createToolbarButton(448, 46, 62, 18, "MeasCSV", false, "rgba(8,145,178,0.82)");
           const selJsonBtn = createToolbarButton(516, 46, 58, 18, "SelJSON", false, "rgba(79,70,229,0.82)");
-          const helpBtn = createToolbarButton(580, 46, 42, 18, helpRef.visible ? "Hide?" : "Help", helpRef.visible, "rgba(14,165,233,0.82)");
+          const filterAllBtn = createToolbarButton(580, 46, 40, 18, "All", selectionFilterRef.value === "all", "rgba(100,116,139,0.82)");
+          const filterCompBtn = createToolbarButton(626, 46, 46, 18, "Comp", selectionFilterRef.value === "component", "rgba(245,158,11,0.82)");
+          const filterTraceBtn = createToolbarButton(678, 46, 50, 18, "Trace", selectionFilterRef.value === "trace", "rgba(59,130,246,0.82)");
+          const helpBtn = createToolbarButton(734, 46, 42, 18, helpRef.visible ? "Hide?" : "Help", helpRef.visible, "rgba(14,165,233,0.82)");
           for (const node of [selectBtn.bg, selectBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "select"; renderVisibility(); });
           for (const node of [measureBtn.bg, measureBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "measure"; renderVisibility(); });
           for (const node of [panBtn.bg, panBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "pan"; renderVisibility(); });
@@ -519,6 +524,9 @@ export default function PcbCanvas({
           for (const node of [exportTxtBtn.bg, exportTxtBtn.text]) node.on("pointer.tap", () => { exportWorkbenchText(); });
           for (const node of [measCsvBtn.bg, measCsvBtn.text]) node.on("pointer.tap", () => { exportMeasurementsCsv(); });
           for (const node of [selJsonBtn.bg, selJsonBtn.text]) node.on("pointer.tap", () => { exportSelectionJson(); });
+          for (const node of [filterAllBtn.bg, filterAllBtn.text]) node.on("pointer.tap", () => { selectionFilterRef.value = "all"; renderVisibility(); });
+          for (const node of [filterCompBtn.bg, filterCompBtn.text]) node.on("pointer.tap", () => { selectionFilterRef.value = "component"; renderVisibility(); });
+          for (const node of [filterTraceBtn.bg, filterTraceBtn.text]) node.on("pointer.tap", () => { selectionFilterRef.value = "trace"; renderVisibility(); });
           for (const node of [helpBtn.bg, helpBtn.text]) node.on("pointer.tap", () => { toggleHelp(); renderToolbars(); });
         };
 
@@ -1102,7 +1110,12 @@ export default function PcbCanvas({
           refreshStyles();
         };
 
+        const selectionKindAllowed = (kind: "component" | "trace") => {
+          return selectionFilterRef.value === "all" || selectionFilterRef.value === kind;
+        };
+
         const selectOnly = (kind: "component" | "trace", id: string) => {
+          if (!selectionKindAllowed(kind)) return;
           selectedCompIds.clear();
           selectedTraceIds.clear();
           if (kind === "component") selectedCompIds.add(id);
@@ -1111,6 +1124,7 @@ export default function PcbCanvas({
         };
 
         const toggleSelection = (kind: "component" | "trace", id: string) => {
+          if (!selectionKindAllowed(kind)) return;
           if (kind === "component") {
             if (selectedCompIds.has(id)) selectedCompIds.delete(id);
             else selectedCompIds.add(id);
@@ -1130,13 +1144,19 @@ export default function PcbCanvas({
           const wy1 = (sy - offsetRef.y) / scaleRef.value;
           const wx2 = (ex - offsetRef.x) / scaleRef.value;
           const wy2 = (ey - offsetRef.y) / scaleRef.value;
+          const allowComp = selectionFilterRef.value !== "trace";
+          const allowTrace = selectionFilterRef.value !== "component";
 
           if (boxRef.mode === "subtract") {
-            for (const [id, b] of compBoundsMap) {
-              if (b.x + b.width >= wx1 && b.x <= wx2 && b.y + b.height >= wy1 && b.y <= wy2) selectedCompIds.delete(id);
+            if (allowComp) {
+              for (const [id, b] of compBoundsMap) {
+                if (b.x + b.width >= wx1 && b.x <= wx2 && b.y + b.height >= wy1 && b.y <= wy2) selectedCompIds.delete(id);
+              }
             }
-            for (const [id, b] of traceBoundsMap) {
-              if (b.maxX >= wx1 && b.minX <= wx2 && b.maxY >= wy1 && b.minY <= wy2) selectedTraceIds.delete(id);
+            if (allowTrace) {
+              for (const [id, b] of traceBoundsMap) {
+                if (b.maxX >= wx1 && b.minX <= wx2 && b.maxY >= wy1 && b.minY <= wy2) selectedTraceIds.delete(id);
+              }
             }
             refreshStyles();
             return;
@@ -1147,11 +1167,15 @@ export default function PcbCanvas({
             selectedTraceIds.clear();
           }
 
-          for (const [id, b] of compBoundsMap) {
-            if (b.x + b.width >= wx1 && b.x <= wx2 && b.y + b.height >= wy1 && b.y <= wy2) selectedCompIds.add(id);
+          if (allowComp) {
+            for (const [id, b] of compBoundsMap) {
+              if (b.x + b.width >= wx1 && b.x <= wx2 && b.y + b.height >= wy1 && b.y <= wy2) selectedCompIds.add(id);
+            }
           }
-          for (const [id, b] of traceBoundsMap) {
-            if (b.maxX >= wx1 && b.minX <= wx2 && b.maxY >= wy1 && b.minY <= wy2) selectedTraceIds.add(id);
+          if (allowTrace) {
+            for (const [id, b] of traceBoundsMap) {
+              if (b.maxX >= wx1 && b.minX <= wx2 && b.maxY >= wy1 && b.minY <= wy2) selectedTraceIds.add(id);
+            }
           }
           refreshStyles();
         };
