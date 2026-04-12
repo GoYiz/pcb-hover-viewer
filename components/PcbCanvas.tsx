@@ -204,6 +204,34 @@ export default function PcbCanvas({
         overlayLayer.add(selectedPanelBody);
         overlayLayer.add(selectedPanelListLayer);
 
+        const inspectorPanel = new Rect({
+          x: width - 314,
+          y: 206,
+          width: 290,
+          height: Math.max(170, height - 430),
+          fill: "rgba(15,23,42,0.82)",
+          stroke: "rgba(251,191,36,0.35)",
+          strokeWidth: 1,
+          cornerRadius: 10,
+        });
+        const inspectorTitle = new Text({
+          x: width - 296,
+          y: 220,
+          text: "Inspector",
+          fill: "#fcd34d",
+          fontSize: 12,
+        });
+        const inspectorBody = new Text({
+          x: width - 296,
+          y: 244,
+          text: "Hover an object or select one item",
+          fill: "#94a3b8",
+          fontSize: 11,
+        });
+        overlayLayer.add(inspectorPanel);
+        overlayLayer.add(inspectorTitle);
+        overlayLayer.add(inspectorBody);
+
         const cursorH = new Line({ points: [0, 0, width, 0], stroke: "rgba(34,211,238,0.55)", strokeWidth: 1, visible: false });
         const cursorV = new Line({ points: [0, 0, 0, height], stroke: "rgba(34,211,238,0.55)", strokeWidth: 1, visible: false });
         overlayLayer.add(cursorH);
@@ -402,6 +430,79 @@ export default function PcbCanvas({
           for (const node of [clearSelBtn.bg, clearSelBtn.text]) node.on("pointer.tap", () => { clearSelection(); renderVisibility(); });
           for (const node of [clearMeaBtn.bg, clearMeaBtn.text]) node.on("pointer.tap", () => { clearAllMeasures(); renderVisibility(); });
           for (const node of [helpBtn.bg, helpBtn.text]) node.on("pointer.tap", () => { toggleHelp(); renderToolbars(); });
+        };
+
+        const renderInspector = () => {
+          let source: "hover" | "selected" | "summary" = "summary";
+          let kind: "component" | "trace" | null = null;
+          let targetId: string | null = null;
+
+          if (hoveredId && hoveredType) {
+            source = "hover";
+            kind = hoveredType;
+            targetId = hoveredId;
+          } else if (selectedCompIds.size + selectedTraceIds.size === 1) {
+            source = "selected";
+            if (selectedCompIds.size === 1) {
+              kind = "component";
+              targetId = Array.from(selectedCompIds)[0];
+            } else if (selectedTraceIds.size === 1) {
+              kind = "trace";
+              targetId = Array.from(selectedTraceIds)[0];
+            }
+          }
+
+          if (kind === "component" && targetId) {
+            const comp = components.find((c) => c.id === targetId);
+            if (!comp) {
+              inspectorBody.text = "Component not found";
+              return;
+            }
+            const nets = (comp.netIds || []).slice(0, 5).join(", ") || "—";
+            inspectorBody.text = [
+              `Source: ${source}`,
+              `Type: Component`,
+              `Refdes: ${comp.refdes}`,
+              `ID: ${comp.id}`,
+              `Footprint: ${comp.footprint || "—"}`,
+              `Rotation: ${comp.rotation}°`,
+              `XY: ${comp.x.toFixed(2)}, ${comp.y.toFixed(2)} mm`,
+              `BBox: ${comp.bbox.map((n) => n.toFixed(2)).join(", ")}`,
+              `Nets: ${nets}`,
+            ].join("\n");
+            return;
+          }
+
+          if (kind === "trace" && targetId) {
+            const trace = traces.find((tr) => tr.id === targetId);
+            if (!trace) {
+              inspectorBody.text = "Trace not found";
+              return;
+            }
+            inspectorBody.text = [
+              `Source: ${source}`,
+              `Type: Trace`,
+              `ID: ${trace.id}`,
+              `Net: ${trace.netId}`,
+              `Layer: ${trace.layerId}`,
+              `Width: ${trace.width} mm`,
+              `Points: ${trace.path.length}`,
+              `Start: ${trace.path[0]?.map((n) => n.toFixed(2)).join(", ") || "—"}`,
+              `End: ${trace.path[trace.path.length - 1]?.map((n) => n.toFixed(2)).join(", ") || "—"}`,
+            ].join("\n");
+            return;
+          }
+
+          inspectorBody.text = [
+            "Source: summary",
+            `Board: ${boardWidthMm.toFixed(2)} × ${boardHeightMm.toFixed(2)} mm`,
+            `Components: ${components.length}`,
+            `Traces: ${traces.length}`,
+            `Selected Components: ${selectedCompIds.size}`,
+            `Selected Traces: ${selectedTraceIds.size}`,
+            `Measures: ${measureHistory.length}`,
+            `Tool: ${toolModeRef.value}`,
+            ].join("\n");
         };
 
         const renderSelectionPanel = () => {
@@ -785,6 +886,7 @@ export default function PcbCanvas({
           updateMeasureOverlay();
           updateHud();
           renderSelectionPanel();
+          renderInspector();
           leafer.forceRender?.();
         };
 
@@ -920,6 +1022,7 @@ export default function PcbCanvas({
           refreshStyles();
           renderMeasurePanel();
           renderSelectionPanel();
+          renderInspector();
           renderToolbars();
           renderHelpOverlay();
         };
