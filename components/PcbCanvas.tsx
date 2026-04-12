@@ -134,9 +134,11 @@ export default function PcbCanvas({
           fill: "#94a3b8",
           fontSize: 11,
         });
+        const measurePanelListLayer = new Group();
         overlayLayer.add(measurePanel);
         overlayLayer.add(measurePanelTitle);
         overlayLayer.add(measurePanelBody);
+        overlayLayer.add(measurePanelListLayer);
 
         const cursorH = new Line({ points: [0, 0, width, 0], stroke: "rgba(34,211,238,0.55)", strokeWidth: 1, visible: false });
         const cursorV = new Line({ points: [0, 0, 0, height], stroke: "rgba(34,211,238,0.55)", strokeWidth: 1, visible: false });
@@ -184,6 +186,7 @@ export default function PcbCanvas({
         const boxRef = { active: false, sx: 0, sy: 0, ex: 0, ey: 0, mode: "select" as "select" | "zoom" };
         const measureRef = { p1: null as null | { x: number; y: number }, p2: null as null | { x: number; y: number }, preview: null as null | { x: number; y: number }, distanceMm: null as null | number, dxMm: null as null | number, dyMm: null as null | number, snap: null as null | { x: number; y: number } };
         const measureHistory: Array<{ p1: { x: number; y: number }; p2: { x: number; y: number }; dxMm: number; dyMm: number; distanceMm: number }> = [];
+        const measureUiRef = { selectedIndex: -1 };
         const snapPoints: Array<{ x: number; y: number }> = [];
         const SNAP_RADIUS = 12;
 
@@ -244,35 +247,69 @@ export default function PcbCanvas({
         };
 
         const renderMeasurePanel = () => {
+          measurePanelListLayer.clear();
           if (!measureHistory.length) {
             measurePanelBody.text = "No saved measurements";
             return;
           }
-          const lines = measureHistory.slice(-6).map((item, idx, arr) => {
-            const n = measureHistory.length - arr.length + idx + 1;
-            return `#${n}  ΔX ${Math.abs(item.dxMm).toFixed(2)}  ΔY ${Math.abs(item.dyMm).toFixed(2)}  D ${item.distanceMm.toFixed(2)} mm`;
+          measurePanelBody.text = "";
+          const items = measureHistory.slice(-6);
+          const startIndex = measureHistory.length - items.length;
+          items.forEach((item, idx) => {
+            const realIndex = startIndex + idx;
+            const y = 80 + idx * 20;
+            const active = measureUiRef.selectedIndex === realIndex;
+            const rowBg = new Rect({ x: width - 300, y: y - 2, width: 246, height: 18, cornerRadius: 6, fill: active ? "rgba(99,102,241,0.22)" : "rgba(30,41,59,0.55)" });
+            const rowText = new Text({ x: width - 294, y, text: `#${realIndex + 1}  ΔX ${Math.abs(item.dxMm).toFixed(2)}  ΔY ${Math.abs(item.dyMm).toFixed(2)}  D ${item.distanceMm.toFixed(2)} mm`, fill: active ? "#e9d5ff" : "#cbd5e1", fontSize: 10.5 });
+            const delBg = new Rect({ x: width - 50, y: y - 2, width: 20, height: 18, cornerRadius: 6, fill: "rgba(127,29,29,0.75)" });
+            const delText = new Text({ x: width - 44, y, text: "×", fill: "#fecaca", fontSize: 12 });
+            const toggleActive = () => {
+              measureUiRef.selectedIndex = measureUiRef.selectedIndex === realIndex ? -1 : realIndex;
+              renderMeasurePanel();
+              renderMeasureHistory();
+              leafer.forceRender?.();
+            };
+            const removeItem = () => {
+              measureHistory.splice(realIndex, 1);
+              if (measureUiRef.selectedIndex === realIndex) measureUiRef.selectedIndex = -1;
+              else if (measureUiRef.selectedIndex > realIndex) measureUiRef.selectedIndex -= 1;
+              renderMeasurePanel();
+              renderMeasureHistory();
+              updateHud();
+              leafer.forceRender?.();
+            };
+            rowBg.on("pointer.tap", toggleActive);
+            rowText.on("pointer.tap", toggleActive);
+            delBg.on("pointer.tap", removeItem);
+            delText.on("pointer.tap", removeItem);
+            measurePanelListLayer.add(rowBg);
+            measurePanelListLayer.add(rowText);
+            measurePanelListLayer.add(delBg);
+            measurePanelListLayer.add(delText);
           });
-          measurePanelBody.text = lines.join("\n");
         };
 
         const renderMeasureHistory = () => {
           measureHistoryLayer.clear();
-          for (const item of measureHistory) {
-            const line = new Line({ points: [item.p1.x, item.p1.y, item.p2.x, item.p2.y], stroke: "rgba(167,139,250,0.75)", strokeWidth: 1.6 });
-            const p1 = new Rect({ x: item.p1.x - 2.5, y: item.p1.y - 2.5, width: 5, height: 5, fill: "rgba(196,181,253,0.85)", cornerRadius: 2.5 });
-            const p2 = new Rect({ x: item.p2.x - 2.5, y: item.p2.y - 2.5, width: 5, height: 5, fill: "rgba(196,181,253,0.85)", cornerRadius: 2.5 });
-            const label = new Text({ x: (item.p1.x + item.p2.x) / 2 + 8, y: (item.p1.y + item.p2.y) / 2 - 18, text: `ΔX ${Math.abs(item.dxMm).toFixed(2)} · ΔY ${Math.abs(item.dyMm).toFixed(2)} · D ${item.distanceMm.toFixed(2)} mm`, fill: "rgba(221,214,254,0.88)", fontSize: 11 });
+          measureHistory.forEach((item, index) => {
+            const active = measureUiRef.selectedIndex === index;
+            const line = new Line({ points: [item.p1.x, item.p1.y, item.p2.x, item.p2.y], stroke: active ? "#f472b6" : "rgba(167,139,250,0.75)", strokeWidth: active ? 2.4 : 1.6 });
+            const p1 = new Rect({ x: item.p1.x - (active ? 3.5 : 2.5), y: item.p1.y - (active ? 3.5 : 2.5), width: active ? 7 : 5, height: active ? 7 : 5, fill: active ? "#f9a8d4" : "rgba(196,181,253,0.85)", cornerRadius: active ? 3.5 : 2.5 });
+            const p2 = new Rect({ x: item.p2.x - (active ? 3.5 : 2.5), y: item.p2.y - (active ? 3.5 : 2.5), width: active ? 7 : 5, height: active ? 7 : 5, fill: active ? "#f9a8d4" : "rgba(196,181,253,0.85)", cornerRadius: active ? 3.5 : 2.5 });
+            const label = new Text({ x: (item.p1.x + item.p2.x) / 2 + 8, y: (item.p1.y + item.p2.y) / 2 - 18, text: `ΔX ${Math.abs(item.dxMm).toFixed(2)} · ΔY ${Math.abs(item.dyMm).toFixed(2)} · D ${item.distanceMm.toFixed(2)} mm`, fill: active ? "#fce7f3" : "rgba(221,214,254,0.88)", fontSize: active ? 12 : 11 });
             measureHistoryLayer.add(line);
             measureHistoryLayer.add(label);
             measureHistoryLayer.add(p1);
             measureHistoryLayer.add(p2);
-          }
+          });
         };
 
         const commitCurrentMeasure = () => {
           if (!measureRef.p1 || !measureRef.p2 || measureRef.distanceMm == null || measureRef.dxMm == null || measureRef.dyMm == null) return;
           measureHistory.push({ p1: { ...measureRef.p1 }, p2: { ...measureRef.p2 }, dxMm: measureRef.dxMm, dyMm: measureRef.dyMm, distanceMm: measureRef.distanceMm });
+          measureUiRef.selectedIndex = measureHistory.length - 1;
           renderMeasureHistory();
+          renderMeasurePanel();
           resetCurrentMeasure();
           updateMeasureOverlay();
         };
@@ -280,7 +317,9 @@ export default function PcbCanvas({
         const popLastMeasure = () => {
           if (!measureHistory.length) return;
           measureHistory.pop();
+          if (measureUiRef.selectedIndex >= measureHistory.length) measureUiRef.selectedIndex = measureHistory.length - 1;
           renderMeasureHistory();
+          renderMeasurePanel();
           updateHud();
         };
 
@@ -632,6 +671,7 @@ export default function PcbCanvas({
               updateMeasureOverlay();
             } else if (measureHistory.length) {
               measureHistory.length = 0;
+              measureUiRef.selectedIndex = -1;
               renderMeasureHistory();
               renderMeasurePanel();
               updateHud();
