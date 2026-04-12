@@ -428,8 +428,7 @@ export default function PcbCanvas({
           if (!measureHistory.length) return "No saved measurements";
           return measureHistory
             .map((item, index) => `#${index + 1}  ΔX ${Math.abs(item.dxMm).toFixed(2)}  ΔY ${Math.abs(item.dyMm).toFixed(2)}  D ${item.distanceMm.toFixed(2)} mm`)
-            .join("
-");
+            .join("\n");
         };
 
         const copyAllMeasurements = () => {
