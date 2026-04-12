@@ -16,7 +16,12 @@ const TOOL_SECTIONS = [
   { title: "Actions", items: ["Export", "Snapshot"] },
 ];
 
-type Props = { boardId: string };
+type Props = {
+  boardId: string;
+  boardName?: string;
+  boardWidthMm?: number;
+  boardHeightMm?: number;
+};
 
 export default function BoardViewerClient({ boardId }: Props) {
   const [components, setComponents] = useState<ComponentItem[]>([]);
