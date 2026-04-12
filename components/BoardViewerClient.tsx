@@ -23,13 +23,15 @@ type Props = {
   boardName?: string;
   boardWidthMm?: number;
   boardHeightMm?: number;
+  initialComponents?: ComponentItem[];
+  initialTraces?: TraceItem[];
 };
 
-export default function BoardViewerClient({ boardId }: Props) {
-  const [components, setComponents] = useState<ComponentItem[]>([]);
-  const [traces, setTraces] = useState<TraceItem[]>([]);
-  const [boardWidthMm, setBoardWidthMm] = useState(160);
-  const [boardHeightMm, setBoardHeightMm] = useState(90);
+export default function BoardViewerClient({ boardId, boardName, boardWidthMm: initialBoardWidthMm, boardHeightMm: initialBoardHeightMm, initialComponents, initialTraces }: Props) {
+  const [components, setComponents] = useState<ComponentItem[]>(initialComponents || []);
+  const [traces, setTraces] = useState<TraceItem[]>(initialTraces || []);
+  const [boardWidthMm, setBoardWidthMm] = useState(initialBoardWidthMm || 160);
+  const [boardHeightMm, setBoardHeightMm] = useState(initialBoardHeightMm || 90);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
     const [layerMode, setLayerMode] = useState<"all" | "fcu" | "bcu">("all");
@@ -50,6 +52,11 @@ export default function BoardViewerClient({ boardId }: Props) {
   }, [layerMode]);
 
   useEffect(() => {
+    if (initialComponents?.length && initialTraces?.length) {
+      setLoading(false);
+      return;
+    }
+
     let alive = true;
     async function load() {
       setLoading(true);
@@ -76,7 +83,7 @@ export default function BoardViewerClient({ boardId }: Props) {
     return () => {
       alive = false;
     };
-  }, [boardId]);
+  }, [boardId, initialComponents, initialTraces]);
 
   useEffect(() => {
     const componentNetMap = new Map<string, string[]>();
@@ -148,7 +155,7 @@ export default function BoardViewerClient({ boardId }: Props) {
       <div className="workbench-header">
         <div>
           <div className="eyebrow">PCB Intelligence Workbench</div>
-          <h1 className="workbench-title">{boardId}</h1>
+          <h1 className="workbench-title">{boardName || boardId}</h1>
           <div className="workbench-subtitle">
             {boardWidthMm}mm × {boardHeightMm}mm · {components.length} components · {traces.length} traces
           </div>

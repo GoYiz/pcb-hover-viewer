@@ -1,31 +1,24 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import BoardViewerClient from "@/components/BoardViewerClient";
+import { getDemoBoardById } from "@/lib/demo-board";
 
 export const dynamic = "force-dynamic";
 
 export default async function BoardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-
-  const board = await prisma.board.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      name: true,
-      widthMm: true,
-      heightMm: true,
-    },
-  });
+  const board = getDemoBoardById(id);
 
   if (!board) notFound();
 
   return (
     <main>
       <BoardViewerClient
-        boardId={board.id}
-        boardName={board.name}
-        boardWidthMm={board.widthMm}
-        boardHeightMm={board.heightMm}
+        boardId={board.board.id}
+        boardName={board.board.name}
+        boardWidthMm={board.board.widthMm}
+        boardHeightMm={board.board.heightMm}
+        initialComponents={board.components}
+        initialTraces={board.traces}
       />
     </main>
   );
