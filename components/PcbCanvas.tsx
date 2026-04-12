@@ -92,6 +92,15 @@ export default function PcbCanvas({
         });
         overlayLayer.add(title);
 
+        const selectionBar = new Text({
+          x: 24,
+          y: height - 44,
+          text: "Selection · 0 components · 0 traces · Total 0",
+          fill: "#67e8f9",
+          fontSize: 11,
+        });
+        overlayLayer.add(selectionBar);
+
         const hud = new Text({
           x: width - 320,
           y: 18,
@@ -104,7 +113,7 @@ export default function PcbCanvas({
         const hint = new Text({
           x: 24,
           y: 18,
-          text: "Drag pan · Wheel zoom · Shift box select · Shift+Cmd/Ctrl append box select · Alt+Shift box zoom · Cmd/Ctrl click append select · Double click to measure · Enter commit · Backspace undo · Esc clear",
+          text: "Drag pan · Wheel zoom · Shift box select · Shift+Cmd/Ctrl append box select · Alt+Shift+Cmd/Ctrl subtract box select · Alt+Shift box zoom · Cmd/Ctrl click append select · Double click to measure",
           fill: "#64748b",
           fontSize: 11,
         });
@@ -187,7 +196,7 @@ export default function PcbCanvas({
         const scaleRef = { value: 1 };
         const offsetRef = { x: 0, y: 0 };
         const dragRef = { active: false, x: 0, y: 0 };
-        const boxRef = { active: false, sx: 0, sy: 0, ex: 0, ey: 0, mode: "select" as "select" | "zoom", append: false };
+        const boxRef = { active: false, sx: 0, sy: 0, ex: 0, ey: 0, mode: "select" as "select" | "zoom" | "subtract", append: false };
         const measureRef = { p1: null as null | { x: number; y: number }, p2: null as null | { x: number; y: number }, preview: null as null | { x: number; y: number }, distanceMm: null as null | number, dxMm: null as null | number, dyMm: null as null | number, snap: null as null | { x: number; y: number } };
         const measureHistory: Array<{ p1: { x: number; y: number }; p2: { x: number; y: number }; dxMm: number; dyMm: number; distanceMm: number }> = [];
         const measureUiRef = { selectedIndex: -1, hoverIndex: -1, copyFlashIndex: -1 };
@@ -209,6 +218,8 @@ export default function PcbCanvas({
           const currentMeasureText = measureRef.distanceMm == null ? "—" : `ΔX ${Math.abs(measureRef.dxMm || 0).toFixed(2)} · ΔY ${Math.abs(measureRef.dyMm || 0).toFixed(2)} · D ${measureRef.distanceMm.toFixed(2)} mm`;
           hud.text = `Layer: ${label} · Zoom ${scaleRef.value.toFixed(2)}x · Selected ${count} · Measures ${measureHistory.length} · Current ${currentMeasureText}`;
           hud.x = width - 18 - Math.max(320, String(hud.text).length * 6.7);
+          const modeText = boxRef.active ? (boxRef.mode === "zoom" ? " · Box Zoom" : boxRef.mode === "subtract" ? " · Box Subtract" : boxRef.append ? " · Box Append" : " · Box Replace") : "";
+          selectionBar.text = `Selection · ${selectedCompIds.size} components · ${selectedTraceIds.size} traces · Total ${count}${modeText}`;
         };
 
         const snapPoint = (x: number, y: number) => {
@@ -524,6 +535,17 @@ export default function PcbCanvas({
           const wx2 = (ex - offsetRef.x) / scaleRef.value;
           const wy2 = (ey - offsetRef.y) / scaleRef.value;
 
+          if (boxRef.mode === "subtract") {
+            for (const [id, b] of compBoundsMap) {
+              if (b.x + b.width >= wx1 && b.x <= wx2 && b.y + b.height >= wy1 && b.y <= wy2) selectedCompIds.delete(id);
+            }
+            for (const [id, b] of traceBoundsMap) {
+              if (b.maxX >= wx1 && b.minX <= wx2 && b.maxY >= wy1 && b.minY <= wy2) selectedTraceIds.delete(id);
+            }
+            refreshStyles();
+            return;
+          }
+
           if (!boxRef.append) {
             selectedCompIds.clear();
             selectedTraceIds.clear();
@@ -626,19 +648,20 @@ export default function PcbCanvas({
           const y = e.clientY - rect.top;
           if (e.shiftKey) {
             boxRef.active = true;
-            boxRef.mode = e.altKey ? "zoom" : "select";
+            boxRef.mode = e.altKey ? ((e.metaKey || e.ctrlKey) ? "subtract" : "zoom") : "select";
             boxRef.append = !!(e.metaKey || e.ctrlKey) && boxRef.mode === "select";
             boxRef.sx = x;
             boxRef.sy = y;
             boxRef.ex = x;
             boxRef.ey = y;
             box.visible = true;
-            box.stroke = boxRef.mode === "zoom" ? "#22d3ee" : boxRef.append ? "#a78bfa" : "#f59e0b";
-            box.fill = boxRef.mode === "zoom" ? "rgba(34,211,238,0.08)" : boxRef.append ? "rgba(167,139,250,0.10)" : "rgba(245,158,11,0.08)";
+            box.stroke = boxRef.mode === "zoom" ? "#22d3ee" : boxRef.mode === "subtract" ? "#fb7185" : boxRef.append ? "#a78bfa" : "#f59e0b";
+            box.fill = boxRef.mode === "zoom" ? "rgba(34,211,238,0.08)" : boxRef.mode === "subtract" ? "rgba(251,113,133,0.10)" : boxRef.append ? "rgba(167,139,250,0.10)" : "rgba(245,158,11,0.08)";
             box.x = x;
             box.y = y;
             box.width = 0;
             box.height = 0;
+            updateHud();
             leafer.forceRender?.();
             return;
           }
@@ -699,6 +722,7 @@ export default function PcbCanvas({
             box.visible = false;
             boxRef.append = false;
             applyCamera();
+            updateHud();
             leafer.forceRender?.();
           }
           dragRef.active = false;
