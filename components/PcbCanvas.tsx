@@ -27,6 +27,9 @@ function mapX(x: number, bw: number, w: number) {
 function mapY(y: number, bh: number, h: number) {
   return PAD + (y / Math.max(bh, 1)) * (h - PAD * 2);
 }
+function unmapPoint(px: number, py: number, width: number, height: number, bw: number, bh: number) {
+  return { x: ((px - PAD) / Math.max(width - PAD * 2, 1)) * bw, y: ((py - PAD) / Math.max(height - PAD * 2, 1)) * bh };
+}
 
 export default function PcbCanvas({
   width,
@@ -83,7 +86,7 @@ export default function PcbCanvas({
         const title = new Text({
           x: 24,
           y: height - 24,
-          text: "Leafer 2D · selection / grid / partial updates",
+          text: "Leafer 2D · selection / measure / partial updates",
           fill: "#cbd5e1",
           fontSize: 12,
         });
@@ -92,7 +95,7 @@ export default function PcbCanvas({
         const hud = new Text({
           x: width - 320,
           y: 18,
-          text: "Layer: All · Zoom 1.00x · Selected 0",
+          text: "Layer: All · Zoom 1.00x · Selected 0 · Measure —",
           fill: "#93c5fd",
           fontSize: 12,
         });
@@ -101,7 +104,7 @@ export default function PcbCanvas({
         const hint = new Text({
           x: 24,
           y: 18,
-          text: "Drag pan · Wheel zoom · Shift box select · Alt+Shift box zoom",
+          text: "Drag pan · Wheel zoom · Shift box select · Alt+Shift box zoom · Double click to measure",
           fill: "#64748b",
           fontSize: 11,
         });
@@ -124,6 +127,15 @@ export default function PcbCanvas({
         });
         overlayLayer.add(box);
 
+        const measureLine = new Line({ points: [0, 0, 0, 0], stroke: "#a78bfa", strokeWidth: 2, visible: false });
+        const measureLabel = new Text({ x: 0, y: 0, text: "", fill: "#ddd6fe", fontSize: 12, visible: false });
+        const measureP1 = new Rect({ x: 0, y: 0, width: 6, height: 6, fill: "#c4b5fd", cornerRadius: 3, visible: false });
+        const measureP2 = new Rect({ x: 0, y: 0, width: 6, height: 6, fill: "#c4b5fd", cornerRadius: 3, visible: false });
+        overlayLayer.add(measureLine);
+        overlayLayer.add(measureLabel);
+        overlayLayer.add(measureP1);
+        overlayLayer.add(measureP2);
+
         const traceMap = new Map<string, any>();
         const compMap = new Map<string, any>();
         const labelMap = new Map<string, any>();
@@ -137,6 +149,7 @@ export default function PcbCanvas({
         const offsetRef = { x: 0, y: 0 };
         const dragRef = { active: false, x: 0, y: 0 };
         const boxRef = { active: false, sx: 0, sy: 0, ex: 0, ey: 0, mode: "select" as "select" | "zoom" };
+        const measureRef = { p1: null as null | { x: number; y: number }, p2: null as null | { x: number; y: number }, distanceMm: null as null | number };
 
         const applyCamera = () => {
           for (const layer of [gridLayer, boardLayer, traceLayer, compLayer]) {
@@ -150,8 +163,45 @@ export default function PcbCanvas({
         const updateHud = () => {
           const label = visibleLayers.length === 0 || visibleLayers.length === 2 ? "All" : visibleLayers.join(" + ");
           const count = selectedCompIds.size + selectedTraceIds.size;
-          hud.text = `Layer: ${label} · Zoom ${scaleRef.value.toFixed(2)}x · Selected ${count}`;
-          hud.x = width - 18 - Math.max(220, String(hud.text).length * 6.7);
+          const measureText = measureRef.distanceMm == null ? "—" : `${measureRef.distanceMm.toFixed(2)} mm`;
+          hud.text = `Layer: ${label} · Zoom ${scaleRef.value.toFixed(2)}x · Selected ${count} · Measure ${measureText}`;
+          hud.x = width - 18 - Math.max(320, String(hud.text).length * 6.7);
+        };
+
+        const updateMeasureOverlay = () => {
+          if (!measureRef.p1) {
+            measureLine.visible = false;
+            measureLabel.visible = false;
+            measureP1.visible = false;
+            measureP2.visible = false;
+            measureRef.distanceMm = null;
+            updateHud();
+            return;
+          }
+          measureP1.visible = true;
+          measureP1.x = measureRef.p1.x - 3;
+          measureP1.y = measureRef.p1.y - 3;
+          if (!measureRef.p2) {
+            measureLine.visible = false;
+            measureLabel.visible = false;
+            measureP2.visible = false;
+            measureRef.distanceMm = null;
+            updateHud();
+            return;
+          }
+          measureP2.visible = true;
+          measureP2.x = measureRef.p2.x - 3;
+          measureP2.y = measureRef.p2.y - 3;
+          measureLine.visible = true;
+          measureLine.points = [measureRef.p1.x, measureRef.p1.y, measureRef.p2.x, measureRef.p2.y];
+          const a = unmapPoint(measureRef.p1.x, measureRef.p1.y, width, height, boardWidthMm, boardHeightMm);
+          const b = unmapPoint(measureRef.p2.x, measureRef.p2.y, width, height, boardWidthMm, boardHeightMm);
+          measureRef.distanceMm = Math.hypot(b.x - a.x, b.y - a.y);
+          measureLabel.visible = true;
+          measureLabel.text = `${measureRef.distanceMm.toFixed(2)} mm`;
+          measureLabel.x = (measureRef.p1.x + measureRef.p2.x) / 2 + 8;
+          measureLabel.y = (measureRef.p1.y + measureRef.p2.y) / 2 - 18;
+          updateHud();
         };
 
         const renderGrid = () => {
@@ -212,6 +262,7 @@ export default function PcbCanvas({
           for (const id of traceMap.keys()) updateTraceStyle(id);
           for (const id of compMap.keys()) updateCompStyle(id);
           for (const [id, marker] of markerMap) marker.visible = focusComponentId === id;
+          updateMeasureOverlay();
           updateHud();
           leafer.forceRender?.();
         };
@@ -399,6 +450,20 @@ export default function PcbCanvas({
           dragRef.active = false;
         };
 
+        const onDoubleClick = (e: MouseEvent) => {
+          const rect = view.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          if (!measureRef.p1 || measureRef.p2) {
+            measureRef.p1 = { x, y };
+            measureRef.p2 = null;
+          } else {
+            measureRef.p2 = { x, y };
+          }
+          updateMeasureOverlay();
+          leafer.forceRender?.();
+        };
+
         const onPointerLeave = () => {
           cursorH.visible = false;
           cursorV.visible = false;
@@ -425,6 +490,7 @@ export default function PcbCanvas({
         view.addEventListener("pointerdown", onPointerDown);
         view.addEventListener("pointermove", onPointerMove);
         view.addEventListener("pointerleave", onPointerLeave);
+        view.addEventListener("dblclick", onDoubleClick);
         window.addEventListener("pointerup", onPointerUp);
         view.addEventListener("wheel", onWheel, { passive: false });
 
@@ -444,6 +510,7 @@ export default function PcbCanvas({
             view.removeEventListener("pointerdown", onPointerDown);
             view.removeEventListener("pointermove", onPointerMove);
             view.removeEventListener("pointerleave", onPointerLeave);
+            view.removeEventListener("dblclick", onDoubleClick);
             window.removeEventListener("pointerup", onPointerUp);
             view.removeEventListener("wheel", onWheel);
           },
