@@ -336,6 +336,12 @@ export default function PcbCanvas({
           window.history.replaceState({}, "", url.toString());
         };
 
+        const getExportSlug = () => {
+          if (typeof window === "undefined") return "board";
+          const parts = window.location.pathname.split("/").filter(Boolean);
+          return parts[parts.length - 1] || "board";
+        };
+
         const applyCamera = () => {
           for (const layer of [gridLayer, boardLayer, traceLayer, compLayer]) {
             layer.scaleX = scaleRef.value;
@@ -725,7 +731,7 @@ export default function PcbCanvas({
         const exportCanvasShot = () => {
           const canvas = hostRef.current?.querySelector("canvas") as HTMLCanvasElement | null;
           if (!canvas) return;
-          const boardSlug = boardId || "board";
+          const boardSlug = getExportSlug();
           triggerDownload(`${boardSlug}-workbench-shot.png`, canvas.toDataURL("image/png"));
         };
 
@@ -734,7 +740,7 @@ export default function PcbCanvas({
           const selectedComponents = Array.from(selectedCompIds).map((id) => components.find((c) => c.id === id)?.refdes || id);
           const selectedTraces = Array.from(selectedTraceIds);
           return [
-            `Board: ${boardId || "board"}`,
+            `Board: ${getExportSlug()}`,
             `Layer: ${layerLabel}`,
             `Tool: ${toolModeRef.value}`,
             `Zoom: ${scaleRef.value.toFixed(3)}`,
@@ -748,7 +754,7 @@ export default function PcbCanvas({
         };
 
         const exportWorkbenchText = () => {
-          const boardSlug = boardId || "board";
+          const boardSlug = getExportSlug();
           const blob = new Blob([buildWorkbenchExportText()], { type: "text/plain;charset=utf-8" });
           const href = URL.createObjectURL(blob);
           triggerDownload(`${boardSlug}-workbench-export.txt`, href);
