@@ -57,6 +57,7 @@ export default function PcbCanvas({
     oy: 0,
     sc: [] as string[],
     st: [] as string[],
+    vd: "grid,components,labels,measures",
   });
 
   useEffect(() => {
@@ -110,7 +111,7 @@ export default function PcbCanvas({
         });
         overlayLayer.add(selectionBar);
 
-        const topToolbar = new Rect({ x: 24, y: 40, width: 860, height: 30, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
+        const topToolbar = new Rect({ x: 24, y: 40, width: 954, height: 30, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
         overlayLayer.add(topToolbar);
         const sideToolbar = new Rect({ x: 24, y: 80, width: 58, height: 126, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
         overlayLayer.add(sideToolbar);
@@ -299,6 +300,7 @@ export default function PcbCanvas({
         const SNAP_RADIUS = 12;
         const toolModeRef = { value: "select" as "select" | "measure" | "pan" };
         const selectionFilterRef = { value: "all" as "all" | "component" | "trace" };
+        const detailVisibilityRef = { value: { grid: true, components: true, labels: true, measures: true } };
         const helpRef = { visible: false };
 
         const readUrlState = () => {
@@ -361,6 +363,10 @@ export default function PcbCanvas({
           const modeText = boxRef.active ? (boxRef.mode === "zoom" ? " · Box Zoom" : boxRef.mode === "subtract" ? " · Box Subtract" : boxRef.append ? " · Box Append" : " · Box Replace") : "";
           const filterLabel = selectionFilterRef.value === "all" ? "All" : selectionFilterRef.value === "component" ? "Comp" : "Trace";
           selectionBar.text = `Selection · Filter ${filterLabel} · ${selectedCompIds.size} components · ${selectedTraceIds.size} traces · Total ${count}${modeText}`;
+          const visibleDetail = Object.entries(detailVisibilityRef.value)
+            .filter(([, enabled]) => enabled)
+            .map(([key]) => key)
+            .join(",") || "-";
           const nextBridge = {
             tool: toolModeRef.value,
             zoom: scaleRef.value,
@@ -368,6 +374,7 @@ export default function PcbCanvas({
             oy: offsetRef.y,
             sc: Array.from(selectedCompIds),
             st: Array.from(selectedTraceIds),
+            vd: visibleDetail,
           };
           const bridgeKey = JSON.stringify(nextBridge);
           if (bridgeKeyRef.current !== bridgeKey) {
@@ -512,6 +519,10 @@ export default function PcbCanvas({
           const filterCompBtn = createToolbarButton(626, 46, 46, 18, "Comp", selectionFilterRef.value === "component", "rgba(245,158,11,0.82)");
           const filterTraceBtn = createToolbarButton(678, 46, 50, 18, "Trace", selectionFilterRef.value === "trace", "rgba(59,130,246,0.82)");
           const helpBtn = createToolbarButton(734, 46, 42, 18, helpRef.visible ? "Hide?" : "Help", helpRef.visible, "rgba(14,165,233,0.82)");
+          const gridBtn = createToolbarButton(782, 46, 42, 18, "Grid", detailVisibilityRef.value.grid, "rgba(16,185,129,0.82)");
+          const compBtn = createToolbarButton(830, 46, 44, 18, "Comp", detailVisibilityRef.value.components, "rgba(245,158,11,0.82)");
+          const labelBtn = createToolbarButton(880, 46, 46, 18, "Label", detailVisibilityRef.value.labels, "rgba(168,85,247,0.82)");
+          const measBtn = createToolbarButton(932, 46, 44, 18, "Meas", detailVisibilityRef.value.measures, "rgba(6,182,212,0.82)");
           for (const node of [selectBtn.bg, selectBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "select"; renderVisibility(); });
           for (const node of [measureBtn.bg, measureBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "measure"; renderVisibility(); });
           for (const node of [panBtn.bg, panBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "pan"; renderVisibility(); });
@@ -528,6 +539,10 @@ export default function PcbCanvas({
           for (const node of [filterCompBtn.bg, filterCompBtn.text]) node.on("pointer.tap", () => { selectionFilterRef.value = "component"; renderVisibility(); });
           for (const node of [filterTraceBtn.bg, filterTraceBtn.text]) node.on("pointer.tap", () => { selectionFilterRef.value = "trace"; renderVisibility(); });
           for (const node of [helpBtn.bg, helpBtn.text]) node.on("pointer.tap", () => { toggleHelp(); renderToolbars(); });
+          for (const node of [gridBtn.bg, gridBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.grid = !detailVisibilityRef.value.grid; renderVisibility(); });
+          for (const node of [compBtn.bg, compBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.components = !detailVisibilityRef.value.components; renderVisibility(); });
+          for (const node of [labelBtn.bg, labelBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.labels = !detailVisibilityRef.value.labels; renderVisibility(); });
+          for (const node of [measBtn.bg, measBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.measures = !detailVisibilityRef.value.measures; renderVisibility(); });
         };
 
         const renderInspector = () => {
@@ -931,6 +946,7 @@ export default function PcbCanvas({
 
         const renderMeasureHistory = () => {
           measureHistoryLayer.clear();
+          if (!detailVisibilityRef.value.measures) return;
           measureHistory.forEach((item, index) => {
             const active = measureUiRef.selectedIndex === index;
             const hover = measureUiRef.hoverIndex === index;
@@ -981,6 +997,18 @@ export default function PcbCanvas({
         };
 
         const updateMeasureOverlay = () => {
+          if (!detailVisibilityRef.value.measures) {
+            measureLine.visible = false;
+            measureProjH.visible = false;
+            measureProjV.visible = false;
+            measureProjLabel.visible = false;
+            measureLabel.visible = false;
+            measureP1.visible = false;
+            measureP2.visible = false;
+            snapMarker.visible = false;
+            updateHud();
+            return;
+          }
           if (!measureRef.p1) {
             measureLine.visible = false;
             measureProjH.visible = false;
@@ -1040,6 +1068,7 @@ export default function PcbCanvas({
 
         const renderGrid = () => {
           gridLayer.clear();
+          if (!detailVisibilityRef.value.grid) return;
           const worldStep = scaleRef.value >= 2.2 ? 2 : scaleRef.value >= 1.3 ? 5 : 10;
           const screenStepX = (worldStep / Math.max(boardWidthMm, 1)) * (width - PAD * 2) * scaleRef.value;
           const screenStepY = (worldStep / Math.max(boardHeightMm, 1)) * (height - PAD * 2) * scaleRef.value;
@@ -1077,12 +1106,13 @@ export default function PcbCanvas({
           const isTarget = hoveredType === "component" && hoveredId === id;
           const isSelected = selectedCompIds.has(id);
           const isRelated = directIds.includes(id);
+          rect.visible = detailVisibilityRef.value.components;
           rect.fill = isTarget ? "#f43f5e" : isSelected ? "#f59e0b" : isRelated ? "#22d3ee" : "#94a3b8";
           rect.opacity = isTarget ? 1 : isSelected ? 0.98 : isRelated ? 0.92 : 0.55;
           rect.stroke = isSelected ? "#fde68a" : isTarget ? "#fecdd3" : "rgba(0,0,0,0)";
           rect.strokeWidth = isSelected || isTarget ? 1.5 / Math.max(scaleRef.value, 0.8) : 0;
           if (label) {
-            label.visible = scaleRef.value >= 0.85;
+            label.visible = detailVisibilityRef.value.components && detailVisibilityRef.value.labels && scaleRef.value >= 0.85;
             label.fill = isTarget ? "#ffffff" : isSelected ? "#fef3c7" : isRelated ? "#a5f3fc" : "#e2e8f0";
           }
         };
@@ -1095,7 +1125,7 @@ export default function PcbCanvas({
           }
           for (const id of traceMap.keys()) updateTraceStyle(id);
           for (const id of compMap.keys()) updateCompStyle(id);
-          for (const [id, marker] of markerMap) marker.visible = focusComponentId === id;
+          for (const [id, marker] of markerMap) marker.visible = detailVisibilityRef.value.components && focusComponentId === id;
           updateMeasureOverlay();
           updateHud();
           renderSelectionPanel();
@@ -1488,6 +1518,7 @@ export default function PcbCanvas({
           compMap,
           labelMap,
           markerMap,
+          detailVisibilityRef,
           selectedCompIds,
           selectedTraceIds,
           traces,
@@ -1543,16 +1574,18 @@ export default function PcbCanvas({
       const isTarget = hoveredType === "component" && hoveredId === id;
       const isSelected = rt.selectedCompIds.has(id);
       const isRelated = directIds.includes(id);
+      const detail = rt.detailVisibilityRef?.value || { components: true, labels: true };
+      rect.visible = detail.components;
       rect.fill = isTarget ? "#f43f5e" : isSelected ? "#f59e0b" : isRelated ? "#22d3ee" : "#94a3b8";
       rect.opacity = isTarget ? 1 : isSelected ? 0.98 : isRelated ? 0.92 : 0.55;
       rect.stroke = isSelected ? "#fde68a" : isTarget ? "#fecdd3" : "rgba(0,0,0,0)";
       rect.strokeWidth = isSelected || isTarget ? 1.5 / Math.max(rt.scaleRef.value, 0.8) : 0;
       if (label) {
-        label.visible = rt.scaleRef.value >= 0.85;
+        label.visible = detail.components && detail.labels && rt.scaleRef.value >= 0.85;
         label.fill = isTarget ? "#ffffff" : isSelected ? "#fef3c7" : isRelated ? "#a5f3fc" : "#e2e8f0";
       }
     }
-    for (const [id, marker] of rt.markerMap) marker.visible = focusComponentId === id;
+    for (const [id, marker] of rt.markerMap) marker.visible = (rt.detailVisibilityRef?.value?.components ?? true) && focusComponentId === id;
     rt.updateHud?.();
     rt.leafer.forceRender?.();
   }, [visibleLayers, hoveredId, hoveredType, directIds, traceHighlightIds, focusComponentId]);
@@ -1590,7 +1623,8 @@ export default function PcbCanvas({
       >
         {`State tool=${bridgeState.tool} zoom=${bridgeState.zoom.toFixed(3)} ox=${bridgeState.ox.toFixed(1)} oy=${bridgeState.oy.toFixed(1)}
 selected_components=${bridgeState.sc.join(",") || "-"}
-selected_traces=${bridgeState.st.join(",") || "-"}`}
+selected_traces=${bridgeState.st.join(",") || "-"}
+visible_detail=${bridgeState.vd || "-"}`}
       </div>
     </div>
   );
