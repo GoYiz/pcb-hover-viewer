@@ -170,6 +170,10 @@ export default function PcbCanvas({
           fill: "#67e8f9",
           fontSize: 12,
         });
+        const selectedCenterBg = new Rect({ x: width - 108, y: height - 202, width: 34, height: 18, cornerRadius: 6, fill: "rgba(8,145,178,0.75)" });
+        const selectedCenterText = new Text({ x: width - 102, y: height - 198, text: "Ctr", fill: "#cffafe", fontSize: 10.5 });
+        const selectedZoomBg = new Rect({ x: width - 68, y: height - 202, width: 34, height: 18, cornerRadius: 6, fill: "rgba(30,64,175,0.78)" });
+        const selectedZoomText = new Text({ x: width - 62, y: height - 198, text: "Zoom", fill: "#dbeafe", fontSize: 10.5 });
         const selectedPanelBody = new Text({
           x: width - 296,
           y: height - 176,
@@ -180,6 +184,10 @@ export default function PcbCanvas({
         const selectedPanelListLayer = new Group();
         overlayLayer.add(selectedPanel);
         overlayLayer.add(selectedPanelTitle);
+        overlayLayer.add(selectedCenterBg);
+        overlayLayer.add(selectedCenterText);
+        overlayLayer.add(selectedZoomBg);
+        overlayLayer.add(selectedZoomText);
         overlayLayer.add(selectedPanelBody);
         overlayLayer.add(selectedPanelListLayer);
 
@@ -251,6 +259,56 @@ export default function PcbCanvas({
           hud.x = width - 18 - Math.max(320, String(hud.text).length * 6.7);
           const modeText = boxRef.active ? (boxRef.mode === "zoom" ? " · Box Zoom" : boxRef.mode === "subtract" ? " · Box Subtract" : boxRef.append ? " · Box Append" : " · Box Replace") : "";
           selectionBar.text = `Selection · ${selectedCompIds.size} components · ${selectedTraceIds.size} traces · Total ${count}${modeText}`;
+        };
+
+        const getSelectionBounds = () => {
+          let minX = Infinity;
+          let minY = Infinity;
+          let maxX = -Infinity;
+          let maxY = -Infinity;
+          for (const id of selectedCompIds) {
+            const b = compBoundsMap.get(id);
+            if (!b) continue;
+            minX = Math.min(minX, b.x);
+            minY = Math.min(minY, b.y);
+            maxX = Math.max(maxX, b.x + b.width);
+            maxY = Math.max(maxY, b.y + b.height);
+          }
+          for (const id of selectedTraceIds) {
+            const b = traceBoundsMap.get(id);
+            if (!b) continue;
+            minX = Math.min(minX, b.minX);
+            minY = Math.min(minY, b.minY);
+            maxX = Math.max(maxX, b.maxX);
+            maxY = Math.max(maxY, b.maxY);
+          }
+          if (!Number.isFinite(minX)) return null;
+          return { minX, minY, maxX, maxY, width: Math.max(maxX - minX, 1), height: Math.max(maxY - minY, 1) };
+        };
+
+        const centerSelection = () => {
+          const b = getSelectionBounds();
+          if (!b) return;
+          const cx = (b.minX + b.maxX) / 2;
+          const cy = (b.minY + b.maxY) / 2;
+          offsetRef.x = width / 2 - cx * scaleRef.value;
+          offsetRef.y = height / 2 - cy * scaleRef.value;
+          renderGrid();
+          applyCamera();
+          updateHud();
+        };
+
+        const zoomToSelection = () => {
+          const b = getSelectionBounds();
+          if (!b) return;
+          const pad = 28;
+          const nextScale = Math.max(0.6, Math.min(3.5, Math.min((width - pad * 2) / b.width, (height - pad * 2) / b.height)));
+          scaleRef.value = nextScale;
+          offsetRef.x = width / 2 - ((b.minX + b.maxX) / 2) * scaleRef.value;
+          offsetRef.y = height / 2 - ((b.minY + b.maxY) / 2) * scaleRef.value;
+          renderGrid();
+          applyCamera();
+          refreshStyles();
         };
 
         const renderSelectionPanel = () => {
@@ -736,6 +794,22 @@ export default function PcbCanvas({
         });
         measureClearText.on("pointer.tap", () => {
           clearAllMeasures();
+          leafer.forceRender?.();
+        });
+        selectedCenterBg.on("pointer.tap", () => {
+          centerSelection();
+          leafer.forceRender?.();
+        });
+        selectedCenterText.on("pointer.tap", () => {
+          centerSelection();
+          leafer.forceRender?.();
+        });
+        selectedZoomBg.on("pointer.tap", () => {
+          zoomToSelection();
+          leafer.forceRender?.();
+        });
+        selectedZoomText.on("pointer.tap", () => {
+          zoomToSelection();
           leafer.forceRender?.();
         });
 
