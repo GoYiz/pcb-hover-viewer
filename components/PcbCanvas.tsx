@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { App, Rect, Text } from "leafer-ui";
 import type { ComponentItem, TraceItem } from "@/types/pcb";
 
 type Props = {
@@ -25,21 +24,43 @@ export default function PcbCanvas({ width, height }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let app: App | null = null;
-    try {
-      if (!hostRef.current) return;
-      app = new App({ view: hostRef.current, width, height, fill: "#071025" });
-      const board = new Rect({ x: 40, y: 40, width: width - 80, height: height - 80, stroke: "#1e40af", strokeWidth: 2, fill: "#0f172a" });
-      const title = new Text({ x: 56, y: 56, text: "Leafer minimal runtime probe", fill: "#e2e8f0", fontSize: 16 });
-      const note = new Text({ x: 56, y: 86, text: "If this renders, runtime is healthy.", fill: "#94a3b8", fontSize: 12 });
-      app.tree.add(board);
-      app.tree.add(title);
-      app.tree.add(note);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+    let leafer: { destroy: () => void; add: (node: unknown) => void } | null = null;
+    let isDestroy = false;
+
+    import("leafer-ui")
+      .then(({ Leafer, Rect, Text }) => {
+        if (isDestroy || !hostRef.current) return;
+
+        const viewId = `leafer-view-${Math.random().toString(36).slice(2)}`;
+        hostRef.current.innerHTML = `<div id="${viewId}" style="width:${width}px;height:${height}px"></div>`;
+
+        leafer = new Leafer({ view: viewId });
+
+        const board = new Rect({
+          x: 40,
+          y: 40,
+          width: width - 80,
+          height: height - 80,
+          stroke: "#1e40af",
+          strokeWidth: 2,
+          fill: "#0f172a",
+        });
+        const title = new Text({ x: 56, y: 56, text: "Leafer official-style runtime probe", fill: "#e2e8f0", fontSize: 16 });
+        const note = new Text({ x: 56, y: 86, text: "If this renders, official Leafer init works.", fill: "#94a3b8", fontSize: 12 });
+
+        leafer.add(board);
+        leafer.add(title);
+        leafer.add(note);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : String(e));
+      });
+
     return () => {
-      try { app?.destroy(); } catch {}
+      isDestroy = true;
+      try {
+        leafer?.destroy();
+      } catch {}
     };
   }, [width, height]);
 
@@ -52,5 +73,5 @@ export default function PcbCanvas({ width, height }: Props) {
     );
   }
 
-  return <div ref={hostRef} style={{ width, height, borderRadius: 12, overflow: "hidden" }} />;
+  return <div ref={hostRef} style={{ width, height, borderRadius: 12, overflow: "hidden", position: "relative" }} />;
 }
