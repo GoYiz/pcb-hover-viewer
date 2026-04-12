@@ -39,6 +39,14 @@
       "file": "/examples/arm_ke04_dev_board.json",
       "components": 27,
       "traces": 217
+    },
+    {
+      "id": "mcp3561_stress_4x4",
+      "name": "MCP3561 Stress 4x4",
+      "source": "synthetic from /examples/mcp3561_dev_board.json",
+      "file": "/examples/mcp3561_stress_4x4.json",
+      "components": 832,
+      "traces": 5376
     }
   ]
 }
