@@ -153,6 +153,36 @@ export default function PcbCanvas({
         overlayLayer.add(measurePanelBody);
         overlayLayer.add(measurePanelListLayer);
 
+        const selectedPanel = new Rect({
+          x: width - 314,
+          y: height - 214,
+          width: 290,
+          height: 152,
+          fill: "rgba(15,23,42,0.82)",
+          stroke: "rgba(34,211,238,0.35)",
+          strokeWidth: 1,
+          cornerRadius: 10,
+        });
+        const selectedPanelTitle = new Text({
+          x: width - 296,
+          y: height - 198,
+          text: "Selected Objects",
+          fill: "#67e8f9",
+          fontSize: 12,
+        });
+        const selectedPanelBody = new Text({
+          x: width - 296,
+          y: height - 176,
+          text: "No selection",
+          fill: "#94a3b8",
+          fontSize: 11,
+        });
+        const selectedPanelListLayer = new Group();
+        overlayLayer.add(selectedPanel);
+        overlayLayer.add(selectedPanelTitle);
+        overlayLayer.add(selectedPanelBody);
+        overlayLayer.add(selectedPanelListLayer);
+
         const cursorH = new Line({ points: [0, 0, width, 0], stroke: "rgba(34,211,238,0.55)", strokeWidth: 1, visible: false });
         const cursorV = new Line({ points: [0, 0, 0, height], stroke: "rgba(34,211,238,0.55)", strokeWidth: 1, visible: false });
         overlayLayer.add(cursorH);
@@ -200,6 +230,7 @@ export default function PcbCanvas({
         const measureRef = { p1: null as null | { x: number; y: number }, p2: null as null | { x: number; y: number }, preview: null as null | { x: number; y: number }, distanceMm: null as null | number, dxMm: null as null | number, dyMm: null as null | number, snap: null as null | { x: number; y: number } };
         const measureHistory: Array<{ p1: { x: number; y: number }; p2: { x: number; y: number }; dxMm: number; dyMm: number; distanceMm: number }> = [];
         const measureUiRef = { selectedIndex: -1, hoverIndex: -1, copyFlashIndex: -1 };
+        const selectionUiRef = { hoverKind: null as null | "component" | "trace", hoverId: null as null | string };
         const snapPoints: Array<{ x: number; y: number }> = [];
         const SNAP_RADIUS = 12;
 
@@ -220,6 +251,70 @@ export default function PcbCanvas({
           hud.x = width - 18 - Math.max(320, String(hud.text).length * 6.7);
           const modeText = boxRef.active ? (boxRef.mode === "zoom" ? " · Box Zoom" : boxRef.mode === "subtract" ? " · Box Subtract" : boxRef.append ? " · Box Append" : " · Box Replace") : "";
           selectionBar.text = `Selection · ${selectedCompIds.size} components · ${selectedTraceIds.size} traces · Total ${count}${modeText}`;
+        };
+
+        const renderSelectionPanel = () => {
+          selectedPanelListLayer.clear();
+          const items = [
+            ...Array.from(selectedCompIds).map((id) => ({ kind: "component" as const, id, label: components.find((c) => c.id === id)?.refdes || id })),
+            ...Array.from(selectedTraceIds).map((id) => ({ kind: "trace" as const, id, label: id })),
+          ];
+          if (!items.length) {
+            selectedPanelBody.text = "No selection";
+            return;
+          }
+          selectedPanelBody.text = "";
+          items.slice(0, 6).forEach((item, idx) => {
+            const y = height - 176 + idx * 20;
+            const hover = selectionUiRef.hoverKind === item.kind && selectionUiRef.hoverId === item.id;
+            const rowBg = new Rect({ x: width - 300, y: y - 2, width: 246, height: 18, cornerRadius: 6, fill: hover ? "rgba(34,211,238,0.16)" : "rgba(30,41,59,0.55)" });
+            const rowText = new Text({ x: width - 294, y, text: `${item.kind === "component" ? "C" : "T"} · ${item.label}`, fill: hover ? "#cffafe" : "#cbd5e1", fontSize: 10.5 });
+            const delBg = new Rect({ x: width - 50, y: y - 2, width: 20, height: 18, cornerRadius: 6, fill: "rgba(127,29,29,0.75)" });
+            const delText = new Text({ x: width - 44, y, text: "×", fill: "#fecaca", fontSize: 12 });
+            const hoverIn = () => {
+              selectionUiRef.hoverKind = item.kind;
+              selectionUiRef.hoverId = item.id;
+              onHoverFeature(item.kind, item.id);
+              renderSelectionPanel();
+              leafer.forceRender?.();
+            };
+            const hoverOut = () => {
+              if (selectionUiRef.hoverKind === item.kind && selectionUiRef.hoverId === item.id) {
+                selectionUiRef.hoverKind = null;
+                selectionUiRef.hoverId = null;
+                onHoverFeature(undefined, undefined);
+                renderSelectionPanel();
+                leafer.forceRender?.();
+              }
+            };
+            const focusItem = () => {
+              onHoverFeature(item.kind, item.id);
+              leafer.forceRender?.();
+            };
+            const removeItem = () => {
+              if (item.kind === "component") selectedCompIds.delete(item.id);
+              else selectedTraceIds.delete(item.id);
+              if (selectionUiRef.hoverKind === item.kind && selectionUiRef.hoverId === item.id) {
+                selectionUiRef.hoverKind = null;
+                selectionUiRef.hoverId = null;
+                onHoverFeature(undefined, undefined);
+              }
+              refreshStyles();
+              renderSelectionPanel();
+              leafer.forceRender?.();
+            };
+            for (const node of [rowBg, rowText]) {
+              node.on("pointer.tap", focusItem);
+              node.on("pointer.enter", hoverIn);
+              node.on("pointer.leave", hoverOut);
+            }
+            delBg.on("pointer.tap", removeItem);
+            delText.on("pointer.tap", removeItem);
+            selectedPanelListLayer.add(rowBg);
+            selectedPanelListLayer.add(rowText);
+            selectedPanelListLayer.add(delBg);
+            selectedPanelListLayer.add(delText);
+          });
         };
 
         const snapPoint = (x: number, y: number) => {
@@ -497,6 +592,7 @@ export default function PcbCanvas({
           for (const [id, marker] of markerMap) marker.visible = focusComponentId === id;
           updateMeasureOverlay();
           updateHud();
+          renderSelectionPanel();
           leafer.forceRender?.();
         };
 
@@ -631,6 +727,7 @@ export default function PcbCanvas({
           applyCamera();
           refreshStyles();
           renderMeasurePanel();
+          renderSelectionPanel();
         };
 
         measureClearBg.on("pointer.tap", () => {
