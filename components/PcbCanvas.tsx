@@ -58,6 +58,7 @@ export default function PcbCanvas({
     sc: [] as string[],
     st: [] as string[],
     vd: "grid,components,labels,measures",
+    lm: "adaptive",
   });
 
   useEffect(() => {
@@ -282,6 +283,7 @@ export default function PcbCanvas({
         const traceMap = new Map<string, any>();
         const compMap = new Map<string, any>();
         const labelMap = new Map<string, any>();
+        const labelAnchorMap = new Map<string, { x: number; y: number }>();
         const markerMap = new Map<string, any>();
         const compBoundsMap = new Map<string, { x: number; y: number; width: number; height: number }>();
         const traceBoundsMap = new Map<string, { minX: number; minY: number; maxX: number; maxY: number }>();
@@ -375,6 +377,7 @@ export default function PcbCanvas({
             sc: Array.from(selectedCompIds),
             st: Array.from(selectedTraceIds),
             vd: visibleDetail,
+            lm: "adaptive",
           };
           const bridgeKey = JSON.stringify(nextBridge);
           if (bridgeKeyRef.current !== bridgeKey) {
@@ -1099,6 +1102,57 @@ export default function PcbCanvas({
           line.visible = true;
         };
 
+        const applyLabelVisibilityStrategy = () => {
+          const detail = detailVisibilityRef.value;
+          if (!detail.components || !detail.labels) {
+            for (const label of labelMap.values()) label.visible = false;
+            return;
+          }
+          const forced = new Set<string>();
+          if (hoveredType === "component" && hoveredId) forced.add(hoveredId);
+          if (focusComponentId) forced.add(focusComponentId);
+          for (const id of selectedCompIds) forced.add(id);
+          for (const id of directIds) forced.add(id);
+
+          const cellSize = scaleRef.value >= 2.4 ? 28 : scaleRef.value >= 1.6 ? 42 : scaleRef.value >= 1.0 ? 58 : scaleRef.value >= 0.75 ? 82 : 112;
+          const occupied = new Set<string>();
+          const entries = Array.from(labelMap.entries()).sort((a, b) => {
+            const aForced = forced.has(a[0]) ? 1 : 0;
+            const bForced = forced.has(b[0]) ? 1 : 0;
+            if (aForced !== bForced) return bForced - aForced;
+            return a[0].localeCompare(b[0]);
+          });
+
+          for (const [id, label] of entries) {
+            const anchor = labelAnchorMap.get(id);
+            if (!anchor) {
+              label.visible = false;
+              continue;
+            }
+            if (forced.has(id)) {
+              label.visible = true;
+              continue;
+            }
+            if (scaleRef.value < 0.68) {
+              label.visible = false;
+              continue;
+            }
+            const sx = anchor.x * scaleRef.value + offsetRef.x;
+            const sy = anchor.y * scaleRef.value + offsetRef.y;
+            if (sx < -40 || sy < -20 || sx > width + 20 || sy > height + 20) {
+              label.visible = false;
+              continue;
+            }
+            const key = `${Math.floor(sx / cellSize)}:${Math.floor(sy / cellSize)}`;
+            if (occupied.has(key)) {
+              label.visible = false;
+              continue;
+            }
+            occupied.add(key);
+            label.visible = true;
+          }
+        };
+
         const updateCompStyle = (id: string) => {
           const rect = compMap.get(id);
           const label = labelMap.get(id);
@@ -1112,7 +1166,6 @@ export default function PcbCanvas({
           rect.stroke = isSelected ? "#fde68a" : isTarget ? "#fecdd3" : "rgba(0,0,0,0)";
           rect.strokeWidth = isSelected || isTarget ? 1.5 / Math.max(scaleRef.value, 0.8) : 0;
           if (label) {
-            label.visible = detailVisibilityRef.value.components && detailVisibilityRef.value.labels && scaleRef.value >= 0.85;
             label.fill = isTarget ? "#ffffff" : isSelected ? "#fef3c7" : isRelated ? "#a5f3fc" : "#e2e8f0";
           }
         };
@@ -1125,6 +1178,7 @@ export default function PcbCanvas({
           }
           for (const id of traceMap.keys()) updateTraceStyle(id);
           for (const id of compMap.keys()) updateCompStyle(id);
+          applyLabelVisibilityStrategy();
           for (const [id, marker] of markerMap) marker.visible = detailVisibilityRef.value.components && focusComponentId === id;
           updateMeasureOverlay();
           updateHud();
@@ -1271,6 +1325,7 @@ export default function PcbCanvas({
           compLayer.add(marker);
           compMap.set(c.id, rect);
           labelMap.set(c.id, label);
+          labelAnchorMap.set(c.id, { x, y: Math.max(14, y - 12) });
           markerMap.set(c.id, marker);
           compBoundsMap.set(c.id, { x, y, width: w, height: h });
         }
@@ -1517,6 +1572,7 @@ export default function PcbCanvas({
           traceMap,
           compMap,
           labelMap,
+          labelAnchorMap,
           markerMap,
           detailVisibilityRef,
           selectedCompIds,
@@ -1524,6 +1580,7 @@ export default function PcbCanvas({
           traces,
           visibleLayers,
           scaleRef,
+          offsetRef,
           updateHud,
           focusComponentById,
           cleanup: () => {
@@ -1581,9 +1638,53 @@ export default function PcbCanvas({
       rect.stroke = isSelected ? "#fde68a" : isTarget ? "#fecdd3" : "rgba(0,0,0,0)";
       rect.strokeWidth = isSelected || isTarget ? 1.5 / Math.max(rt.scaleRef.value, 0.8) : 0;
       if (label) {
-        label.visible = detail.components && detail.labels && rt.scaleRef.value >= 0.85;
         label.fill = isTarget ? "#ffffff" : isSelected ? "#fef3c7" : isRelated ? "#a5f3fc" : "#e2e8f0";
       }
+    }
+    if (rt.detailVisibilityRef?.value?.components && rt.detailVisibilityRef?.value?.labels) {
+      const forced = new Set();
+      if (hoveredType === "component" && hoveredId) forced.add(hoveredId);
+      if (focusComponentId) forced.add(focusComponentId);
+      for (const id of rt.selectedCompIds) forced.add(id);
+      for (const id of directIds) forced.add(id);
+      const cellSize = rt.scaleRef.value >= 2.4 ? 28 : rt.scaleRef.value >= 1.6 ? 42 : rt.scaleRef.value >= 1.0 ? 58 : rt.scaleRef.value >= 0.75 ? 82 : 112;
+      const occupied = new Set();
+      const entries = Array.from(rt.labelMap.entries()).sort((a, b) => {
+        const aForced = forced.has(a[0]) ? 1 : 0;
+        const bForced = forced.has(b[0]) ? 1 : 0;
+        if (aForced !== bForced) return bForced - aForced;
+        return String(a[0]).localeCompare(String(b[0]));
+      });
+      for (const [id, label] of entries) {
+        const anchor = rt.labelAnchorMap?.get(id);
+        if (!anchor) {
+          label.visible = false;
+          continue;
+        }
+        if (forced.has(id)) {
+          label.visible = true;
+          continue;
+        }
+        if (rt.scaleRef.value < 0.68) {
+          label.visible = false;
+          continue;
+        }
+        const sx = anchor.x * rt.scaleRef.value + (rt.offsetRef?.x || 0);
+        const sy = anchor.y * rt.scaleRef.value + (rt.offsetRef?.y || 0);
+        if (sx < -40 || sy < -20 || sx > width + 20 || sy > height + 20) {
+          label.visible = false;
+          continue;
+        }
+        const key = `${Math.floor(sx / cellSize)}:${Math.floor(sy / cellSize)}`;
+        if (occupied.has(key)) {
+          label.visible = false;
+          continue;
+        }
+        occupied.add(key);
+        label.visible = true;
+      }
+    } else {
+      for (const label of rt.labelMap.values()) label.visible = false;
     }
     for (const [id, marker] of rt.markerMap) marker.visible = (rt.detailVisibilityRef?.value?.components ?? true) && focusComponentId === id;
     rt.updateHud?.();
@@ -1624,7 +1725,8 @@ export default function PcbCanvas({
         {`State tool=${bridgeState.tool} zoom=${bridgeState.zoom.toFixed(3)} ox=${bridgeState.ox.toFixed(1)} oy=${bridgeState.oy.toFixed(1)}
 selected_components=${bridgeState.sc.join(",") || "-"}
 selected_traces=${bridgeState.st.join(",") || "-"}
-visible_detail=${bridgeState.vd || "-"}`}
+visible_detail=${bridgeState.vd || "-"}
+label_mode=${bridgeState.lm || "adaptive"}`}
       </div>
     </div>
   );
