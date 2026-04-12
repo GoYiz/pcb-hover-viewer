@@ -557,19 +557,22 @@ export default function PcbCanvas({
           let source: "hover" | "selected" | "summary" = "summary";
           let kind: "component" | "trace" | null = null;
           let targetId: string | null = null;
+          const selectedCompList = Array.from(selectedCompIds);
+          const selectedTraceList = Array.from(selectedTraceIds);
+          const totalSelected = selectedCompList.length + selectedTraceList.length;
 
           if (hoveredId && hoveredType) {
             source = "hover";
             kind = hoveredType;
             targetId = hoveredId;
-          } else if (selectedCompIds.size + selectedTraceIds.size === 1) {
+          } else if (totalSelected === 1) {
             source = "selected";
-            if (selectedCompIds.size === 1) {
+            if (selectedCompList.length === 1) {
               kind = "component";
-              targetId = Array.from(selectedCompIds)[0];
-            } else if (selectedTraceIds.size === 1) {
+              targetId = selectedCompList[0];
+            } else if (selectedTraceList.length === 1) {
               kind = "trace";
-              targetId = Array.from(selectedTraceIds)[0];
+              targetId = selectedTraceList[0];
             }
           }
 
@@ -579,7 +582,9 @@ export default function PcbCanvas({
               inspectorBody.text = "Component not found";
               return;
             }
-            const nets = (comp.netIds || []).slice(0, 5).join(", ") || "—";
+            const nets = comp.netIds || [];
+            const relatedTraces = traces.filter((tr) => nets.includes(tr.netId));
+            const relatedComponents = components.filter((c) => c.id !== comp.id && (c.netIds || []).some((net) => nets.includes(net)));
             inspectorBody.text = [
               `Source: ${source}`,
               `Type: Component`,
@@ -589,7 +594,9 @@ export default function PcbCanvas({
               `Rotation: ${comp.rotation}°`,
               `XY: ${comp.x.toFixed(2)}, ${comp.y.toFixed(2)} mm`,
               `BBox: ${comp.bbox.map((n) => n.toFixed(2)).join(", ")}`,
-              `Nets: ${nets}`,
+              `Nets (${nets.length}): ${nets.slice(0, 6).join(", ") || "—"}`,
+              `Related Components: ${relatedComponents.length}`,
+              `Related Traces: ${relatedTraces.length}`,
             ].join("\n");
             return;
           }
@@ -600,6 +607,8 @@ export default function PcbCanvas({
               inspectorBody.text = "Trace not found";
               return;
             }
+            const relatedComponents = components.filter((c) => (c.netIds || []).includes(trace.netId));
+            const relatedTraces = traces.filter((tr) => tr.netId === trace.netId);
             inspectorBody.text = [
               `Source: ${source}`,
               `Type: Trace`,
@@ -610,6 +619,30 @@ export default function PcbCanvas({
               `Points: ${trace.path.length}`,
               `Start: ${trace.path[0]?.map((n) => n.toFixed(2)).join(", ") || "—"}`,
               `End: ${trace.path[trace.path.length - 1]?.map((n) => n.toFixed(2)).join(", ") || "—"}`,
+              `Related Components: ${relatedComponents.length}`,
+              `Sibling Traces on Net: ${Math.max(0, relatedTraces.length - 1)}`,
+            ].join("\n");
+            return;
+          }
+
+          if (totalSelected > 1) {
+            const selectedCompObjs = components.filter((c) => selectedCompIds.has(c.id));
+            const selectedTraceObjs = traces.filter((tr) => selectedTraceIds.has(tr.id));
+            const netSet = new Set<string>();
+            for (const c of selectedCompObjs) for (const net of c.netIds || []) netSet.add(net);
+            for (const tr of selectedTraceObjs) netSet.add(tr.netId);
+            const relatedComponents = components.filter((c) => !selectedCompIds.has(c.id) && (c.netIds || []).some((net) => netSet.has(net)));
+            const relatedTraces = traces.filter((tr) => !selectedTraceIds.has(tr.id) && netSet.has(tr.netId));
+            inspectorBody.text = [
+              "Source: selection-summary",
+              `Selected Objects: ${totalSelected}`,
+              `Selected Components: ${selectedCompList.length}`,
+              `Selected Traces: ${selectedTraceList.length}`,
+              `Covered Nets: ${netSet.size}`,
+              `Related Components: ${relatedComponents.length}`,
+              `Related Traces: ${relatedTraces.length}`,
+              `Measures: ${measureHistory.length}`,
+              `Tool: ${toolModeRef.value}`,
             ].join("\n");
             return;
           }
@@ -619,11 +652,13 @@ export default function PcbCanvas({
             `Board: ${boardWidthMm.toFixed(2)} × ${boardHeightMm.toFixed(2)} mm`,
             `Components: ${components.length}`,
             `Traces: ${traces.length}`,
-            `Selected Components: ${selectedCompIds.size}`,
-            `Selected Traces: ${selectedTraceIds.size}`,
+            `Selected Components: ${selectedCompList.length}`,
+            `Selected Traces: ${selectedTraceList.length}`,
+            `Current Related Components: ${directIds.length}`,
+            `Current Related Traces: ${traceHighlightIds.length}`,
             `Measures: ${measureHistory.length}`,
             `Tool: ${toolModeRef.value}`,
-            ].join("\n");
+          ].join("\n");
         };
 
         const renderSelectionPanel = () => {
