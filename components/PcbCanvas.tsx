@@ -1450,8 +1450,8 @@ export default function PcbCanvas({
           if (initialUrlState.zoom != null) scaleRef.value = Math.max(0.6, Math.min(3.5, initialUrlState.zoom));
           if (initialUrlState.ox != null) offsetRef.x = initialUrlState.ox;
           if (initialUrlState.oy != null) offsetRef.y = initialUrlState.oy;
-          if (initialUrlState.tool) toolModeRef.value = initialUrlState.tool;
-          if (initialUrlState.sf) selectionFilterRef.value = initialUrlState.sf;
+          if (initialUrlState.tool) toolModeRef.value = initialUrlState.tool as "select" | "measure" | "pan";
+          if (initialUrlState.sf) selectionFilterRef.value = initialUrlState.sf as "all" | "component" | "trace";
           if (initialUrlState.vd.length) {
             detailVisibilityRef.value = {
               grid: initialUrlState.vd.includes("grid"),
