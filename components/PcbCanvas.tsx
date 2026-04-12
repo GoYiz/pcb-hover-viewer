@@ -24,7 +24,7 @@ export default function PcbCanvas({ width, height }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let leafer: { destroy: () => void; add: (node: unknown) => void } | null = null;
+    let leafer: { destroy: () => void; add: (...args: any[]) => void } | null = null;
     let isDestroy = false;
 
     import("leafer-ui")
