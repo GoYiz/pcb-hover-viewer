@@ -301,7 +301,8 @@ export default function PcbCanvas({
         const measureHistory: Array<{ p1: { x: number; y: number }; p2: { x: number; y: number }; dxMm: number; dyMm: number; distanceMm: number }> = [];
         const measureUiRef = { selectedIndex: -1, hoverIndex: -1, copyFlashIndex: -1, copyAllFlash: false };
         const selectionUiRef = { hoverKind: null as null | "component" | "trace", hoverId: null as null | string };
-        const snapPoints: Array<{ x: number; y: number }> = [];
+        const snapPoints: Array<{ x: number; y: number; priority?: number }> = [];
+        const snapSegments: Array<{ ax: number; ay: number; bx: number; by: number }> = [];
         const SNAP_RADIUS = 12;
         const toolModeRef = { value: "select" as "select" | "measure" | "pan" };
         const selectionFilterRef = { value: "all" as "all" | "component" | "trace" };
@@ -725,16 +726,42 @@ export default function PcbCanvas({
           });
         };
 
+        const projectPointToSegment = (px: number, py: number, ax: number, ay: number, bx: number, by: number) => {
+          const abx = bx - ax;
+          const aby = by - ay;
+          const ab2 = abx * abx + aby * aby;
+          if (ab2 <= 1e-6) return { x: ax, y: ay, d: Math.hypot(px - ax, py - ay) };
+          let t = ((px - ax) * abx + (py - ay) * aby) / ab2;
+          if (t < 0) t = 0;
+          if (t > 1) t = 1;
+          const x = ax + abx * t;
+          const y = ay + aby * t;
+          return { x, y, d: Math.hypot(px - x, py - y) };
+        };
+
         const snapPoint = (x: number, y: number) => {
           let best = { x, y };
           let bestD = SNAP_RADIUS;
+          let bestPriority = -1;
           let snapped = false;
           for (const p of snapPoints) {
             const d = Math.hypot(p.x - x, p.y - y);
-            if (d < bestD) {
-              best = p;
+            const priority = p.priority || 0;
+            if (d < bestD || (Math.abs(d - bestD) < 0.75 && priority > bestPriority)) {
+              best = { x: p.x, y: p.y };
               bestD = d;
+              bestPriority = priority;
               snapped = true;
+            }
+          }
+          if (bestPriority < 2) {
+            for (const seg of snapSegments) {
+              const proj = projectPointToSegment(x, y, seg.ax, seg.ay, seg.bx, seg.by);
+              if (proj.d < bestD) {
+                best = { x: proj.x, y: proj.y };
+                bestD = proj.d;
+                snapped = true;
+              }
             }
           }
           measureRef.snap = snapped ? best : null;
@@ -1353,11 +1380,14 @@ export default function PcbCanvas({
           let minY = Infinity;
           let maxX = -Infinity;
           let maxY = -Infinity;
+          let prev: null | { x: number; y: number } = null;
           for (const [x, y] of trace.path) {
             const px = mapX(x, boardWidthMm, width);
             const py = mapY(y, boardHeightMm, height);
             points.push(px, py);
-            snapPoints.push({ x: px, y: py });
+            snapPoints.push({ x: px, y: py, priority: 0 });
+            if (prev) snapSegments.push({ ax: prev.x, ay: prev.y, bx: px, by: py });
+            prev = { x: px, y: py };
             minX = Math.min(minX, px);
             minY = Math.min(minY, py);
             maxX = Math.max(maxX, px);
@@ -1379,7 +1409,13 @@ export default function PcbCanvas({
           const y = mapY(by, boardHeightMm, height);
           const w = (bw / Math.max(boardWidthMm, 1)) * (width - PAD * 2);
           const h = (bh / Math.max(boardHeightMm, 1)) * (height - PAD * 2);
-          snapPoints.push({ x, y }, { x: x + w, y }, { x, y: y + h }, { x: x + w, y: y + h }, { x: x + w / 2, y: y + h / 2 });
+          snapPoints.push(
+            { x, y, priority: 1 },
+            { x: x + w, y, priority: 1 },
+            { x, y: y + h, priority: 1 },
+            { x: x + w, y: y + h, priority: 1 },
+            { x: x + w / 2, y: y + h / 2, priority: 2 },
+          );
           const rect = new Rect({ x, y, width: w, height: h, fill: "#94a3b8", opacity: 0.55, cornerRadius: 2, stroke: "rgba(0,0,0,0)", strokeWidth: 0 });
           rect.on("pointer.enter", () => onHoverFeature("component", c.id));
           rect.on("pointer.leave", () => onHoverFeature(undefined, undefined));
