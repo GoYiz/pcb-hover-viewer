@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import PcbCanvas from "@/components/PcbCanvas";
+import dynamic from "next/dynamic";
 import type { ExampleBoardData, ExampleIndexItem } from "@/lib/examples";
+
+const PcbCanvas = dynamic(() => import("@/components/PcbCanvas"), { ssr: false });
 
 const CANVAS_W = 980;
 const CANVAS_H = 620;

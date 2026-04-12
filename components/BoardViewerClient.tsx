@@ -1,11 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import PcbCanvas from "@/components/PcbCanvas";
 import ThreeBoardCanvas from "@/components/ThreeBoardCanvas";
 import { fetchBoardComponents, fetchBoardGeometry, fetchBoardMeta } from "@/lib/api";
 import { useViewerStore } from "@/store/viewerStore";
 import type { ComponentItem, TraceItem } from "@/types/pcb";
+
+const PcbCanvas = dynamic(() => import("@/components/PcbCanvas"), { ssr: false });
 
 const CANVAS_W = 980;
 const CANVAS_H = 680;
