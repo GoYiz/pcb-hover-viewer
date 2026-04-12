@@ -104,7 +104,7 @@ export default function PcbCanvas({
         const hint = new Text({
           x: 24,
           y: 18,
-          text: "Drag pan · Wheel zoom · Shift box select · Alt+Shift box zoom · Double click to measure · Esc clears",
+          text: "Drag pan · Wheel zoom · Shift box select · Alt+Shift box zoom · Double click to measure · Esc clears · Snap on points",
           fill: "#64748b",
           fontSize: 11,
         });
@@ -150,6 +150,8 @@ export default function PcbCanvas({
         const dragRef = { active: false, x: 0, y: 0 };
         const boxRef = { active: false, sx: 0, sy: 0, ex: 0, ey: 0, mode: "select" as "select" | "zoom" };
         const measureRef = { p1: null as null | { x: number; y: number }, p2: null as null | { x: number; y: number }, preview: null as null | { x: number; y: number }, distanceMm: null as null | number, dxMm: null as null | number, dyMm: null as null | number };
+        const snapPoints: Array<{ x: number; y: number }> = [];
+        const SNAP_RADIUS = 12;
 
         const applyCamera = () => {
           for (const layer of [gridLayer, boardLayer, traceLayer, compLayer]) {
@@ -166,6 +168,19 @@ export default function PcbCanvas({
           const measureText = measureRef.distanceMm == null ? "—" : `ΔX ${Math.abs(measureRef.dxMm || 0).toFixed(2)} · ΔY ${Math.abs(measureRef.dyMm || 0).toFixed(2)} · D ${measureRef.distanceMm.toFixed(2)} mm`;
           hud.text = `Layer: ${label} · Zoom ${scaleRef.value.toFixed(2)}x · Selected ${count} · Measure ${measureText}`;
           hud.x = width - 18 - Math.max(320, String(hud.text).length * 6.7);
+        };
+
+        const snapPoint = (x: number, y: number) => {
+          let best = { x, y };
+          let bestD = SNAP_RADIUS;
+          for (const p of snapPoints) {
+            const d = Math.hypot(p.x - x, p.y - y);
+            if (d < bestD) {
+              best = p;
+              bestD = d;
+            }
+          }
+          return best;
         };
 
         const updateMeasureOverlay = () => {
@@ -338,6 +353,7 @@ export default function PcbCanvas({
             const px = mapX(x, boardWidthMm, width);
             const py = mapY(y, boardHeightMm, height);
             points.push(px, py);
+            snapPoints.push({ x: px, y: py });
             minX = Math.min(minX, px);
             minY = Math.min(minY, py);
             maxX = Math.max(maxX, px);
@@ -358,6 +374,7 @@ export default function PcbCanvas({
           const y = mapY(by, boardHeightMm, height);
           const w = (bw / Math.max(boardWidthMm, 1)) * (width - PAD * 2);
           const h = (bh / Math.max(boardHeightMm, 1)) * (height - PAD * 2);
+          snapPoints.push({ x, y }, { x: x + w, y }, { x, y: y + h }, { x: x + w, y: y + h }, { x: x + w / 2, y: y + h / 2 });
           const rect = new Rect({ x, y, width: w, height: h, fill: "#94a3b8", opacity: 0.55, cornerRadius: 2, stroke: "rgba(0,0,0,0)", strokeWidth: 0 });
           rect.on("pointer.enter", () => onHoverFeature("component", c.id));
           rect.on("pointer.leave", () => onHoverFeature(undefined, undefined));
@@ -426,7 +443,7 @@ export default function PcbCanvas({
             return;
           }
           if (measureRef.p1 && !measureRef.p2) {
-            measureRef.preview = { x, y };
+            measureRef.preview = snapPoint(x, y);
             updateMeasureOverlay();
           }
           if (!dragRef.active) {
@@ -465,12 +482,13 @@ export default function PcbCanvas({
           const rect = view.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
+          const snapped = snapPoint(x, y);
           if (!measureRef.p1 || measureRef.p2) {
-            measureRef.p1 = { x, y };
+            measureRef.p1 = snapped;
             measureRef.p2 = null;
             measureRef.preview = null;
           } else {
-            measureRef.p2 = { x, y };
+            measureRef.p2 = snapped;
             measureRef.preview = null;
           }
           updateMeasureOverlay();
