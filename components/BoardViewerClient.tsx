@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import PcbCanvas from "@/components/PcbCanvas";
 import ThreeBoardCanvas from "@/components/ThreeBoardCanvas";
-import LeaferBoardCanvas from "@/components/LeaferBoardCanvas";
 import { fetchBoardComponents, fetchBoardGeometry, fetchBoardMeta } from "@/lib/api";
 import { useViewerStore } from "@/store/viewerStore";
 import type { ComponentItem, TraceItem } from "@/types/pcb";
@@ -32,7 +31,7 @@ export default function BoardViewerClient({ boardId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
     const [layerMode, setLayerMode] = useState<"all" | "fcu" | "bcu">("all");
-  const [viewMode, setViewMode] = useState<"pixi" | "leafer" | "three">("pixi");
+  const [viewMode, setViewMode] = useState<"leafer" | "three">("leafer");
   const [search, setSearch] = useState("");
   const [focusComponentId, setFocusComponentId] = useState<string | undefined>();
 
@@ -153,7 +152,7 @@ export default function BoardViewerClient({ boardId }: Props) {
           </div>
         </div>
         <div className="header-badges">
-          <span className="badge badge-accent">{viewMode === "pixi" ? "Pixi 2D" : viewMode === "leafer" ? "Leafer 2D" : "Three 3D"}</span>
+          <span className="badge badge-accent">{viewMode === "leafer" ? "Leafer 2D" : "Three 3D"}</span>
           <span className="badge">Electrical Mode</span>
         </div>
       </div>
@@ -180,7 +179,6 @@ export default function BoardViewerClient({ boardId }: Props) {
           </div>
 
           <div className="segmented-control">
-            <button className={viewMode === "pixi" ? "segmented-active" : ""} onClick={() => setViewMode("pixi")}>Pixi</button>
             <button className={viewMode === "leafer" ? "segmented-active" : ""} onClick={() => setViewMode("leafer")}>Leafer</button>
             <button className={viewMode === "three" ? "segmented-active" : ""} onClick={() => setViewMode("three")}>Three</button>
           </div>
@@ -217,24 +215,8 @@ export default function BoardViewerClient({ boardId }: Props) {
             <div className="empty-panel">Loading board…</div>
           ) : error ? (
             <div className="empty-panel">{error}</div>
-          ) : viewMode === "pixi" ? (
-            <PcbCanvas
-              width={CANVAS_W}
-              height={CANVAS_H}
-              boardWidthMm={boardWidthMm}
-              boardHeightMm={boardHeightMm}
-              components={components}
-              traces={traces}
-              visibleLayers={visibleLayers}
-              focusComponentId={focusComponentId}
-              hoveredId={highlight.targetId}
-              hoveredType={highlight.targetType}
-              directIds={highlight.directComponentIds}
-              traceHighlightIds={highlight.traceIds}
-              onHoverFeature={(type, id) => setHoveredFeature(type, id)}
-            />
           ) : viewMode === "leafer" ? (
-            <LeaferBoardCanvas
+            <PcbCanvas
               width={CANVAS_W}
               height={CANVAS_H}
               boardWidthMm={boardWidthMm}
@@ -309,7 +291,7 @@ export default function BoardViewerClient({ boardId }: Props) {
             <ul className="tips-list">
               <li>Mouse wheel to zoom</li>
               <li>Drag to pan / orbit</li>
-              <li>Switch Pixi / Leafer / Three to compare rendering</li>
+              <li>Leafer is now the default 2D renderer</li>
               <li>Hover trace or component to inspect graph</li>
             </ul>
           </div>
