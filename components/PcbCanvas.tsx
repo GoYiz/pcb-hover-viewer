@@ -59,6 +59,7 @@ export default function PcbCanvas({
     st: [] as string[],
     vd: "grid,components,labels,measures",
     lm: "adaptive",
+    gm: "major+minor",
   });
 
   useEffect(() => {
@@ -378,6 +379,7 @@ export default function PcbCanvas({
             st: Array.from(selectedTraceIds),
             vd: visibleDetail,
             lm: "adaptive",
+            gm: "major+minor",
           };
           const bridgeKey = JSON.stringify(nextBridge);
           if (bridgeKeyRef.current !== bridgeKey) {
@@ -1072,22 +1074,38 @@ export default function PcbCanvas({
         const renderGrid = () => {
           gridLayer.clear();
           if (!detailVisibilityRef.value.grid) return;
-          const worldStep = scaleRef.value >= 2.2 ? 2 : scaleRef.value >= 1.3 ? 5 : 10;
-          const screenStepX = (worldStep / Math.max(boardWidthMm, 1)) * (width - PAD * 2) * scaleRef.value;
-          const screenStepY = (worldStep / Math.max(boardHeightMm, 1)) * (height - PAD * 2) * scaleRef.value;
-          if (screenStepX < 12 || screenStepY < 12) return;
+          const majorWorldStep = scaleRef.value >= 2.2 ? 10 : scaleRef.value >= 1.3 ? 20 : 25;
+          const minorWorldStep = majorWorldStep / 5;
+          const majorStepX = (majorWorldStep / Math.max(boardWidthMm, 1)) * (width - PAD * 2) * scaleRef.value;
+          const majorStepY = (majorWorldStep / Math.max(boardHeightMm, 1)) * (height - PAD * 2) * scaleRef.value;
+          const minorStepX = (minorWorldStep / Math.max(boardWidthMm, 1)) * (width - PAD * 2) * scaleRef.value;
+          const minorStepY = (minorWorldStep / Math.max(boardHeightMm, 1)) * (height - PAD * 2) * scaleRef.value;
+          if (majorStepX < 10 || majorStepY < 10) return;
 
           const left = PAD * scaleRef.value + offsetRef.x;
           const top = PAD * scaleRef.value + offsetRef.y;
           const bw = (width - PAD * 2) * scaleRef.value;
           const bh = (height - PAD * 2) * scaleRef.value;
 
-          for (let x = left; x <= left + bw + 1; x += screenStepX) {
-            gridLayer.add(new Line({ points: [x, top, x, top + bh], stroke: "rgba(51,65,85,0.45)", strokeWidth: 1 / scaleRef.value }));
+          const drawVerticals = (step: number, stroke: string, widthDiv: number) => {
+            if (step < 12) return;
+            for (let x = left; x <= left + bw + 1; x += step) {
+              gridLayer.add(new Line({ points: [x, top, x, top + bh], stroke, strokeWidth: widthDiv / Math.max(scaleRef.value, 0.8) }));
+            }
+          };
+          const drawHorizontals = (step: number, stroke: string, widthDiv: number) => {
+            if (step < 12) return;
+            for (let y = top; y <= top + bh + 1; y += step) {
+              gridLayer.add(new Line({ points: [left, y, left + bw, y], stroke, strokeWidth: widthDiv / Math.max(scaleRef.value, 0.8) }));
+            }
+          };
+
+          if (minorStepX >= 18 && minorStepY >= 18) {
+            drawVerticals(minorStepX, "rgba(30,41,59,0.22)", 0.9);
+            drawHorizontals(minorStepY, "rgba(30,41,59,0.22)", 0.9);
           }
-          for (let y = top; y <= top + bh + 1; y += screenStepY) {
-            gridLayer.add(new Line({ points: [left, y, left + bw, y], stroke: "rgba(51,65,85,0.45)", strokeWidth: 1 / scaleRef.value }));
-          }
+          drawVerticals(majorStepX, "rgba(51,65,85,0.62)", 1.35);
+          drawHorizontals(majorStepY, "rgba(51,65,85,0.62)", 1.35);
         };
 
         const updateTraceStyle = (id: string) => {
@@ -1727,7 +1745,8 @@ export default function PcbCanvas({
 selected_components=${bridgeState.sc.join(",") || "-"}
 selected_traces=${bridgeState.st.join(",") || "-"}
 visible_detail=${bridgeState.vd || "-"}
-label_mode=${bridgeState.lm || "adaptive"}`}
+label_mode=${bridgeState.lm || "adaptive"}
+grid_mode=${bridgeState.gm || "major+minor"}`}
       </div>
     </div>
   );
