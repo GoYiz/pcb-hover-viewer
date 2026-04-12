@@ -291,6 +291,42 @@ export default function PcbCanvas({
         const toolModeRef = { value: "select" as "select" | "measure" | "pan" };
         const helpRef = { visible: false };
 
+        const readUrlState = () => {
+          if (typeof window === "undefined") return null;
+          const params = new URL(window.location.href).searchParams;
+          const zoom = Number(params.get("zoom"));
+          const ox = Number(params.get("ox"));
+          const oy = Number(params.get("oy"));
+          const sc = (params.get("sc") || "").split(",").filter(Boolean);
+          const st = (params.get("st") || "").split(",").filter(Boolean);
+          return {
+            zoom: Number.isFinite(zoom) ? zoom : null,
+            ox: Number.isFinite(ox) ? ox : null,
+            oy: Number.isFinite(oy) ? oy : null,
+            sc,
+            st,
+          };
+        };
+
+        const writeUrlState = () => {
+          if (typeof window === "undefined") return;
+          const url = new URL(window.location.href);
+          const params = url.searchParams;
+          const selectedCompList = Array.from(selectedCompIds);
+          const selectedTraceList = Array.from(selectedTraceIds);
+          if (Math.abs(scaleRef.value - 1) < 1e-6) params.delete("zoom");
+          else params.set("zoom", scaleRef.value.toFixed(3));
+          if (Math.abs(offsetRef.x) < 1e-3) params.delete("ox");
+          else params.set("ox", offsetRef.x.toFixed(1));
+          if (Math.abs(offsetRef.y) < 1e-3) params.delete("oy");
+          else params.set("oy", offsetRef.y.toFixed(1));
+          if (selectedCompList.length) params.set("sc", selectedCompList.join(","));
+          else params.delete("sc");
+          if (selectedTraceList.length) params.set("st", selectedTraceList.join(","));
+          else params.delete("st");
+          window.history.replaceState({}, "", url.toString());
+        };
+
         const applyCamera = () => {
           for (const layer of [gridLayer, boardLayer, traceLayer, compLayer]) {
             layer.scaleX = scaleRef.value;
@@ -395,6 +431,7 @@ export default function PcbCanvas({
           renderGrid();
           applyCamera();
           updateHud();
+          writeUrlState();
         };
 
         const zoomToSelection = () => {
@@ -887,6 +924,7 @@ export default function PcbCanvas({
           updateHud();
           renderSelectionPanel();
           renderInspector();
+          writeUrlState();
           leafer.forceRender?.();
         };
 
@@ -1015,6 +1053,15 @@ export default function PcbCanvas({
           compBoundsMap.set(c.id, { x, y, width: w, height: h });
         }
 
+        const initialUrlState = readUrlState();
+        if (initialUrlState) {
+          if (initialUrlState.zoom != null) scaleRef.value = Math.max(0.6, Math.min(3.5, initialUrlState.zoom));
+          if (initialUrlState.ox != null) offsetRef.x = initialUrlState.ox;
+          if (initialUrlState.oy != null) offsetRef.y = initialUrlState.oy;
+          for (const id of initialUrlState.sc) if (compBoundsMap.has(id)) selectedCompIds.add(id);
+          for (const id of initialUrlState.st) if (traceBoundsMap.has(id)) selectedTraceIds.add(id);
+        }
+
         const view = hostRef.current!;
         const renderVisibility = () => {
           renderGrid();
@@ -1131,6 +1178,7 @@ export default function PcbCanvas({
           renderGrid();
           applyCamera();
           updateHud();
+          writeUrlState();
           leafer.forceRender?.();
         };
 
@@ -1231,6 +1279,7 @@ export default function PcbCanvas({
           renderGrid();
           applyCamera();
           refreshStyles();
+          writeUrlState();
         };
 
         view.addEventListener("pointerdown", onPointerDown);

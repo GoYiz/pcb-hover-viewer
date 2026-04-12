@@ -42,6 +42,7 @@ export default function BoardViewerClient({
   const [loading, setLoading] = useState(!(initialComponents?.length && initialTraces?.length));
   const [error, setError] = useState<string | null>(null);
   const [layerMode, setLayerMode] = useState<"all" | "fcu" | "bcu">("all");
+  const [urlReady, setUrlReady] = useState(false);
   const [viewMode, setViewMode] = useState<"leafer" | "three">("leafer");
   const [search, setSearch] = useState("");
   const [focusComponentId, setFocusComponentId] = useState<string | undefined>();
@@ -57,6 +58,21 @@ export default function BoardViewerClient({
     if (layerMode === "bcu") return ["B.Cu"];
     return ["F.Cu", "B.Cu"];
   }, [layerMode]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const layer = params.get("layer");
+    if (layer === "fcu" || layer === "bcu" || layer === "all") setLayerMode(layer);
+    setUrlReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!urlReady) return;
+    const url = new URL(window.location.href);
+    if (layerMode === "all") url.searchParams.delete("layer");
+    else url.searchParams.set("layer", layerMode);
+    window.history.replaceState({}, "", url.toString());
+  }, [layerMode, urlReady]);
 
   useEffect(() => {
     if (initialComponents?.length && initialTraces?.length) {
