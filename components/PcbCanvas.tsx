@@ -49,6 +49,15 @@ export default function PcbCanvas({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const runtimeRef = useRef<any>(null);
+  const bridgeKeyRef = useRef("");
+  const [bridgeState, setBridgeState] = useState({
+    tool: "select" as "select" | "measure" | "pan",
+    zoom: 1,
+    ox: 0,
+    oy: 0,
+    sc: [] as string[],
+    st: [] as string[],
+  });
 
   useEffect(() => {
     let isDestroy = false;
@@ -344,6 +353,19 @@ export default function PcbCanvas({
           hud.x = width - 18 - Math.max(320, String(hud.text).length * 6.7);
           const modeText = boxRef.active ? (boxRef.mode === "zoom" ? " · Box Zoom" : boxRef.mode === "subtract" ? " · Box Subtract" : boxRef.append ? " · Box Append" : " · Box Replace") : "";
           selectionBar.text = `Selection · ${selectedCompIds.size} components · ${selectedTraceIds.size} traces · Total ${count}${modeText}`;
+          const nextBridge = {
+            tool: toolModeRef.value,
+            zoom: scaleRef.value,
+            ox: offsetRef.x,
+            oy: offsetRef.y,
+            sc: Array.from(selectedCompIds),
+            st: Array.from(selectedTraceIds),
+          };
+          const bridgeKey = JSON.stringify(nextBridge);
+          if (bridgeKeyRef.current !== bridgeKey) {
+            bridgeKeyRef.current = bridgeKey;
+            setBridgeState(nextBridge);
+          }
         };
 
         const zoomToFitBoard = () => {
@@ -1369,5 +1391,32 @@ export default function PcbCanvas({
     );
   }
 
-  return <div ref={hostRef} style={{ width, height, borderRadius: 12, overflow: "hidden", position: "relative" }} />;
+  return (
+    <div style={{ width, height, borderRadius: 12, overflow: "hidden", position: "relative" }}>
+      <div ref={hostRef} style={{ width, height, borderRadius: 12, overflow: "hidden" }} />
+      <div
+        data-testid="canvas-state-bridge"
+        style={{
+          position: "absolute",
+          left: 92,
+          bottom: 8,
+          maxWidth: 520,
+          background: "rgba(2,6,23,0.72)",
+          color: "#93c5fd",
+          border: "1px solid rgba(148,163,184,0.18)",
+          borderRadius: 8,
+          padding: "6px 8px",
+          fontSize: 10,
+          lineHeight: 1.35,
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          pointerEvents: "none",
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {`State tool=${bridgeState.tool} zoom=${bridgeState.zoom.toFixed(3)} ox=${bridgeState.ox.toFixed(1)} oy=${bridgeState.oy.toFixed(1)}
+selected_components=${bridgeState.sc.join(",") || "-"}
+selected_traces=${bridgeState.st.join(",") || "-"}`}
+      </div>
+    </div>
+  );
 }
