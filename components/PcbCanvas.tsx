@@ -104,7 +104,7 @@ export default function PcbCanvas({
         const hint = new Text({
           x: 24,
           y: 18,
-          text: "Drag pan · Wheel zoom · Shift box select · Alt+Shift box zoom · Double click to measure · Esc clears · Snap on points",
+          text: "Drag pan · Wheel zoom · Shift box select · Alt+Shift box zoom · Double click to measure · Esc clears · Snap on points · Hold Shift for orthogonal",
           fill: "#64748b",
           fontSize: 11,
         });
@@ -131,10 +131,12 @@ export default function PcbCanvas({
         const measureLabel = new Text({ x: 0, y: 0, text: "", fill: "#ddd6fe", fontSize: 12, visible: false });
         const measureP1 = new Rect({ x: 0, y: 0, width: 6, height: 6, fill: "#c4b5fd", cornerRadius: 3, visible: false });
         const measureP2 = new Rect({ x: 0, y: 0, width: 6, height: 6, fill: "#c4b5fd", cornerRadius: 3, visible: false });
+        const snapMarker = new Rect({ x: 0, y: 0, width: 10, height: 10, stroke: "#f472b6", strokeWidth: 1.5, fill: "rgba(244,114,182,0.10)", cornerRadius: 5, visible: false });
         overlayLayer.add(measureLine);
         overlayLayer.add(measureLabel);
         overlayLayer.add(measureP1);
         overlayLayer.add(measureP2);
+        overlayLayer.add(snapMarker);
 
         const traceMap = new Map<string, any>();
         const compMap = new Map<string, any>();
@@ -149,7 +151,7 @@ export default function PcbCanvas({
         const offsetRef = { x: 0, y: 0 };
         const dragRef = { active: false, x: 0, y: 0 };
         const boxRef = { active: false, sx: 0, sy: 0, ex: 0, ey: 0, mode: "select" as "select" | "zoom" };
-        const measureRef = { p1: null as null | { x: number; y: number }, p2: null as null | { x: number; y: number }, preview: null as null | { x: number; y: number }, distanceMm: null as null | number, dxMm: null as null | number, dyMm: null as null | number };
+        const measureRef = { p1: null as null | { x: number; y: number }, p2: null as null | { x: number; y: number }, preview: null as null | { x: number; y: number }, distanceMm: null as null | number, dxMm: null as null | number, dyMm: null as null | number, snap: null as null | { x: number; y: number } };
         const snapPoints: Array<{ x: number; y: number }> = [];
         const SNAP_RADIUS = 12;
 
@@ -173,14 +175,29 @@ export default function PcbCanvas({
         const snapPoint = (x: number, y: number) => {
           let best = { x, y };
           let bestD = SNAP_RADIUS;
+          let snapped = false;
           for (const p of snapPoints) {
             const d = Math.hypot(p.x - x, p.y - y);
             if (d < bestD) {
               best = p;
               bestD = d;
+              snapped = true;
             }
           }
+          measureRef.snap = snapped ? best : null;
+          snapMarker.visible = snapped;
+          if (snapped) {
+            snapMarker.x = best.x - 5;
+            snapMarker.y = best.y - 5;
+          }
           return best;
+        };
+
+        const applyOrthogonalConstraint = (x: number, y: number, enabled: boolean) => {
+          if (!enabled || !measureRef.p1) return { x, y };
+          const dx = x - measureRef.p1.x;
+          const dy = y - measureRef.p1.y;
+          return Math.abs(dx) >= Math.abs(dy) ? { x, y: measureRef.p1.y } : { x: measureRef.p1.x, y };
         };
 
         const updateMeasureOverlay = () => {
@@ -189,6 +206,7 @@ export default function PcbCanvas({
             measureLabel.visible = false;
             measureP1.visible = false;
             measureP2.visible = false;
+            snapMarker.visible = false;
             measureRef.distanceMm = null;
             measureRef.dxMm = null;
             measureRef.dyMm = null;
@@ -443,7 +461,8 @@ export default function PcbCanvas({
             return;
           }
           if (measureRef.p1 && !measureRef.p2) {
-            measureRef.preview = snapPoint(x, y);
+            const constrainedPreview = applyOrthogonalConstraint(x, y, e.shiftKey);
+            measureRef.preview = snapPoint(constrainedPreview.x, constrainedPreview.y);
             updateMeasureOverlay();
           }
           if (!dragRef.active) {
@@ -482,7 +501,8 @@ export default function PcbCanvas({
           const rect = view.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
-          const snapped = snapPoint(x, y);
+          const constrained = applyOrthogonalConstraint(x, y, e.shiftKey);
+          const snapped = snapPoint(constrained.x, constrained.y);
           if (!measureRef.p1 || measureRef.p2) {
             measureRef.p1 = snapped;
             measureRef.p2 = null;
@@ -501,6 +521,8 @@ export default function PcbCanvas({
           dragRef.active = false;
           if (measureRef.p1 && !measureRef.p2) {
             measureRef.preview = null;
+            measureRef.snap = null;
+            snapMarker.visible = false;
             updateMeasureOverlay();
           }
           leafer.forceRender?.();
@@ -511,6 +533,8 @@ export default function PcbCanvas({
             measureRef.p1 = null;
             measureRef.p2 = null;
             measureRef.preview = null;
+            measureRef.snap = null;
+            snapMarker.visible = false;
             measureRef.distanceMm = null;
             measureRef.dxMm = null;
             measureRef.dyMm = null;
