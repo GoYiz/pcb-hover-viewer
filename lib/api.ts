@@ -1,12 +1,18 @@
-import type { ComponentItem, RelationsResponse, TraceItem } from "@/types/pcb";
+import type { BoardMeta, ComponentItem, RelationsResponse, TraceItem } from "@/types/pcb";
 
-export async function fetchComponents(boardId: string) {
+export async function fetchBoardMeta(boardId: string) {
+  const res = await fetch(`/api/boards/${boardId}/meta`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch board meta");
+  return (await res.json()) as { board: BoardMeta; layers: Array<{ id: string; name: string; zIndex: number }> };
+}
+
+export async function fetchBoardComponents(boardId: string) {
   const res = await fetch(`/api/boards/${boardId}/components`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch components");
   return (await res.json()) as { boardId: string; components: ComponentItem[] };
 }
 
-export async function fetchGeometry(boardId: string, layer = "TOP") {
+export async function fetchBoardGeometry(boardId: string, layer = "TOP") {
   const res = await fetch(`/api/boards/${boardId}/geometry?layer=${layer}`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch geometry");
   return (await res.json()) as { boardId: string; layer: string; traces: TraceItem[] };
@@ -23,3 +29,6 @@ export async function fetchRelations(
   if (!res.ok) throw new Error("Failed to fetch relations");
   return (await res.json()) as RelationsResponse;
 }
+
+export const fetchComponents = fetchBoardComponents;
+export const fetchGeometry = fetchBoardGeometry;
