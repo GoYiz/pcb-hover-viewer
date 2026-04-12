@@ -1,6 +1,11 @@
+import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import BoardViewerClient from "@/components/BoardViewerClient";
+
+const BoardViewerClient = dynamic(() => import("@/components/BoardViewerClient"), {
+  ssr: false,
+  loading: () => <main style={{ padding: 24, color: "#cbd5e1" }}>Loading workbench…</main>,
+});
 
 export default async function BoardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
