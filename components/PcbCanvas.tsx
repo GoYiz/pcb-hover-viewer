@@ -317,12 +317,18 @@ export default function PcbCanvas({
           const oy = Number(params.get("oy"));
           const sc = (params.get("sc") || "").split(",").filter(Boolean);
           const st = (params.get("st") || "").split(",").filter(Boolean);
+          const tool = params.get("tool");
+          const sf = params.get("sf");
+          const vd = (params.get("vd") || "").split(",").filter(Boolean);
           return {
             zoom: Number.isFinite(zoom) ? zoom : null,
             ox: Number.isFinite(ox) ? ox : null,
             oy: Number.isFinite(oy) ? oy : null,
             sc,
             st,
+            tool: tool === "select" || tool === "measure" || tool === "pan" ? tool : null,
+            sf: sf === "all" || sf === "component" || sf === "trace" ? sf : null,
+            vd,
           };
         };
 
@@ -332,6 +338,7 @@ export default function PcbCanvas({
           const params = url.searchParams;
           const selectedCompList = Array.from(selectedCompIds);
           const selectedTraceList = Array.from(selectedTraceIds);
+          const visibleDetailList = Object.entries(detailVisibilityRef.value).filter(([, enabled]) => enabled).map(([key]) => key);
           if (Math.abs(scaleRef.value - 1) < 1e-6) params.delete("zoom");
           else params.set("zoom", scaleRef.value.toFixed(3));
           if (Math.abs(offsetRef.x) < 1e-3) params.delete("ox");
@@ -342,6 +349,12 @@ export default function PcbCanvas({
           else params.delete("sc");
           if (selectedTraceList.length) params.set("st", selectedTraceList.join(","));
           else params.delete("st");
+          if (toolModeRef.value === "select") params.delete("tool");
+          else params.set("tool", toolModeRef.value);
+          if (selectionFilterRef.value === "all") params.delete("sf");
+          else params.set("sf", selectionFilterRef.value);
+          if (visibleDetailList.length === 4) params.delete("vd");
+          else params.set("vd", visibleDetailList.join(","));
           window.history.replaceState({}, "", url.toString());
         };
 
@@ -1437,6 +1450,17 @@ export default function PcbCanvas({
           if (initialUrlState.zoom != null) scaleRef.value = Math.max(0.6, Math.min(3.5, initialUrlState.zoom));
           if (initialUrlState.ox != null) offsetRef.x = initialUrlState.ox;
           if (initialUrlState.oy != null) offsetRef.y = initialUrlState.oy;
+          if (initialUrlState.tool) toolModeRef.value = initialUrlState.tool;
+          if (initialUrlState.sf) selectionFilterRef.value = initialUrlState.sf;
+          if (initialUrlState.vd.length) {
+            detailVisibilityRef.value = {
+              grid: initialUrlState.vd.includes("grid"),
+              components: initialUrlState.vd.includes("components"),
+              labels: initialUrlState.vd.includes("labels"),
+              measures: initialUrlState.vd.includes("measures"),
+            };
+            if (detailVisibilityRef.value.labels) detailVisibilityRef.value.components = true;
+          }
           for (const id of initialUrlState.sc) if (compBoundsMap.has(id)) selectedCompIds.add(id);
           for (const id of initialUrlState.st) if (traceBoundsMap.has(id)) selectedTraceIds.add(id);
         }
