@@ -110,7 +110,7 @@ export default function PcbCanvas({
         });
         overlayLayer.add(selectionBar);
 
-        const topToolbar = new Rect({ x: 24, y: 40, width: 420, height: 30, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
+        const topToolbar = new Rect({ x: 24, y: 40, width: 554, height: 30, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
         overlayLayer.add(topToolbar);
         const sideToolbar = new Rect({ x: 24, y: 80, width: 58, height: 126, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
         overlayLayer.add(sideToolbar);
@@ -496,7 +496,9 @@ export default function PcbCanvas({
           const zoomBtn = createToolbarButton(144, 46, 52, 18, "ZoomSel", false, "rgba(30,64,175,0.78)");
           const clearSelBtn = createToolbarButton(202, 46, 58, 18, "ClrSel", false, "rgba(127,29,29,0.72)");
           const clearMeaBtn = createToolbarButton(266, 46, 64, 18, "ClrMeas", false, "rgba(127,29,29,0.72)");
-          const helpBtn = createToolbarButton(336, 46, 42, 18, helpRef.visible ? "Hide?" : "Help", helpRef.visible, "rgba(14,165,233,0.82)");
+          const shotBtn = createToolbarButton(336, 46, 46, 18, "Shot", false, "rgba(22,163,74,0.80)");
+          const exportTxtBtn = createToolbarButton(388, 46, 54, 18, "ExpTxt", false, "rgba(2,132,199,0.80)");
+          const helpBtn = createToolbarButton(448, 46, 42, 18, helpRef.visible ? "Hide?" : "Help", helpRef.visible, "rgba(14,165,233,0.82)");
           for (const node of [selectBtn.bg, selectBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "select"; renderVisibility(); });
           for (const node of [measureBtn.bg, measureBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "measure"; renderVisibility(); });
           for (const node of [panBtn.bg, panBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "pan"; renderVisibility(); });
@@ -505,6 +507,8 @@ export default function PcbCanvas({
           for (const node of [zoomBtn.bg, zoomBtn.text]) node.on("pointer.tap", () => { zoomToSelection(); renderVisibility(); });
           for (const node of [clearSelBtn.bg, clearSelBtn.text]) node.on("pointer.tap", () => { clearSelection(); renderVisibility(); });
           for (const node of [clearMeaBtn.bg, clearMeaBtn.text]) node.on("pointer.tap", () => { clearAllMeasures(); renderVisibility(); });
+          for (const node of [shotBtn.bg, shotBtn.text]) node.on("pointer.tap", () => { exportCanvasShot(); });
+          for (const node of [exportTxtBtn.bg, exportTxtBtn.text]) node.on("pointer.tap", () => { exportWorkbenchText(); });
           for (const node of [helpBtn.bg, helpBtn.text]) node.on("pointer.tap", () => { toggleHelp(); renderToolbars(); });
         };
 
@@ -706,6 +710,49 @@ export default function PcbCanvas({
             renderMeasurePanel();
             leafer.forceRender?.();
           }, 900);
+        };
+
+        const triggerDownload = (filename: string, href: string) => {
+          if (typeof document === "undefined") return;
+          const link = document.createElement("a");
+          link.href = href;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        };
+
+        const exportCanvasShot = () => {
+          const canvas = hostRef.current?.querySelector("canvas") as HTMLCanvasElement | null;
+          if (!canvas) return;
+          const boardSlug = boardId || "board";
+          triggerDownload(`${boardSlug}-workbench-shot.png`, canvas.toDataURL("image/png"));
+        };
+
+        const buildWorkbenchExportText = () => {
+          const layerLabel = visibleLayers.length === 0 || visibleLayers.length === 2 ? "All" : visibleLayers.join(" + ");
+          const selectedComponents = Array.from(selectedCompIds).map((id) => components.find((c) => c.id === id)?.refdes || id);
+          const selectedTraces = Array.from(selectedTraceIds);
+          return [
+            `Board: ${boardId || "board"}`,
+            `Layer: ${layerLabel}`,
+            `Tool: ${toolModeRef.value}`,
+            `Zoom: ${scaleRef.value.toFixed(3)}`,
+            `Offset: ${offsetRef.x.toFixed(1)}, ${offsetRef.y.toFixed(1)}`,
+            `Selected Components (${selectedComponents.length}): ${selectedComponents.join(", ") || "-"}`,
+            `Selected Traces (${selectedTraces.length}): ${selectedTraces.join(", ") || "-"}`,
+            "",
+            "Measurements:",
+            buildAllMeasurementsText(),
+          ].join("\n");
+        };
+
+        const exportWorkbenchText = () => {
+          const boardSlug = boardId || "board";
+          const blob = new Blob([buildWorkbenchExportText()], { type: "text/plain;charset=utf-8" });
+          const href = URL.createObjectURL(blob);
+          triggerDownload(`${boardSlug}-workbench-export.txt`, href);
+          window.setTimeout(() => URL.revokeObjectURL(href), 1500);
         };
 
         const renderMeasurePanel = () => {
