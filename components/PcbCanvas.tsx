@@ -110,6 +110,34 @@ export default function PcbCanvas({
         });
         overlayLayer.add(hint);
 
+        const measurePanel = new Rect({
+          x: width - 314,
+          y: 44,
+          width: 290,
+          height: 152,
+          fill: "rgba(15,23,42,0.82)",
+          stroke: "rgba(99,102,241,0.35)",
+          strokeWidth: 1,
+          cornerRadius: 10,
+        });
+        const measurePanelTitle = new Text({
+          x: width - 296,
+          y: 58,
+          text: "Measurements",
+          fill: "#c4b5fd",
+          fontSize: 12,
+        });
+        const measurePanelBody = new Text({
+          x: width - 296,
+          y: 80,
+          text: "No saved measurements",
+          fill: "#94a3b8",
+          fontSize: 11,
+        });
+        overlayLayer.add(measurePanel);
+        overlayLayer.add(measurePanelTitle);
+        overlayLayer.add(measurePanelBody);
+
         const cursorH = new Line({ points: [0, 0, width, 0], stroke: "rgba(34,211,238,0.55)", strokeWidth: 1, visible: false });
         const cursorV = new Line({ points: [0, 0, 0, height], stroke: "rgba(34,211,238,0.55)", strokeWidth: 1, visible: false });
         overlayLayer.add(cursorH);
@@ -213,6 +241,18 @@ export default function PcbCanvas({
           measureRef.dxMm = null;
           measureRef.dyMm = null;
           snapMarker.visible = false;
+        };
+
+        const renderMeasurePanel = () => {
+          if (!measureHistory.length) {
+            measurePanelBody.text = "No saved measurements";
+            return;
+          }
+          const lines = measureHistory.slice(-6).map((item, idx, arr) => {
+            const n = measureHistory.length - arr.length + idx + 1;
+            return `#${n}  ΔX ${Math.abs(item.dxMm).toFixed(2)}  ΔY ${Math.abs(item.dyMm).toFixed(2)}  D ${item.distanceMm.toFixed(2)} mm`;
+          });
+          measurePanelBody.text = lines.join("\n");
         };
 
         const renderMeasureHistory = () => {
@@ -457,6 +497,7 @@ export default function PcbCanvas({
           renderGrid();
           applyCamera();
           refreshStyles();
+          renderMeasurePanel();
         };
 
         const onPointerDown = (e: PointerEvent) => {
@@ -592,6 +633,7 @@ export default function PcbCanvas({
             } else if (measureHistory.length) {
               measureHistory.length = 0;
               renderMeasureHistory();
+              renderMeasurePanel();
               updateHud();
             }
             leafer.forceRender?.();
