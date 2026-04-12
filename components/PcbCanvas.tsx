@@ -101,6 +101,13 @@ export default function PcbCanvas({
         });
         overlayLayer.add(selectionBar);
 
+        const topToolbar = new Rect({ x: 24, y: 40, width: 420, height: 30, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
+        overlayLayer.add(topToolbar);
+        const sideToolbar = new Rect({ x: 24, y: 80, width: 58, height: 126, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
+        overlayLayer.add(sideToolbar);
+        const toolbarLayer = new Group();
+        overlayLayer.add(toolbarLayer);
+
         const hud = new Text({
           x: width - 320,
           y: 18,
@@ -251,6 +258,7 @@ export default function PcbCanvas({
         const selectionUiRef = { hoverKind: null as null | "component" | "trace", hoverId: null as null | string };
         const snapPoints: Array<{ x: number; y: number }> = [];
         const SNAP_RADIUS = 12;
+        const toolModeRef = { value: "select" as "select" | "measure" | "pan" };
 
         const applyCamera = () => {
           for (const layer of [gridLayer, boardLayer, traceLayer, compLayer]) {
@@ -265,10 +273,27 @@ export default function PcbCanvas({
           const label = visibleLayers.length === 0 || visibleLayers.length === 2 ? "All" : visibleLayers.join(" + ");
           const count = selectedCompIds.size + selectedTraceIds.size;
           const currentMeasureText = measureRef.distanceMm == null ? "—" : `ΔX ${Math.abs(measureRef.dxMm || 0).toFixed(2)} · ΔY ${Math.abs(measureRef.dyMm || 0).toFixed(2)} · D ${measureRef.distanceMm.toFixed(2)} mm`;
-          hud.text = `Layer: ${label} · Zoom ${scaleRef.value.toFixed(2)}x · Selected ${count} · Measures ${measureHistory.length} · Current ${currentMeasureText}`;
+          hud.text = `Layer: ${label} · Zoom ${scaleRef.value.toFixed(2)}x · Tool ${toolModeRef.value} · Selected ${count} · Measures ${measureHistory.length} · Current ${currentMeasureText}`;
           hud.x = width - 18 - Math.max(320, String(hud.text).length * 6.7);
           const modeText = boxRef.active ? (boxRef.mode === "zoom" ? " · Box Zoom" : boxRef.mode === "subtract" ? " · Box Subtract" : boxRef.append ? " · Box Append" : " · Box Replace") : "";
           selectionBar.text = `Selection · ${selectedCompIds.size} components · ${selectedTraceIds.size} traces · Total ${count}${modeText}`;
+        };
+
+        const zoomToFitBoard = () => {
+          scaleRef.value = 1;
+          offsetRef.x = 0;
+          offsetRef.y = 0;
+          renderGrid();
+          applyCamera();
+          refreshStyles();
+        };
+
+        const createToolbarButton = (x: number, y: number, w: number, h: number, label: string, active: boolean, fill: string) => {
+          const bg = new Rect({ x, y, width: w, height: h, cornerRadius: 8, fill: active ? fill : "rgba(30,41,59,0.66)", stroke: active ? "rgba(255,255,255,0.16)" : "rgba(148,163,184,0.16)", strokeWidth: 1 });
+          const text = new Text({ x: x + 8, y: y + 7, text: label, fill: active ? "#f8fafc" : "#cbd5e1", fontSize: 11 });
+          toolbarLayer.add(bg);
+          toolbarLayer.add(text);
+          return { bg, text };
         };
 
         const getSelectionBounds = () => {
@@ -319,6 +344,26 @@ export default function PcbCanvas({
           renderGrid();
           applyCamera();
           refreshStyles();
+        };
+
+        const renderToolbars = () => {
+          toolbarLayer.clear();
+          const selectBtn = createToolbarButton(32, 88, 42, 28, "Sel", toolModeRef.value === "select", "rgba(245,158,11,0.82)");
+          const measureBtn = createToolbarButton(32, 122, 42, 28, "Mea", toolModeRef.value === "measure", "rgba(167,139,250,0.82)");
+          const panBtn = createToolbarButton(32, 156, 42, 28, "Pan", toolModeRef.value === "pan", "rgba(34,211,238,0.82)");
+          const fitBtn = createToolbarButton(32, 46, 42, 18, "Fit", false, "rgba(30,64,175,0.78)");
+          const ctrBtn = createToolbarButton(80, 46, 58, 18, "CenterSel", false, "rgba(8,145,178,0.75)");
+          const zoomBtn = createToolbarButton(144, 46, 52, 18, "ZoomSel", false, "rgba(30,64,175,0.78)");
+          const clearSelBtn = createToolbarButton(202, 46, 58, 18, "ClrSel", false, "rgba(127,29,29,0.72)");
+          const clearMeaBtn = createToolbarButton(266, 46, 64, 18, "ClrMeas", false, "rgba(127,29,29,0.72)");
+          for (const node of [selectBtn.bg, selectBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "select"; renderVisibility(); });
+          for (const node of [measureBtn.bg, measureBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "measure"; renderVisibility(); });
+          for (const node of [panBtn.bg, panBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "pan"; renderVisibility(); });
+          for (const node of [fitBtn.bg, fitBtn.text]) node.on("pointer.tap", () => { zoomToFitBoard(); });
+          for (const node of [ctrBtn.bg, ctrBtn.text]) node.on("pointer.tap", () => { centerSelection(); renderVisibility(); });
+          for (const node of [zoomBtn.bg, zoomBtn.text]) node.on("pointer.tap", () => { zoomToSelection(); renderVisibility(); });
+          for (const node of [clearSelBtn.bg, clearSelBtn.text]) node.on("pointer.tap", () => { clearSelection(); renderVisibility(); });
+          for (const node of [clearMeaBtn.bg, clearMeaBtn.text]) node.on("pointer.tap", () => { clearAllMeasures(); renderVisibility(); });
         };
 
         const renderSelectionPanel = () => {
@@ -837,7 +882,10 @@ export default function PcbCanvas({
           refreshStyles();
           renderMeasurePanel();
           renderSelectionPanel();
+          renderToolbars();
         };
+
+        renderToolbars();
 
         measureCopyAllBg.on("pointer.tap", () => {
           copyAllMeasurements();
@@ -874,7 +922,13 @@ export default function PcbCanvas({
           const rect = view.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
-          if (e.shiftKey) {
+          if (toolModeRef.value === "measure") {
+            if (!(e.metaKey || e.ctrlKey)) {
+              dragRef.active = false;
+            }
+            return;
+          }
+          if (e.shiftKey && toolModeRef.value !== "pan") {
             boxRef.active = true;
             boxRef.mode = e.altKey ? ((e.metaKey || e.ctrlKey) ? "subtract" : "zoom") : "select";
             boxRef.append = !!(e.metaKey || e.ctrlKey) && boxRef.mode === "select";
@@ -893,7 +947,7 @@ export default function PcbCanvas({
             leafer.forceRender?.();
             return;
           }
-          if (!(e.metaKey || e.ctrlKey)) clearSelection();
+          if (toolModeRef.value !== "pan" && !(e.metaKey || e.ctrlKey)) clearSelection();
           dragRef.active = true;
           dragRef.x = x;
           dragRef.y = y;
