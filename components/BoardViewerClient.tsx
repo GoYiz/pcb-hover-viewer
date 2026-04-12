@@ -163,7 +163,7 @@ export default function BoardViewerClient({
 
   useEffect(() => {
     if (!focusComponentId) return;
-    const timer = window.setTimeout(() => setFocusComponentId(undefined), 120);
+    const timer = window.setTimeout(() => setFocusComponentId(undefined), 240);
     return () => window.clearTimeout(timer);
   }, [focusComponentId]);
 
@@ -209,7 +209,20 @@ export default function BoardViewerClient({
             <button className={viewMode === "three" ? "segmented-active" : ""} onClick={() => setViewMode("three")}>Three</button>
           </div>
 
-          <input className="workbench-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search refdes, e.g. U1200" />
+          <input
+            className="workbench-search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && searchMatches[0]) {
+                const c = searchMatches[0];
+                setFocusComponentId(c.id);
+                setHoveredFeature("component", c.id);
+                setSearch("");
+              }
+            }}
+            placeholder="Search refdes, e.g. U1200"
+          />
         </div>
 
         {searchMatches.length > 0 && (
@@ -221,6 +234,7 @@ export default function BoardViewerClient({
                 onClick={() => {
                   setFocusComponentId(c.id);
                   setHoveredFeature("component", c.id);
+                  setSearch("");
                 }}
               >
                 {c.refdes}

@@ -469,6 +469,23 @@ export default function PcbCanvas({
           refreshStyles();
         };
 
+        const focusComponentById = (id: string) => {
+          const b = compBoundsMap.get(id);
+          if (!b) return;
+          selectedCompIds.clear();
+          selectedTraceIds.clear();
+          selectedCompIds.add(id);
+          const pad = 36;
+          const nextScale = Math.max(0.8, Math.min(3.5, Math.min((width - pad * 2) / Math.max(b.width, 6), (height - pad * 2) / Math.max(b.height, 6))));
+          scaleRef.value = nextScale;
+          offsetRef.x = width / 2 - (b.x + b.width / 2) * scaleRef.value;
+          offsetRef.y = height / 2 - (b.y + b.height / 2) * scaleRef.value;
+          renderGrid();
+          applyCamera();
+          refreshStyles();
+          writeUrlState();
+        };
+
         const renderToolbars = () => {
           toolbarLayer.clear();
           const selectBtn = createToolbarButton(32, 88, 42, 28, "Sel", toolModeRef.value === "select", "rgba(245,158,11,0.82)");
@@ -1324,6 +1341,7 @@ export default function PcbCanvas({
           visibleLayers,
           scaleRef,
           updateHud,
+          focusComponentById,
           cleanup: () => {
             view.removeEventListener("pointerdown", onPointerDown);
             view.removeEventListener("pointermove", onPointerMove);
@@ -1352,6 +1370,10 @@ export default function PcbCanvas({
   useEffect(() => {
     const rt = runtimeRef.current;
     if (!rt) return;
+    if (focusComponentId && typeof rt.focusComponentById === "function") {
+      rt.focusComponentById(focusComponentId);
+      return;
+    }
     for (const trace of rt.traces as TraceItem[]) {
       const line = rt.traceMap.get(trace.id);
       if (!line) continue;
