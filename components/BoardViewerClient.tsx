@@ -296,7 +296,8 @@ export default function BoardViewerClient({
             <ul className="tips-list">
               <li>Mouse wheel to zoom</li>
               <li>Drag to pan / orbit</li>
-              <li>Shift + drag for box zoom in 2D</li>
+              <li>Shift + drag for box select in 2D</li>
+              <li>Alt + Shift + drag for box zoom in 2D</li>
               <li>Leafer is now the default 2D renderer</li>
               <li>Hover trace or component to inspect graph</li>
             </ul>
