@@ -104,7 +104,7 @@ export default function PcbCanvas({
         const hint = new Text({
           x: 24,
           y: 18,
-          text: "Drag pan · Wheel zoom · Shift box select · Alt+Shift box zoom · Double click to measure · Enter commit · Backspace undo · Esc clear · Snap on points · Hold Shift for orthogonal",
+          text: "Drag pan · Wheel zoom · Shift box select · Shift+Cmd/Ctrl append box select · Alt+Shift box zoom · Cmd/Ctrl click append select · Double click to measure · Enter commit · Backspace undo · Esc clear",
           fill: "#64748b",
           fontSize: 11,
         });
@@ -187,7 +187,7 @@ export default function PcbCanvas({
         const scaleRef = { value: 1 };
         const offsetRef = { x: 0, y: 0 };
         const dragRef = { active: false, x: 0, y: 0 };
-        const boxRef = { active: false, sx: 0, sy: 0, ex: 0, ey: 0, mode: "select" as "select" | "zoom" };
+        const boxRef = { active: false, sx: 0, sy: 0, ex: 0, ey: 0, mode: "select" as "select" | "zoom", append: false };
         const measureRef = { p1: null as null | { x: number; y: number }, p2: null as null | { x: number; y: number }, preview: null as null | { x: number; y: number }, distanceMm: null as null | number, dxMm: null as null | number, dyMm: null as null | number, snap: null as null | { x: number; y: number } };
         const measureHistory: Array<{ p1: { x: number; y: number }; p2: { x: number; y: number }; dxMm: number; dyMm: number; distanceMm: number }> = [];
         const measureUiRef = { selectedIndex: -1, hoverIndex: -1, copyFlashIndex: -1 };
@@ -503,6 +503,17 @@ export default function PcbCanvas({
           refreshStyles();
         };
 
+        const toggleSelection = (kind: "component" | "trace", id: string) => {
+          if (kind === "component") {
+            if (selectedCompIds.has(id)) selectedCompIds.delete(id);
+            else selectedCompIds.add(id);
+          } else {
+            if (selectedTraceIds.has(id)) selectedTraceIds.delete(id);
+            else selectedTraceIds.add(id);
+          }
+          refreshStyles();
+        };
+
         const boxSelect = () => {
           const sx = Math.min(boxRef.sx, boxRef.ex);
           const sy = Math.min(boxRef.sy, boxRef.ey);
@@ -513,8 +524,10 @@ export default function PcbCanvas({
           const wx2 = (ex - offsetRef.x) / scaleRef.value;
           const wy2 = (ey - offsetRef.y) / scaleRef.value;
 
-          selectedCompIds.clear();
-          selectedTraceIds.clear();
+          if (!boxRef.append) {
+            selectedCompIds.clear();
+            selectedTraceIds.clear();
+          }
 
           for (const [id, b] of compBoundsMap) {
             if (b.x + b.width >= wx1 && b.x <= wx2 && b.y + b.height >= wy1 && b.y <= wy2) selectedCompIds.add(id);
@@ -562,7 +575,7 @@ export default function PcbCanvas({
           const line = new Line({ points, stroke: "#3b82f6", strokeWidth: 2, opacity: 0.45, hitFill: "#ffffff", hitRadius: 8 });
           line.on("pointer.enter", () => onHoverFeature("trace", trace.id));
           line.on("pointer.leave", () => onHoverFeature(undefined, undefined));
-          line.on("pointer.tap", () => selectOnly("trace", trace.id));
+          line.on("pointer.tap", (e: any) => ((e?.metaKey || e?.ctrlKey) ? toggleSelection("trace", trace.id) : selectOnly("trace", trace.id)));
           traceLayer.add(line);
           traceMap.set(trace.id, line);
           traceBoundsMap.set(trace.id, { minX, minY, maxX, maxY });
@@ -578,7 +591,7 @@ export default function PcbCanvas({
           const rect = new Rect({ x, y, width: w, height: h, fill: "#94a3b8", opacity: 0.55, cornerRadius: 2, stroke: "rgba(0,0,0,0)", strokeWidth: 0 });
           rect.on("pointer.enter", () => onHoverFeature("component", c.id));
           rect.on("pointer.leave", () => onHoverFeature(undefined, undefined));
-          rect.on("pointer.tap", () => selectOnly("component", c.id));
+          rect.on("pointer.tap", (e: any) => ((e?.metaKey || e?.ctrlKey) ? toggleSelection("component", c.id) : selectOnly("component", c.id)));
           const label = new Text({ x, y: Math.max(14, y - 12), text: c.refdes, fill: "#e2e8f0", fontSize: 11 });
           const marker = new Rect({ x: x - 4, y: y - 4, width: 10, height: 10, stroke: "#f59e0b", strokeWidth: 2, fill: "rgba(0,0,0,0)", cornerRadius: 3, visible: false });
           compLayer.add(rect);
@@ -614,13 +627,14 @@ export default function PcbCanvas({
           if (e.shiftKey) {
             boxRef.active = true;
             boxRef.mode = e.altKey ? "zoom" : "select";
+            boxRef.append = !!(e.metaKey || e.ctrlKey) && boxRef.mode === "select";
             boxRef.sx = x;
             boxRef.sy = y;
             boxRef.ex = x;
             boxRef.ey = y;
             box.visible = true;
-            box.stroke = boxRef.mode === "zoom" ? "#22d3ee" : "#f59e0b";
-            box.fill = boxRef.mode === "zoom" ? "rgba(34,211,238,0.08)" : "rgba(245,158,11,0.08)";
+            box.stroke = boxRef.mode === "zoom" ? "#22d3ee" : boxRef.append ? "#a78bfa" : "#f59e0b";
+            box.fill = boxRef.mode === "zoom" ? "rgba(34,211,238,0.08)" : boxRef.append ? "rgba(167,139,250,0.10)" : "rgba(245,158,11,0.08)";
             box.x = x;
             box.y = y;
             box.width = 0;
@@ -628,7 +642,7 @@ export default function PcbCanvas({
             leafer.forceRender?.();
             return;
           }
-          clearSelection();
+          if (!(e.metaKey || e.ctrlKey)) clearSelection();
           dragRef.active = true;
           dragRef.x = x;
           dragRef.y = y;
@@ -683,6 +697,7 @@ export default function PcbCanvas({
             }
             boxRef.active = false;
             box.visible = false;
+            boxRef.append = false;
             applyCamera();
             leafer.forceRender?.();
           }
