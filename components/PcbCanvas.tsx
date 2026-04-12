@@ -28,7 +28,21 @@ function mapY(y: number, bh: number, h: number) {
   return PAD + (y / Math.max(bh, 1)) * (h - PAD * 2);
 }
 
-export default function PcbCanvas({ width, height, boardWidthMm, boardHeightMm, components, traces, visibleLayers = ["F.Cu", "B.Cu"] }: Props) {
+export default function PcbCanvas({
+  width,
+  height,
+  boardWidthMm,
+  boardHeightMm,
+  components,
+  traces,
+  visibleLayers = ["F.Cu", "B.Cu"],
+  focusComponentId,
+  hoveredId,
+  hoveredType,
+  directIds,
+  traceHighlightIds,
+  onHoverFeature,
+}: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,7 +76,20 @@ export default function PcbCanvas({ width, height, boardWidthMm, boardHeightMm, 
           for (const [x, y] of trace.path) {
             points.push(mapX(x, boardWidthMm, width), mapY(y, boardHeightMm, height));
           }
-          const line = new Line({ points, stroke: "#3b82f6", strokeWidth: 2, opacity: 0.45 });
+
+          const isTarget = hoveredType === "trace" && hoveredId === trace.id;
+          const isRelated = traceHighlightIds.includes(trace.id);
+
+          const line = new Line({
+            points,
+            stroke: isTarget ? "#f43f5e" : isRelated ? "#22d3ee" : "#3b82f6",
+            strokeWidth: isTarget ? 5 : isRelated ? 4 : 2,
+            opacity: isTarget || isRelated ? 1 : 0.45,
+            hitFill: "#ffffff",
+            hitRadius: 8,
+          });
+          line.on("pointer.enter", () => onHoverFeature("trace", trace.id));
+          line.on("pointer.leave", () => onHoverFeature(undefined, undefined));
           leafer.add(line);
         }
 
@@ -73,13 +100,44 @@ export default function PcbCanvas({ width, height, boardWidthMm, boardHeightMm, 
           const w = (bw / Math.max(boardWidthMm, 1)) * (width - PAD * 2);
           const h = (bh / Math.max(boardHeightMm, 1)) * (height - PAD * 2);
 
-          const rect = new Rect({ x, y, width: w, height: h, fill: "#94a3b8", opacity: 0.55, cornerRadius: 2 });
+          const isTarget = hoveredType === "component" && hoveredId === c.id;
+          const isRelated = directIds.includes(c.id);
+
+          const rect = new Rect({
+            x,
+            y,
+            width: w,
+            height: h,
+            fill: isTarget ? "#f43f5e" : isRelated ? "#22d3ee" : "#94a3b8",
+            opacity: isTarget ? 1 : isRelated ? 0.92 : 0.55,
+            cornerRadius: 2,
+          });
+          rect.on("pointer.enter", () => onHoverFeature("component", c.id));
+          rect.on("pointer.leave", () => onHoverFeature(undefined, undefined));
+
           const label = new Text({ x, y: Math.max(14, y - 12), text: c.refdes, fill: "#e2e8f0", fontSize: 11 });
           leafer.add(rect);
           leafer.add(label);
         }
 
-        const title = new Text({ x: 24, y: height - 24, text: `Leafer render probe · ${components.length} components · ${traces.length} traces`, fill: "#cbd5e1", fontSize: 12 });
+        if (focusComponentId) {
+          const focus = components.find((c) => c.id === focusComponentId);
+          if (focus) {
+            const [bx, by] = focus.bbox;
+            const x = mapX(bx, boardWidthMm, width);
+            const y = mapY(by, boardHeightMm, height);
+            const marker = new Rect({ x: x - 4, y: y - 4, width: 10, height: 10, stroke: "#f59e0b", strokeWidth: 2, fill: "rgba(0,0,0,0)", cornerRadius: 3 });
+            leafer.add(marker);
+          }
+        }
+
+        const title = new Text({
+          x: 24,
+          y: height - 24,
+          text: `Leafer 2D · hover+relation restored · ${components.length} components · ${traces.length} traces`,
+          fill: "#cbd5e1",
+          fontSize: 12,
+        });
         leafer.add(title);
       })
       .catch((e) => {
@@ -92,7 +150,7 @@ export default function PcbCanvas({ width, height, boardWidthMm, boardHeightMm, 
         leafer?.destroy();
       } catch {}
     };
-  }, [width, height, boardWidthMm, boardHeightMm, components, traces, visibleLayers]);
+  }, [width, height, boardWidthMm, boardHeightMm, components, traces, visibleLayers, hoveredId, hoveredType, directIds, traceHighlightIds, focusComponentId, onHoverFeature]);
 
   if (error) {
     return (
