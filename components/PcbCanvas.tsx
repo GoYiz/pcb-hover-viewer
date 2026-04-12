@@ -136,6 +136,8 @@ export default function PcbCanvas({
           fill: "#c4b5fd",
           fontSize: 12,
         });
+        const measureCopyAllBg = new Rect({ x: width - 144, y: 54, width: 56, height: 18, cornerRadius: 6, fill: "rgba(30,64,175,0.78)" });
+        const measureCopyAllText = new Text({ x: width - 135, y: 58, text: "CopyAll", fill: "#dbeafe", fontSize: 10.5 });
         const measureClearBg = new Rect({ x: width - 82, y: 54, width: 52, height: 18, cornerRadius: 6, fill: "rgba(127,29,29,0.72)" });
         const measureClearText = new Text({ x: width - 71, y: 58, text: "Clear", fill: "#fecaca", fontSize: 10.5 });
         const measurePanelBody = new Text({
@@ -148,6 +150,8 @@ export default function PcbCanvas({
         const measurePanelListLayer = new Group();
         overlayLayer.add(measurePanel);
         overlayLayer.add(measurePanelTitle);
+        overlayLayer.add(measureCopyAllBg);
+        overlayLayer.add(measureCopyAllText);
         overlayLayer.add(measureClearBg);
         overlayLayer.add(measureClearText);
         overlayLayer.add(measurePanelBody);
@@ -243,7 +247,7 @@ export default function PcbCanvas({
         const boxRef = { active: false, sx: 0, sy: 0, ex: 0, ey: 0, mode: "select" as "select" | "zoom" | "subtract", append: false };
         const measureRef = { p1: null as null | { x: number; y: number }, p2: null as null | { x: number; y: number }, preview: null as null | { x: number; y: number }, distanceMm: null as null | number, dxMm: null as null | number, dyMm: null as null | number, snap: null as null | { x: number; y: number } };
         const measureHistory: Array<{ p1: { x: number; y: number }; p2: { x: number; y: number }; dxMm: number; dyMm: number; distanceMm: number }> = [];
-        const measureUiRef = { selectedIndex: -1, hoverIndex: -1, copyFlashIndex: -1 };
+        const measureUiRef = { selectedIndex: -1, hoverIndex: -1, copyFlashIndex: -1, copyAllFlash: false };
         const selectionUiRef = { hoverKind: null as null | "component" | "trace", hoverId: null as null | string };
         const snapPoints: Array<{ x: number; y: number }> = [];
         const SNAP_RADIUS = 12;
@@ -420,6 +424,31 @@ export default function PcbCanvas({
           snapMarker.visible = false;
         };
 
+        const buildAllMeasurementsText = () => {
+          if (!measureHistory.length) return "No saved measurements";
+          return measureHistory
+            .map((item, index) => `#${index + 1}  ΔX ${Math.abs(item.dxMm).toFixed(2)}  ΔY ${Math.abs(item.dyMm).toFixed(2)}  D ${item.distanceMm.toFixed(2)} mm`)
+            .join("
+");
+        };
+
+        const copyAllMeasurements = () => {
+          const nav = typeof navigator !== "undefined" ? navigator : undefined;
+          nav?.clipboard?.writeText?.(buildAllMeasurementsText());
+          measureUiRef.copyAllFlash = true;
+          measureCopyAllBg.fill = "rgba(21,128,61,0.85)";
+          measureCopyAllText.text = "✓All";
+          renderMeasurePanel();
+          leafer.forceRender?.();
+          window.setTimeout(() => {
+            measureUiRef.copyAllFlash = false;
+            measureCopyAllBg.fill = "rgba(30,64,175,0.78)";
+            measureCopyAllText.text = "CopyAll";
+            renderMeasurePanel();
+            leafer.forceRender?.();
+          }, 900);
+        };
+
         const renderMeasurePanel = () => {
           measurePanelListLayer.clear();
           if (!measureHistory.length) {
@@ -536,6 +565,9 @@ export default function PcbCanvas({
           measureUiRef.selectedIndex = -1;
           measureUiRef.hoverIndex = -1;
           measureUiRef.copyFlashIndex = -1;
+          measureUiRef.copyAllFlash = false;
+          measureCopyAllBg.fill = "rgba(30,64,175,0.78)";
+          measureCopyAllText.text = "CopyAll";
           renderMeasureHistory();
           renderMeasurePanel();
           updateHud();
@@ -808,6 +840,12 @@ export default function PcbCanvas({
           renderSelectionPanel();
         };
 
+        measureCopyAllBg.on("pointer.tap", () => {
+          copyAllMeasurements();
+        });
+        measureCopyAllText.on("pointer.tap", () => {
+          copyAllMeasurements();
+        });
         measureClearBg.on("pointer.tap", () => {
           clearAllMeasures();
           leafer.forceRender?.();
