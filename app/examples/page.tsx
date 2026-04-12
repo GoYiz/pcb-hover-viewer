@@ -1,11 +1,6 @@
-import dynamic from "next/dynamic";
 import { getExampleById, getExamplesIndex } from "@/lib/examples";
 import type { ExampleBoardData } from "@/lib/examples";
-
-const ExamplesClientNoSSR = dynamic(() => import("@/components/ExamplesClient"), {
-  ssr: false,
-  loading: () => <main style={{ padding: 24, color: "#cbd5e1" }}>Loading examples…</main>,
-});
+import ExamplesClient from "@/components/ExamplesClient";
 
 export default function ExamplesPage() {
   const index = getExamplesIndex();
@@ -16,5 +11,5 @@ export default function ExamplesPage() {
     if (data) examples[item.id] = data;
   }
 
-  return <ExamplesClientNoSSR index={index} examples={examples} />;
+  return <ExamplesClient index={index} examples={examples} />;
 }
