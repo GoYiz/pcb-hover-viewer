@@ -58,10 +58,12 @@ export default function PcbCanvas({
         hostRef.current.innerHTML = `<div id="${viewId}" style="width:${width}px;height:${height}px"></div>`;
 
         const leafer = new Leafer({ view: viewId });
+        const gridLayer = new Group();
         const boardLayer = new Group();
         const traceLayer = new Group();
         const compLayer = new Group();
         const overlayLayer = new Group();
+        leafer.add(gridLayer);
         leafer.add(boardLayer);
         leafer.add(traceLayer);
         leafer.add(compLayer);
@@ -87,7 +89,30 @@ export default function PcbCanvas({
         });
         overlayLayer.add(title);
 
-        const box = new Rect({ x: 0, y: 0, width: 0, height: 0, stroke: "#22d3ee", strokeWidth: 1.5, fill: "rgba(34,211,238,0.08)", visible: false });
+        const hud = new Text({
+          x: width - 250,
+          y: 18,
+          text: "Layer: All · Zoom 1.00x",
+          fill: "#93c5fd",
+          fontSize: 12,
+        });
+        overlayLayer.add(hud);
+
+        const cursorH = new Line({ points: [0, 0, width, 0], stroke: "rgba(34,211,238,0.55)", strokeWidth: 1, visible: false });
+        const cursorV = new Line({ points: [0, 0, 0, height], stroke: "rgba(34,211,238,0.55)", strokeWidth: 1, visible: false });
+        overlayLayer.add(cursorH);
+        overlayLayer.add(cursorV);
+
+        const box = new Rect({
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          stroke: "#22d3ee",
+          strokeWidth: 1.5,
+          fill: "rgba(34,211,238,0.08)",
+          visible: false,
+        });
         overlayLayer.add(box);
 
         const traceMap = new Map<string, any>();
@@ -101,12 +126,50 @@ export default function PcbCanvas({
         const boxRef = { active: false, sx: 0, sy: 0, ex: 0, ey: 0 };
 
         const applyCamera = () => {
-          for (const layer of [boardLayer, traceLayer, compLayer]) {
+          for (const layer of [gridLayer, boardLayer, traceLayer, compLayer]) {
             layer.scaleX = scaleRef.value;
             layer.scaleY = scaleRef.value;
             layer.x = offsetRef.x;
             layer.y = offsetRef.y;
           }
+        };
+
+        const renderGrid = () => {
+          gridLayer.clear();
+          const worldStep = scaleRef.value >= 2.2 ? 2 : scaleRef.value >= 1.3 ? 5 : 10;
+          const screenStepX = (worldStep / Math.max(boardWidthMm, 1)) * (width - PAD * 2) * scaleRef.value;
+          const screenStepY = (worldStep / Math.max(boardHeightMm, 1)) * (height - PAD * 2) * scaleRef.value;
+          if (screenStepX < 12 || screenStepY < 12) return;
+
+          const left = PAD * scaleRef.value + offsetRef.x;
+          const top = PAD * scaleRef.value + offsetRef.y;
+          const bw = (width - PAD * 2) * scaleRef.value;
+          const bh = (height - PAD * 2) * scaleRef.value;
+
+          for (let x = left; x <= left + bw + 1; x += screenStepX) {
+            gridLayer.add(
+              new Line({
+                points: [x, top, x, top + bh],
+                stroke: "rgba(51,65,85,0.45)",
+                strokeWidth: 1 / scaleRef.value,
+              }),
+            );
+          }
+          for (let y = top; y <= top + bh + 1; y += screenStepY) {
+            gridLayer.add(
+              new Line({
+                points: [left, y, left + bw, y],
+                stroke: "rgba(51,65,85,0.45)",
+                strokeWidth: 1 / scaleRef.value,
+              }),
+            );
+          }
+        };
+
+        const updateHud = () => {
+          const label = visibleLayers.length === 0 || visibleLayers.length === 2 ? "All" : visibleLayers.join(" + ");
+          hud.text = `Layer: ${label} · Zoom ${scaleRef.value.toFixed(2)}x`;
+          hud.x = width - 18 - Math.max(180, String(hud.text).length * 6.7);
         };
 
         const updateTraceStyle = (id: string) => {
@@ -115,18 +178,23 @@ export default function PcbCanvas({
           const isTarget = hoveredType === "trace" && hoveredId === id;
           const isRelated = traceHighlightIds.includes(id);
           line.stroke = isTarget ? "#f43f5e" : isRelated ? "#22d3ee" : "#3b82f6";
-          line.strokeWidth = isTarget ? 5 : isRelated ? 4 : 2;
+          line.strokeWidth = (isTarget ? 5 : isRelated ? 4 : 2) / Math.max(scaleRef.value * 0.9, 0.8);
           line.opacity = isTarget || isRelated ? 1 : 0.45;
           line.visible = true;
         };
 
         const updateCompStyle = (id: string) => {
           const rect = compMap.get(id);
+          const label = labelMap.get(id);
           if (!rect) return;
           const isTarget = hoveredType === "component" && hoveredId === id;
           const isRelated = directIds.includes(id);
           rect.fill = isTarget ? "#f43f5e" : isRelated ? "#22d3ee" : "#94a3b8";
           rect.opacity = isTarget ? 1 : isRelated ? 0.92 : 0.55;
+          if (label) {
+            label.visible = scaleRef.value >= 0.85;
+            label.fill = isTarget ? "#ffffff" : isRelated ? "#a5f3fc" : "#e2e8f0";
+          }
         };
 
         for (const trace of traces) {
@@ -160,6 +228,7 @@ export default function PcbCanvas({
 
         const view = hostRef.current!;
         const renderVisibility = () => {
+          renderGrid();
           for (const trace of traces) {
             const line = traceMap.get(trace.id);
             if (!line) continue;
@@ -168,6 +237,7 @@ export default function PcbCanvas({
           for (const id of traceMap.keys()) updateTraceStyle(id);
           for (const id of compMap.keys()) updateCompStyle(id);
           for (const [id, marker] of markerMap) marker.visible = focusComponentId === id;
+          updateHud();
           applyCamera();
           leafer.forceRender?.();
         };
@@ -199,6 +269,12 @@ export default function PcbCanvas({
           const rect = view.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
+
+          cursorH.visible = true;
+          cursorV.visible = true;
+          cursorH.points = [0, y, width, y];
+          cursorV.points = [x, 0, x, height];
+
           if (boxRef.active) {
             boxRef.ex = x;
             boxRef.ey = y;
@@ -209,14 +285,19 @@ export default function PcbCanvas({
             leafer.forceRender?.();
             return;
           }
-          if (!dragRef.active) return;
+          if (!dragRef.active) {
+            leafer.forceRender?.();
+            return;
+          }
           const dx = x - dragRef.x;
           const dy = y - dragRef.y;
           dragRef.x = x;
           dragRef.y = y;
           offsetRef.x += dx;
           offsetRef.y += dy;
+          renderGrid();
           applyCamera();
+          updateHud();
           leafer.forceRender?.();
         };
 
@@ -233,6 +314,8 @@ export default function PcbCanvas({
               scaleRef.value = nextScale;
               offsetRef.x = -worldX * scaleRef.value + (width - worldW * scaleRef.value) / 2;
               offsetRef.y = -worldY * scaleRef.value + (height - worldH * scaleRef.value) / 2;
+              renderGrid();
+              updateHud();
             }
             boxRef.active = false;
             box.visible = false;
@@ -240,6 +323,13 @@ export default function PcbCanvas({
             leafer.forceRender?.();
           }
           dragRef.active = false;
+        };
+
+        const onPointerLeave = () => {
+          cursorH.visible = false;
+          cursorV.visible = false;
+          dragRef.active = false;
+          leafer.forceRender?.();
         };
 
         const onWheel = (e: WheelEvent) => {
@@ -253,12 +343,17 @@ export default function PcbCanvas({
           offsetRef.x = x - ((x - offsetRef.x) / old) * next;
           offsetRef.y = y - ((y - offsetRef.y) / old) * next;
           scaleRef.value = next;
+          renderGrid();
           applyCamera();
+          updateHud();
+          for (const id of traceMap.keys()) updateTraceStyle(id);
+          for (const id of compMap.keys()) updateCompStyle(id);
           leafer.forceRender?.();
         };
 
         view.addEventListener("pointerdown", onPointerDown);
         view.addEventListener("pointermove", onPointerMove);
+        view.addEventListener("pointerleave", onPointerLeave);
         window.addEventListener("pointerup", onPointerUp);
         view.addEventListener("wheel", onWheel, { passive: false });
 
@@ -266,12 +361,21 @@ export default function PcbCanvas({
           leafer,
           traceMap,
           compMap,
+          labelMap,
           markerMap,
           traces,
           visibleLayers,
+          gridLayer,
+          cursorH,
+          cursorV,
+          scaleRef,
+          offsetRef,
+          renderGrid,
+          updateHud,
           cleanup: () => {
             view.removeEventListener("pointerdown", onPointerDown);
             view.removeEventListener("pointermove", onPointerMove);
+            view.removeEventListener("pointerleave", onPointerLeave);
             window.removeEventListener("pointerup", onPointerUp);
             view.removeEventListener("wheel", onWheel);
           },
@@ -306,17 +410,23 @@ export default function PcbCanvas({
       const isTarget = hoveredType === "trace" && hoveredId === id;
       const isRelated = traceHighlightIds.includes(id);
       line.stroke = isTarget ? "#f43f5e" : isRelated ? "#22d3ee" : "#3b82f6";
-      line.strokeWidth = isTarget ? 5 : isRelated ? 4 : 2;
+      line.strokeWidth = (isTarget ? 5 : isRelated ? 4 : 2) / Math.max(rt.scaleRef.value * 0.9, 0.8);
       line.opacity = isTarget || isRelated ? 1 : 0.45;
     }
     for (const id of rt.compMap.keys()) {
       const rect = rt.compMap.get(id);
+      const label = rt.labelMap.get(id);
       const isTarget = hoveredType === "component" && hoveredId === id;
       const isRelated = directIds.includes(id);
       rect.fill = isTarget ? "#f43f5e" : isRelated ? "#22d3ee" : "#94a3b8";
       rect.opacity = isTarget ? 1 : isRelated ? 0.92 : 0.55;
+      if (label) {
+        label.visible = rt.scaleRef.value >= 0.85;
+        label.fill = isTarget ? "#ffffff" : isRelated ? "#a5f3fc" : "#e2e8f0";
+      }
     }
     for (const [id, marker] of rt.markerMap) marker.visible = focusComponentId === id;
+    rt.updateHud?.();
     rt.leafer.forceRender?.();
   }, [visibleLayers, hoveredId, hoveredType, directIds, traceHighlightIds, focusComponentId]);
 
