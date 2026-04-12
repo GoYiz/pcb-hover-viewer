@@ -127,6 +127,8 @@ export default function PcbCanvas({
           fill: "#c4b5fd",
           fontSize: 12,
         });
+        const measureClearBg = new Rect({ x: width - 82, y: 54, width: 52, height: 18, cornerRadius: 6, fill: "rgba(127,29,29,0.72)" });
+        const measureClearText = new Text({ x: width - 71, y: 58, text: "Clear", fill: "#fecaca", fontSize: 10.5 });
         const measurePanelBody = new Text({
           x: width - 296,
           y: 80,
@@ -137,6 +139,8 @@ export default function PcbCanvas({
         const measurePanelListLayer = new Group();
         overlayLayer.add(measurePanel);
         overlayLayer.add(measurePanelTitle);
+        overlayLayer.add(measureClearBg);
+        overlayLayer.add(measureClearText);
         overlayLayer.add(measurePanelBody);
         overlayLayer.add(measurePanelListLayer);
 
@@ -186,7 +190,7 @@ export default function PcbCanvas({
         const boxRef = { active: false, sx: 0, sy: 0, ex: 0, ey: 0, mode: "select" as "select" | "zoom" };
         const measureRef = { p1: null as null | { x: number; y: number }, p2: null as null | { x: number; y: number }, preview: null as null | { x: number; y: number }, distanceMm: null as null | number, dxMm: null as null | number, dyMm: null as null | number, snap: null as null | { x: number; y: number } };
         const measureHistory: Array<{ p1: { x: number; y: number }; p2: { x: number; y: number }; dxMm: number; dyMm: number; distanceMm: number }> = [];
-        const measureUiRef = { selectedIndex: -1 };
+        const measureUiRef = { selectedIndex: -1, hoverIndex: -1, copyFlashIndex: -1 };
         const snapPoints: Array<{ x: number; y: number }> = [];
         const SNAP_RADIUS = 12;
 
@@ -259,31 +263,72 @@ export default function PcbCanvas({
             const realIndex = startIndex + idx;
             const y = 80 + idx * 20;
             const active = measureUiRef.selectedIndex === realIndex;
-            const rowBg = new Rect({ x: width - 300, y: y - 2, width: 246, height: 18, cornerRadius: 6, fill: active ? "rgba(99,102,241,0.22)" : "rgba(30,41,59,0.55)" });
-            const rowText = new Text({ x: width - 294, y, text: `#${realIndex + 1}  ΔX ${Math.abs(item.dxMm).toFixed(2)}  ΔY ${Math.abs(item.dyMm).toFixed(2)}  D ${item.distanceMm.toFixed(2)} mm`, fill: active ? "#e9d5ff" : "#cbd5e1", fontSize: 10.5 });
-            const delBg = new Rect({ x: width - 50, y: y - 2, width: 20, height: 18, cornerRadius: 6, fill: "rgba(127,29,29,0.75)" });
-            const delText = new Text({ x: width - 44, y, text: "×", fill: "#fecaca", fontSize: 12 });
-            const toggleActive = () => {
-              measureUiRef.selectedIndex = measureUiRef.selectedIndex === realIndex ? -1 : realIndex;
+            const hover = measureUiRef.hoverIndex === realIndex;
+            const emph = active || hover;
+            const valueText = `#${realIndex + 1}  ΔX ${Math.abs(item.dxMm).toFixed(2)}  ΔY ${Math.abs(item.dyMm).toFixed(2)}  D ${item.distanceMm.toFixed(2)} mm`;
+            const rowBg = new Rect({ x: width - 300, y: y - 2, width: 206, height: 18, cornerRadius: 6, fill: active ? "rgba(99,102,241,0.22)" : hover ? "rgba(34,211,238,0.16)" : "rgba(30,41,59,0.55)" });
+            const rowText = new Text({ x: width - 294, y, text: valueText, fill: emph ? "#e9d5ff" : "#cbd5e1", fontSize: 10.5 });
+            const copyBg = new Rect({ x: width - 90, y: y - 2, width: 18, height: 18, cornerRadius: 6, fill: measureUiRef.copyFlashIndex === realIndex ? "rgba(21,128,61,0.85)" : "rgba(30,64,175,0.78)" });
+            const copyText = new Text({ x: width - 85, y, text: measureUiRef.copyFlashIndex === realIndex ? "✓" : "C", fill: "#dbeafe", fontSize: 10.5 });
+            const delBg = new Rect({ x: width - 66, y: y - 2, width: 18, height: 18, cornerRadius: 6, fill: "rgba(127,29,29,0.75)" });
+            const delText = new Text({ x: width - 61, y, text: "×", fill: "#fecaca", fontSize: 12 });
+            const rerender = () => {
               renderMeasurePanel();
               renderMeasureHistory();
               leafer.forceRender?.();
+            };
+            const toggleActive = () => {
+              measureUiRef.selectedIndex = measureUiRef.selectedIndex === realIndex ? -1 : realIndex;
+              rerender();
+            };
+            const hoverIn = () => {
+              measureUiRef.hoverIndex = realIndex;
+              rerender();
+            };
+            const hoverOut = () => {
+              if (measureUiRef.hoverIndex === realIndex) measureUiRef.hoverIndex = -1;
+              rerender();
+            };
+            const copyItem = () => {
+              const nav = typeof navigator !== "undefined" ? navigator : undefined;
+              nav?.clipboard?.writeText?.(valueText);
+              measureUiRef.copyFlashIndex = realIndex;
+              renderMeasurePanel();
+              leafer.forceRender?.();
+              window.setTimeout(() => {
+                if (measureUiRef.copyFlashIndex === realIndex) {
+                  measureUiRef.copyFlashIndex = -1;
+                  renderMeasurePanel();
+                  leafer.forceRender?.();
+                }
+              }, 800);
             };
             const removeItem = () => {
               measureHistory.splice(realIndex, 1);
               if (measureUiRef.selectedIndex === realIndex) measureUiRef.selectedIndex = -1;
               else if (measureUiRef.selectedIndex > realIndex) measureUiRef.selectedIndex -= 1;
+              if (measureUiRef.hoverIndex === realIndex) measureUiRef.hoverIndex = -1;
+              else if (measureUiRef.hoverIndex > realIndex) measureUiRef.hoverIndex -= 1;
+              if (measureUiRef.copyFlashIndex === realIndex) measureUiRef.copyFlashIndex = -1;
+              else if (measureUiRef.copyFlashIndex > realIndex) measureUiRef.copyFlashIndex -= 1;
               renderMeasurePanel();
               renderMeasureHistory();
               updateHud();
               leafer.forceRender?.();
             };
-            rowBg.on("pointer.tap", toggleActive);
-            rowText.on("pointer.tap", toggleActive);
+            for (const node of [rowBg, rowText]) {
+              node.on("pointer.tap", toggleActive);
+              node.on("pointer.enter", hoverIn);
+              node.on("pointer.leave", hoverOut);
+            }
+            copyBg.on("pointer.tap", copyItem);
+            copyText.on("pointer.tap", copyItem);
             delBg.on("pointer.tap", removeItem);
             delText.on("pointer.tap", removeItem);
             measurePanelListLayer.add(rowBg);
             measurePanelListLayer.add(rowText);
+            measurePanelListLayer.add(copyBg);
+            measurePanelListLayer.add(copyText);
             measurePanelListLayer.add(delBg);
             measurePanelListLayer.add(delText);
           });
@@ -293,10 +338,12 @@ export default function PcbCanvas({
           measureHistoryLayer.clear();
           measureHistory.forEach((item, index) => {
             const active = measureUiRef.selectedIndex === index;
-            const line = new Line({ points: [item.p1.x, item.p1.y, item.p2.x, item.p2.y], stroke: active ? "#f472b6" : "rgba(167,139,250,0.75)", strokeWidth: active ? 2.4 : 1.6 });
-            const p1 = new Rect({ x: item.p1.x - (active ? 3.5 : 2.5), y: item.p1.y - (active ? 3.5 : 2.5), width: active ? 7 : 5, height: active ? 7 : 5, fill: active ? "#f9a8d4" : "rgba(196,181,253,0.85)", cornerRadius: active ? 3.5 : 2.5 });
-            const p2 = new Rect({ x: item.p2.x - (active ? 3.5 : 2.5), y: item.p2.y - (active ? 3.5 : 2.5), width: active ? 7 : 5, height: active ? 7 : 5, fill: active ? "#f9a8d4" : "rgba(196,181,253,0.85)", cornerRadius: active ? 3.5 : 2.5 });
-            const label = new Text({ x: (item.p1.x + item.p2.x) / 2 + 8, y: (item.p1.y + item.p2.y) / 2 - 18, text: `ΔX ${Math.abs(item.dxMm).toFixed(2)} · ΔY ${Math.abs(item.dyMm).toFixed(2)} · D ${item.distanceMm.toFixed(2)} mm`, fill: active ? "#fce7f3" : "rgba(221,214,254,0.88)", fontSize: active ? 12 : 11 });
+            const hover = measureUiRef.hoverIndex === index;
+            const emph = active || hover;
+            const line = new Line({ points: [item.p1.x, item.p1.y, item.p2.x, item.p2.y], stroke: active ? "#f472b6" : hover ? "#22d3ee" : "rgba(167,139,250,0.75)", strokeWidth: active ? 2.4 : hover ? 2.1 : 1.6 });
+            const p1 = new Rect({ x: item.p1.x - (emph ? 3.5 : 2.5), y: item.p1.y - (emph ? 3.5 : 2.5), width: emph ? 7 : 5, height: emph ? 7 : 5, fill: active ? "#f9a8d4" : hover ? "#67e8f9" : "rgba(196,181,253,0.85)", cornerRadius: emph ? 3.5 : 2.5 });
+            const p2 = new Rect({ x: item.p2.x - (emph ? 3.5 : 2.5), y: item.p2.y - (emph ? 3.5 : 2.5), width: emph ? 7 : 5, height: emph ? 7 : 5, fill: active ? "#f9a8d4" : hover ? "#67e8f9" : "rgba(196,181,253,0.85)", cornerRadius: emph ? 3.5 : 2.5 });
+            const label = new Text({ x: (item.p1.x + item.p2.x) / 2 + 8, y: (item.p1.y + item.p2.y) / 2 - 18, text: `ΔX ${Math.abs(item.dxMm).toFixed(2)} · ΔY ${Math.abs(item.dyMm).toFixed(2)} · D ${item.distanceMm.toFixed(2)} mm`, fill: active ? "#fce7f3" : hover ? "#cffafe" : "rgba(221,214,254,0.88)", fontSize: emph ? 12 : 11 });
             measureHistoryLayer.add(line);
             measureHistoryLayer.add(label);
             measureHistoryLayer.add(p1);
@@ -314,10 +361,22 @@ export default function PcbCanvas({
           updateMeasureOverlay();
         };
 
+        const clearAllMeasures = () => {
+          measureHistory.length = 0;
+          measureUiRef.selectedIndex = -1;
+          measureUiRef.hoverIndex = -1;
+          measureUiRef.copyFlashIndex = -1;
+          renderMeasureHistory();
+          renderMeasurePanel();
+          updateHud();
+        };
+
         const popLastMeasure = () => {
           if (!measureHistory.length) return;
           measureHistory.pop();
           if (measureUiRef.selectedIndex >= measureHistory.length) measureUiRef.selectedIndex = measureHistory.length - 1;
+          if (measureUiRef.hoverIndex >= measureHistory.length) measureUiRef.hoverIndex = -1;
+          if (measureUiRef.copyFlashIndex >= measureHistory.length) measureUiRef.copyFlashIndex = -1;
           renderMeasureHistory();
           renderMeasurePanel();
           updateHud();
@@ -539,6 +598,15 @@ export default function PcbCanvas({
           renderMeasurePanel();
         };
 
+        measureClearBg.on("pointer.tap", () => {
+          clearAllMeasures();
+          leafer.forceRender?.();
+        });
+        measureClearText.on("pointer.tap", () => {
+          clearAllMeasures();
+          leafer.forceRender?.();
+        });
+
         const onPointerDown = (e: PointerEvent) => {
           const rect = view.getBoundingClientRect();
           const x = e.clientX - rect.left;
@@ -670,11 +738,7 @@ export default function PcbCanvas({
               resetCurrentMeasure();
               updateMeasureOverlay();
             } else if (measureHistory.length) {
-              measureHistory.length = 0;
-              measureUiRef.selectedIndex = -1;
-              renderMeasureHistory();
-              renderMeasurePanel();
-              updateHud();
+              clearAllMeasures();
             }
             leafer.forceRender?.();
           }
