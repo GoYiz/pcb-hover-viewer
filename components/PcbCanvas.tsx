@@ -60,6 +60,7 @@ export default function PcbCanvas({
     vd: "grid,components,labels,measures",
     lm: "adaptive",
     gm: "major+minor",
+    th: "adaptive-v1",
   });
 
   useEffect(() => {
@@ -282,6 +283,7 @@ export default function PcbCanvas({
         overlayLayer.add(snapMarker);
 
         const traceMap = new Map<string, any>();
+        const traceMetaMap = new Map<string, { widthMm: number }>();
         const compMap = new Map<string, any>();
         const labelMap = new Map<string, any>();
         const labelAnchorMap = new Map<string, { x: number; y: number }>();
@@ -380,6 +382,7 @@ export default function PcbCanvas({
             vd: visibleDetail,
             lm: "adaptive",
             gm: "major+minor",
+            th: "adaptive-v1",
           };
           const bridgeKey = JSON.stringify(nextBridge);
           if (bridgeKeyRef.current !== bridgeKey) {
@@ -1108,6 +1111,14 @@ export default function PcbCanvas({
           drawHorizontals(majorStepY, "rgba(51,65,85,0.62)", 1.35);
         };
 
+        const getTraceHitRadius = (id: string) => {
+          const meta = traceMetaMap.get(id);
+          const widthMm = meta?.widthMm || 0.18;
+          const base = widthMm <= 0.12 ? 12 : widthMm <= 0.2 ? 10 : widthMm <= 0.35 ? 8 : 6;
+          const zoomBonus = scaleRef.value < 0.8 ? 3 : scaleRef.value < 1.2 ? 2 : scaleRef.value < 2 ? 1 : 0;
+          return Math.max(4, Math.min(16, base + zoomBonus));
+        };
+
         const updateTraceStyle = (id: string) => {
           const line = traceMap.get(id);
           if (!line) return;
@@ -1117,6 +1128,7 @@ export default function PcbCanvas({
           line.stroke = isTarget ? "#f43f5e" : isSelected ? "#f59e0b" : isRelated ? "#22d3ee" : "#3b82f6";
           line.strokeWidth = (isTarget ? 5 : isSelected ? 4.5 : isRelated ? 4 : 2) / Math.max(scaleRef.value * 0.9, 0.8);
           line.opacity = isTarget || isSelected || isRelated ? 1 : 0.45;
+          line.hitRadius = getTraceHitRadius(id);
           line.visible = true;
         };
 
@@ -1322,6 +1334,7 @@ export default function PcbCanvas({
           line.on("pointer.tap", (e: any) => ((e?.metaKey || e?.ctrlKey) ? toggleSelection("trace", trace.id) : selectOnly("trace", trace.id)));
           traceLayer.add(line);
           traceMap.set(trace.id, line);
+          traceMetaMap.set(trace.id, { widthMm: trace.width });
           traceBoundsMap.set(trace.id, { minX, minY, maxX, maxY });
         }
 
@@ -1588,6 +1601,7 @@ export default function PcbCanvas({
         runtimeRef.current = {
           leafer,
           traceMap,
+          traceMetaMap,
           compMap,
           labelMap,
           labelAnchorMap,
@@ -1640,6 +1654,10 @@ export default function PcbCanvas({
       const isTarget = hoveredType === "trace" && hoveredId === trace.id;
       const isSelected = rt.selectedTraceIds.has(trace.id);
       const isRelated = traceHighlightIds.includes(trace.id);
+      const widthMm = rt.traceMetaMap?.get(trace.id)?.widthMm || trace.width || 0.18;
+      const base = widthMm <= 0.12 ? 12 : widthMm <= 0.2 ? 10 : widthMm <= 0.35 ? 8 : 6;
+      const zoomBonus = rt.scaleRef.value < 0.8 ? 3 : rt.scaleRef.value < 1.2 ? 2 : rt.scaleRef.value < 2 ? 1 : 0;
+      line.hitRadius = Math.max(4, Math.min(16, base + zoomBonus));
       line.stroke = isTarget ? "#f43f5e" : isSelected ? "#f59e0b" : isRelated ? "#22d3ee" : "#3b82f6";
       line.strokeWidth = (isTarget ? 5 : isSelected ? 4.5 : isRelated ? 4 : 2) / Math.max(rt.scaleRef.value * 0.9, 0.8);
       line.opacity = isTarget || isSelected || isRelated ? 1 : 0.45;
@@ -1746,7 +1764,8 @@ selected_components=${bridgeState.sc.join(",") || "-"}
 selected_traces=${bridgeState.st.join(",") || "-"}
 visible_detail=${bridgeState.vd || "-"}
 label_mode=${bridgeState.lm || "adaptive"}
-grid_mode=${bridgeState.gm || "major+minor"}`}
+grid_mode=${bridgeState.gm || "major+minor"}
+trace_hit=${bridgeState.th || "adaptive-v1"}`}
       </div>
     </div>
   );
