@@ -167,6 +167,13 @@ export default function BoardViewerClient({
     return () => window.clearTimeout(timer);
   }, [focusComponentId]);
 
+  const applyFocusedSelectionToUrl = (id: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("sc", id);
+    url.searchParams.delete("st");
+    window.history.replaceState({}, "", url.toString());
+  };
+
   return (
     <div className="workbench-shell">
       <div className="workbench-header">
@@ -218,6 +225,7 @@ export default function BoardViewerClient({
                 const c = searchMatches[0];
                 setFocusComponentId(c.id);
                 setHoveredFeature("component", c.id);
+                applyFocusedSelectionToUrl(c.id);
                 setSearch("");
               }
             }}
@@ -234,6 +242,7 @@ export default function BoardViewerClient({
                 onClick={() => {
                   setFocusComponentId(c.id);
                   setHoveredFeature("component", c.id);
+                  applyFocusedSelectionToUrl(c.id);
                   setSearch("");
                 }}
               >
