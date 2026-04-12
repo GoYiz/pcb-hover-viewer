@@ -1642,14 +1642,15 @@ export default function PcbCanvas({
       }
     }
     if (rt.detailVisibilityRef?.value?.components && rt.detailVisibilityRef?.value?.labels) {
-      const forced = new Set();
+      const forced = new Set<string>();
       if (hoveredType === "component" && hoveredId) forced.add(hoveredId);
       if (focusComponentId) forced.add(focusComponentId);
-      for (const id of rt.selectedCompIds) forced.add(id);
+      for (const id of rt.selectedCompIds as Set<string>) forced.add(id);
       for (const id of directIds) forced.add(id);
       const cellSize = rt.scaleRef.value >= 2.4 ? 28 : rt.scaleRef.value >= 1.6 ? 42 : rt.scaleRef.value >= 1.0 ? 58 : rt.scaleRef.value >= 0.75 ? 82 : 112;
-      const occupied = new Set();
-      const entries = Array.from(rt.labelMap.entries()).sort((a, b) => {
+      const occupied = new Set<string>();
+      const entries = Array.from(rt.labelMap.entries()) as Array<[string, any]>;
+      entries.sort((a, b) => {
         const aForced = forced.has(a[0]) ? 1 : 0;
         const bForced = forced.has(b[0]) ? 1 : 0;
         if (aForced !== bForced) return bForced - aForced;
