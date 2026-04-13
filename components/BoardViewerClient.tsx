@@ -46,6 +46,7 @@ export default function BoardViewerClient({
   const [viewMode, setViewMode] = useState<"leafer" | "three">("leafer");
   const [search, setSearch] = useState("");
   const [focusComponentId, setFocusComponentId] = useState<string | undefined>();
+  const [canvasBridge, setCanvasBridge] = useState({ tool: "select", selectionFilter: "all", visibleDetail: "-", zoom: "1.000", selectedComponents: 0, selectedTraces: 0 });
 
   const hoveredFeatureId = useViewerStore((s) => s.hoveredFeatureId);
   const hoveredFeatureType = useViewerStore((s) => s.hoveredFeatureType);
@@ -176,6 +177,36 @@ export default function BoardViewerClient({
     return () => window.clearTimeout(timer);
   }, [focusComponentId]);
 
+  useEffect(() => {
+    const parseBridge = () => {
+      const node = document.querySelector('[data-testid="canvas-state-bridge"]');
+      const text = node?.textContent || "";
+      if (!text) return;
+      const pick = (key: string) => {
+        const m = text.match(new RegExp(`${key}=([^
+]+)`));
+        return m ? m[1].trim() : "";
+      };
+      const tool = pick("tool") || "select";
+      const zoom = pick("zoom") || "1.000";
+      const sc = pick("selected_components");
+      const st = pick("selected_traces");
+      const sf = pick("selection_filter") || "all";
+      const vd = pick("visible_detail") || "-";
+      setCanvasBridge({
+        tool,
+        selectionFilter: sf,
+        visibleDetail: vd,
+        zoom,
+        selectedComponents: !sc || sc === "-" ? 0 : sc.split(",").filter(Boolean).length,
+        selectedTraces: !st || st === "-" ? 0 : st.split(",").filter(Boolean).length,
+      });
+    };
+    parseBridge();
+    const timer = window.setInterval(parseBridge, 400);
+    return () => window.clearInterval(timer);
+  }, [viewMode, boardId]);
+
   const applyFocusedSelectionToUrl = (id: string) => {
     const url = new URL(window.location.href);
     url.searchParams.set("sc", id);
@@ -244,6 +275,11 @@ export default function BoardViewerClient({
           <span className="summary-meta">{highlight.targetType || "Awaiting hover"}</span>
         </div>
         <div className="summary-cell">
+          <span className="summary-label">Workbench tool</span>
+          <strong className="summary-value">{canvasBridge.tool}</strong>
+          <span className="summary-meta">filter {canvasBridge.selectionFilter}</span>
+        </div>
+        <div className="summary-cell">
           <span className="summary-label">Relation graph</span>
           <strong className="summary-value">{highlight.netIds.length}</strong>
           <span className="summary-meta">nets in active context</span>
@@ -252,6 +288,11 @@ export default function BoardViewerClient({
           <span className="summary-label">Source state</span>
           <strong className="summary-value">{error ? "Fault" : loading ? "Loading" : "Ready"}</strong>
           <span className="summary-meta">{error || sourceHint}</span>
+        </div>
+        <div className="summary-cell">
+          <span className="summary-label">Live canvas state</span>
+          <strong className="summary-value">{canvasBridge.zoom}×</strong>
+          <span className="summary-meta">{canvasBridge.selectedComponents} comps · {canvasBridge.selectedTraces} traces · {canvasBridge.visibleDetail}</span>
         </div>
       </section>
 
