@@ -57,6 +57,7 @@ export default function PcbCanvas({
     oy: 0,
     sc: [] as string[],
     st: [] as string[],
+    sf: "all" as "all" | "component" | "trace",
     vd: "grid,components,labels,measures",
     lm: "adaptive",
     gm: "major+minor",
@@ -393,6 +394,7 @@ export default function PcbCanvas({
             oy: offsetRef.y,
             sc: Array.from(selectedCompIds),
             st: Array.from(selectedTraceIds),
+            sf: selectionFilterRef.value,
             vd: visibleDetail,
             lm: "adaptive",
             gm: "major+minor",
@@ -1857,6 +1859,7 @@ export default function PcbCanvas({
         {`State tool=${bridgeState.tool} zoom=${bridgeState.zoom.toFixed(3)} ox=${bridgeState.ox.toFixed(1)} oy=${bridgeState.oy.toFixed(1)}
 selected_components=${bridgeState.sc.join(",") || "-"}
 selected_traces=${bridgeState.st.join(",") || "-"}
+selection_filter=${bridgeState.sf || "all"}
 visible_detail=${bridgeState.vd || "-"}
 label_mode=${bridgeState.lm || "adaptive"}
 grid_mode=${bridgeState.gm || "major+minor"}
