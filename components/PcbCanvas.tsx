@@ -115,7 +115,7 @@ export default function PcbCanvas({
         });
         overlayLayer.add(selectionBar);
 
-        const topToolbar = new Rect({ x: 24, y: 40, width: 954, height: 30, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
+        const topToolbar = new Rect({ x: 24, y: 40, width: 1010, height: 30, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
         overlayLayer.add(topToolbar);
         const sideToolbar = new Rect({ x: 24, y: 80, width: 58, height: 126, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
         overlayLayer.add(sideToolbar);
@@ -539,14 +539,15 @@ export default function PcbCanvas({
           const exportTxtBtn = createToolbarButton(388, 46, 54, 18, "ExpTxt", false, "rgba(2,132,199,0.80)");
           const measCsvBtn = createToolbarButton(448, 46, 62, 18, "MeasCSV", false, "rgba(8,145,178,0.82)");
           const selJsonBtn = createToolbarButton(516, 46, 58, 18, "SelJSON", false, "rgba(79,70,229,0.82)");
-          const filterAllBtn = createToolbarButton(580, 46, 40, 18, "All", selectionFilterRef.value === "all", "rgba(100,116,139,0.82)");
-          const filterCompBtn = createToolbarButton(626, 46, 46, 18, "Comp", selectionFilterRef.value === "component", "rgba(245,158,11,0.82)");
-          const filterTraceBtn = createToolbarButton(678, 46, 50, 18, "Trace", selectionFilterRef.value === "trace", "rgba(59,130,246,0.82)");
-          const helpBtn = createToolbarButton(734, 46, 42, 18, helpRef.visible ? "Hide?" : "Help", helpRef.visible, "rgba(14,165,233,0.82)");
-          const gridBtn = createToolbarButton(782, 46, 42, 18, "Grid", detailVisibilityRef.value.grid, "rgba(16,185,129,0.82)");
-          const compBtn = createToolbarButton(830, 46, 44, 18, "Comp", detailVisibilityRef.value.components, "rgba(245,158,11,0.82)");
-          const labelBtn = createToolbarButton(880, 46, 46, 18, "Label", detailVisibilityRef.value.labels, "rgba(168,85,247,0.82)");
-          const measBtn = createToolbarButton(932, 46, 44, 18, "Meas", detailVisibilityRef.value.measures, "rgba(6,182,212,0.82)");
+          const sessionBtn = createToolbarButton(580, 46, 42, 18, "Sess", false, "rgba(124,58,237,0.82)");
+          const filterAllBtn = createToolbarButton(628, 46, 40, 18, "All", selectionFilterRef.value === "all", "rgba(100,116,139,0.82)");
+          const filterCompBtn = createToolbarButton(674, 46, 46, 18, "Comp", selectionFilterRef.value === "component", "rgba(245,158,11,0.82)");
+          const filterTraceBtn = createToolbarButton(726, 46, 50, 18, "Trace", selectionFilterRef.value === "trace", "rgba(59,130,246,0.82)");
+          const helpBtn = createToolbarButton(782, 46, 42, 18, helpRef.visible ? "Hide?" : "Help", helpRef.visible, "rgba(14,165,233,0.82)");
+          const gridBtn = createToolbarButton(830, 46, 42, 18, "Grid", detailVisibilityRef.value.grid, "rgba(16,185,129,0.82)");
+          const compBtn = createToolbarButton(878, 46, 44, 18, "Comp", detailVisibilityRef.value.components, "rgba(245,158,11,0.82)");
+          const labelBtn = createToolbarButton(928, 46, 46, 18, "Label", detailVisibilityRef.value.labels, "rgba(168,85,247,0.82)");
+          const measBtn = createToolbarButton(980, 46, 44, 18, "Meas", detailVisibilityRef.value.measures, "rgba(6,182,212,0.82)");
           for (const node of [selectBtn.bg, selectBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "select"; renderVisibility(); });
           for (const node of [measureBtn.bg, measureBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "measure"; renderVisibility(); });
           for (const node of [panBtn.bg, panBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "pan"; renderVisibility(); });
@@ -559,6 +560,7 @@ export default function PcbCanvas({
           for (const node of [exportTxtBtn.bg, exportTxtBtn.text]) node.on("pointer.tap", () => { exportWorkbenchText(); });
           for (const node of [measCsvBtn.bg, measCsvBtn.text]) node.on("pointer.tap", () => { exportMeasurementsCsv(); });
           for (const node of [selJsonBtn.bg, selJsonBtn.text]) node.on("pointer.tap", () => { exportSelectionJson(); });
+          for (const node of [sessionBtn.bg, sessionBtn.text]) node.on("pointer.tap", () => { exportWorkbenchSession(); });
           for (const node of [filterAllBtn.bg, filterAllBtn.text]) node.on("pointer.tap", () => { selectionFilterRef.value = "all"; renderVisibility(); });
           for (const node of [filterCompBtn.bg, filterCompBtn.text]) node.on("pointer.tap", () => { selectionFilterRef.value = "component"; renderVisibility(); });
           for (const node of [filterTraceBtn.bg, filterTraceBtn.text]) node.on("pointer.tap", () => { selectionFilterRef.value = "trace"; renderVisibility(); });
@@ -942,6 +944,38 @@ export default function PcbCanvas({
           const blob = new Blob([buildSelectionJson()], { type: "application/json;charset=utf-8" });
           const href = URL.createObjectURL(blob);
           triggerDownload(`${boardSlug}-selection.json`, href);
+          window.setTimeout(() => URL.revokeObjectURL(href), 1500);
+        };
+
+        const buildWorkbenchSessionJson = () => {
+          const selectedComponents = Array.from(selectedCompIds).map((id) => components.find((c) => c.id === id)).filter(Boolean);
+          const selectedTraces = Array.from(selectedTraceIds).map((id) => traces.find((tr) => tr.id === id)).filter(Boolean);
+          const visibleDetail = Object.entries(detailVisibilityRef.value).filter(([, enabled]) => enabled).map(([key]) => key);
+          return JSON.stringify({
+            board: getExportSlug(),
+            current_url: typeof window !== "undefined" ? window.location.href : null,
+            tool: toolModeRef.value,
+            selection_filter: selectionFilterRef.value,
+            visible_detail: visibleDetail,
+            camera: {
+              zoom: Number(scaleRef.value.toFixed(3)),
+              ox: Number(offsetRef.x.toFixed(1)),
+              oy: Number(offsetRef.y.toFixed(1)),
+            },
+            label_mode: "adaptive",
+            grid_mode: "major+minor",
+            trace_hit: "adaptive-v1",
+            selected_components: selectedComponents,
+            selected_traces: selectedTraces,
+            measurements: measureHistory,
+          }, null, 2);
+        };
+
+        const exportWorkbenchSession = () => {
+          const boardSlug = getExportSlug();
+          const blob = new Blob([buildWorkbenchSessionJson()], { type: "application/json;charset=utf-8" });
+          const href = URL.createObjectURL(blob);
+          triggerDownload(`${boardSlug}-workbench-session.json`, href);
           window.setTimeout(() => URL.revokeObjectURL(href), 1500);
         };
 
