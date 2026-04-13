@@ -1,130 +1,23 @@
 "use client";
-
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { ExampleBoardData, ExampleIndexItem } from "@/lib/examples";
-
 const PcbCanvas = dynamic(() => import("@/components/PcbCanvas"), { ssr: false });
-
-const CANVAS_W = 980;
-const CANVAS_H = 620;
-
-type ExampleMap = Record<string, ExampleBoardData>;
-
-export default function ExamplesClient({
-  index,
-  examples,
-}: {
-  index: ExampleIndexItem[];
-  examples: ExampleMap;
-}) {
+const CANVAS_W = 980; const CANVAS_H = 620; type ExampleMap = Record<string, ExampleBoardData>;
+export default function ExamplesClient({ index, examples }: { index: ExampleIndexItem[]; examples: ExampleMap; }) {
   const [activeId, setActiveId] = useState(index[0]?.id || "");
   const [hoveredType, setHoveredType] = useState<"component" | "trace" | undefined>(undefined);
   const [hoveredId, setHoveredId] = useState<string | undefined>(undefined);
-
   const active = examples[activeId];
-
   const relation = useMemo(() => {
-    if (!active || !hoveredId || !hoveredType) {
-      return { directIds: [] as string[], traceIds: [] as string[], netIds: [] as string[] };
-    }
-
+    if (!active || !hoveredId || !hoveredType) return { directIds: [] as string[], traceIds: [] as string[], netIds: [] as string[] };
     let netIds: string[] = [];
-
-    if (hoveredType === "component") {
-      const target = active.components.find((c) => c.id === hoveredId);
-      netIds = (target?.nets || []).map((n) => String(n.id));
-    } else {
-      const t = active.traces.find((tr) => tr.id === hoveredId);
-      if (t) netIds = [String(t.netId)];
-    }
-
-    const directIds = active.components
-      .filter((c) => {
-        if (hoveredType === "component" && c.id === hoveredId) return false;
-        const cNets = (c.nets || []).map((n) => String(n.id));
-        return cNets.some((nid) => netIds.includes(nid));
-      })
-      .map((c) => c.id);
-
+    if (hoveredType === "component") { const target = active.components.find((c) => c.id === hoveredId); netIds = (target?.nets || []).map((n) => String(n.id)); }
+    else { const t = active.traces.find((tr) => tr.id === hoveredId); if (t) netIds = [String(t.netId)]; }
+    const directIds = active.components.filter((c) => { if (hoveredType === "component" && c.id === hoveredId) return false; const cNets = (c.nets || []).map((n) => String(n.id)); return cNets.some((nid) => netIds.includes(nid)); }).map((c) => c.id);
     const traceIds = active.traces.filter((t) => netIds.includes(String(t.netId))).map((t) => t.id);
-
     return { directIds, traceIds, netIds };
   }, [active, hoveredId, hoveredType]);
-
-  return (
-    <div style={{ padding: 20 }}>
-      <h1 style={{ marginTop: 0 }}>默认示例板卡</h1>
-      <p style={{ opacity: 0.8 }}>数据来源于公开 GitHub 硬件项目，经过 Python 预处理后生成。</p>
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "12px 0 18px" }}>
-        {index.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => {
-              setActiveId(item.id);
-              setHoveredType(undefined);
-              setHoveredId(undefined);
-            }}
-            style={{
-              border: item.id === activeId ? "1px solid #22d3ee" : "1px solid #334155",
-              background: item.id === activeId ? "#0e7490" : "#0f172a",
-              color: "#e2e8f0",
-              padding: "8px 12px",
-              borderRadius: 8,
-              cursor: "pointer",
-            }}
-          >
-            {item.name} ({item.components})
-          </button>
-        ))}
-      </div>
-
-      {active && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 16 }}>
-          <PcbCanvas
-            width={CANVAS_W}
-            height={CANVAS_H}
-            boardWidthMm={active.board.widthMm}
-            boardHeightMm={active.board.heightMm}
-            components={active.components}
-            traces={active.traces}
-            hoveredId={hoveredId}
-            hoveredType={hoveredType}
-            directIds={relation.directIds}
-            traceHighlightIds={relation.traceIds}
-            onHoverFeature={(type, id) => {
-              setHoveredType(type);
-              setHoveredId(id);
-            }}
-          />
-
-          <aside style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: 14 }}>
-            <h3 style={{ marginTop: 0 }}>示例信息</h3>
-            <p><strong>名称：</strong>{active.board.name}</p>
-            <p><strong>尺寸：</strong>{active.board.widthMm}mm × {active.board.heightMm}mm</p>
-            <p><strong>元件数：</strong>{active.components.length}</p>
-            <p><strong>线路段：</strong>{active.traces.length}</p>
-            <p>
-              <strong>数据来源：</strong>
-              <a href={index.find((i) => i.id === activeId)?.source} target="_blank" style={{ color: "#67e8f9" }}>
-                GitHub
-              </a>
-            </p>
-            <hr style={{ borderColor: "#334155" }} />
-            {!hoveredId && <p style={{ opacity: 0.8 }}>悬停元件或线路查看关联关系。</p>}
-            {hoveredId && (
-              <>
-                <p><strong>目标类型：</strong>{hoveredType}</p>
-                <p><strong>目标 ID：</strong>{hoveredId}</p>
-                <p><strong>直接关联元件：</strong>{relation.directIds.length}</p>
-                <p><strong>关联网络：</strong>{relation.netIds.join(", ") || "无"}</p>
-                <p><strong>关联线路：</strong>{relation.traceIds.length}</p>
-              </>
-            )}
-          </aside>
-        </div>
-      )}
-    </div>
-  );
+  const sourceHref = index.find((i) => i.id === activeId)?.source;
+  return (<div className="console-shell examples-shell"><section className="console-hero examples-hero"><div className="hero-copy"><div className="eyebrow">REFERENCE EXAMPLE LIBRARY</div><h1 className="hero-title">Default board collection</h1><p className="hero-subtitle">Public hardware examples, normalized into a single visual inspection surface for benchmarking performance, graph relations, and workbench ergonomics.</p></div><div className="hero-metrics"><div className="metric-card metric-card-accent"><span className="metric-label">Example boards</span><strong className="metric-value">{index.length}</strong><span className="metric-meta">curated fixtures</span></div><div className="metric-card"><span className="metric-label">Current target</span><strong className="metric-value metric-value-sm">{active?.board.name || "—"}</strong><span className="metric-meta">active bench specimen</span></div></div></section><section className="console-commandbar examples-picker-bar"><div className="tool-cluster tool-cluster-wide"><div className="tool-cluster-label">Board selection</div><div className="example-pill-grid">{index.map((item) => (<button key={item.id} onClick={() => { setActiveId(item.id); setHoveredType(undefined); setHoveredId(undefined); }} className={`example-pill ${item.id === activeId ? "example-pill-active" : ""}`}><span>{item.name}</span><strong>{item.components}</strong></button>))}</div></div></section>{active && (<section className="console-main-grid examples-main-grid"><div className="canvas-stage"><div className="canvas-stage-header"><div><div className="canvas-stage-title">Example live stage</div><div className="canvas-stage-meta">Benchmark board for interaction density, relation tracing, and workbench polish</div></div><div className="canvas-stage-badges"><span className="stage-badge">{active.components.length} comps</span><span className="stage-badge">{active.traces.length} traces</span></div></div><div className="canvas-stage-frame"><PcbCanvas width={CANVAS_W} height={CANVAS_H} boardWidthMm={active.board.widthMm} boardHeightMm={active.board.heightMm} components={active.components} traces={active.traces} hoveredId={hoveredId} hoveredType={hoveredType} directIds={relation.directIds} traceHighlightIds={relation.traceIds} onHoverFeature={(type, id) => { setHoveredType(type); setHoveredId(id); }} /></div></div><aside className="inspector-stack"><div className="inspector-card inspector-card-glow"><div className="inspector-title-row"><div><div className="inspector-title">Example dossier</div><div className="inspector-meta">Normalized data imported from open hardware repositories</div></div><span className="signal-pill">Bench</span></div><div className="inspector-grid"><div className="inspector-kv"><span>Name</span><strong>{active.board.name}</strong></div><div className="inspector-kv"><span>Board size</span><strong>{active.board.widthMm} × {active.board.heightMm}</strong></div><div className="inspector-kv"><span>Components</span><strong>{active.components.length}</strong></div><div className="inspector-kv"><span>Trace segments</span><strong>{active.traces.length}</strong></div></div>{sourceHref && <a className="source-link" href={sourceHref} target="_blank">Open GitHub source ↗</a>}</div><div className="inspector-card"><div className="inspector-title">Live relation summary</div>{!hoveredId ? <p className="inspector-meta">Hover a component or trace to inspect nets, direct neighbours, and related routed geometry.</p> : (<div className="inspector-grid"><div className="inspector-kv"><span>Target type</span><strong>{hoveredType}</strong></div><div className="inspector-kv"><span>Target ID</span><strong>{hoveredId}</strong></div><div className="inspector-kv"><span>Connected nets</span><strong>{relation.netIds.length}</strong></div><div className="inspector-kv"><span>Related traces</span><strong>{relation.traceIds.length}</strong></div><div className="inspector-kv"><span>Related components</span><strong>{relation.directIds.length}</strong></div></div>)}</div></aside></section>)}</div>);
 }
