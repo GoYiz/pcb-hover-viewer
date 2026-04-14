@@ -183,8 +183,7 @@ export default function BoardViewerClient({
       const text = node?.textContent || "";
       if (!text) return;
       const pick = (key: string) => {
-        const m = text.match(new RegExp(`${key}=([^
-]+)`));
+        const m = text.match(new RegExp(`${key}=([^\n]+)`));
         return m ? m[1].trim() : "";
       };
       const tool = pick("tool") || "select";
