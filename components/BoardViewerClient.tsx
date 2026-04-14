@@ -71,7 +71,9 @@ export default function BoardViewerClient({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const layer = params.get("layer");
+    const view = params.get("view");
     if (layer === "fcu" || layer === "bcu" || layer === "all") setLayerMode(layer);
+    if (view === "leafer" || view === "three") setViewMode(view);
     setUrlReady(true);
   }, []);
 
@@ -80,8 +82,10 @@ export default function BoardViewerClient({
     const url = new URL(window.location.href);
     if (layerMode === "all") url.searchParams.delete("layer");
     else url.searchParams.set("layer", layerMode);
+    if (viewMode === "leafer") url.searchParams.delete("view");
+    else url.searchParams.set("view", viewMode);
     window.history.replaceState({}, "", url.toString());
-  }, [layerMode, urlReady]);
+  }, [layerMode, viewMode, urlReady]);
 
   useEffect(() => {
     if (initialComponents?.length && initialTraces?.length) {
@@ -232,6 +236,7 @@ export default function BoardViewerClient({
       url.searchParams.delete("sc");
       url.searchParams.delete("st");
       window.history.replaceState({}, "", url.toString());
+      setHoveredFeature(undefined, undefined);
       return;
     }
     if (type === "component") {

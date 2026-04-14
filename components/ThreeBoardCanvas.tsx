@@ -203,6 +203,7 @@ export default function ThreeBoardCanvas({
       const hit = raycaster.intersectObjects(refsObj.hoverables, false)[0];
       const obj = hit?.object as THREE.Object3D & { userData?: { kind?: "component" | "trace"; id?: string } };
       if (obj?.userData?.kind && obj?.userData?.id) onSelectFeature?.(obj.userData.kind, obj.userData.id);
+      else onSelectFeature?.(undefined, undefined);
     };
 
     const wheel = (ev: WheelEvent) => {
