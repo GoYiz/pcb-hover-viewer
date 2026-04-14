@@ -140,25 +140,41 @@ export default function BoardViewerClient({
       netToTraces.get(t.netId)?.add(t.id);
     }
 
-    if (!hoveredFeatureId || !hoveredFeatureType) {
+    let targetType: "component" | "trace" | undefined = hoveredFeatureType;
+    let targetId: string | undefined = hoveredFeatureId;
+
+    if (!targetType || !targetId) {
+      const totalSelected = urlSelection.sc.length + urlSelection.st.length;
+      if (totalSelected === 1) {
+        if (urlSelection.sc.length === 1) {
+          targetType = "component";
+          targetId = urlSelection.sc[0];
+        } else if (urlSelection.st.length === 1) {
+          targetType = "trace";
+          targetId = urlSelection.st[0];
+        }
+      }
+    }
+
+    if (!targetId || !targetType) {
       setHighlight({ targetId: undefined, targetType: undefined, directComponentIds: [], traceIds: [], netIds: [] });
       return;
     }
 
     let netIds: string[] = [];
-    if (hoveredFeatureType === "component") netIds = componentNetMap.get(hoveredFeatureId) || [];
+    if (targetType === "component") netIds = componentNetMap.get(targetId) || [];
     else {
-      const trace = traces.find((t) => t.id === hoveredFeatureId);
+      const trace = traces.find((t) => t.id === targetId);
       netIds = trace ? [trace.netId] : [];
     }
 
     const directComponentIds = [...new Set(netIds.flatMap((n) => [...(netToComponents.get(n) || new Set())]))].filter(
-      (id) => !(hoveredFeatureType === "component" && id === hoveredFeatureId),
+      (id) => !(targetType === "component" && id === targetId),
     );
     const traceIds = [...new Set(netIds.flatMap((n) => [...(netToTraces.get(n) || new Set())]))];
 
-    setHighlight({ targetId: hoveredFeatureId, targetType: hoveredFeatureType, directComponentIds, traceIds, netIds });
-  }, [components, traces, hoveredFeatureId, hoveredFeatureType, setHighlight]);
+    setHighlight({ targetId, targetType, directComponentIds, traceIds, netIds });
+  }, [components, traces, hoveredFeatureId, hoveredFeatureType, urlSelection, setHighlight]);
 
   const searchMatches = useMemo(() => {
     const kw = search.trim().toUpperCase();
@@ -167,13 +183,13 @@ export default function BoardViewerClient({
   }, [components, search]);
 
   const hoveredComponent = useMemo(
-    () => (hoveredFeatureType === "component" ? components.find((c) => c.id === hoveredFeatureId) : undefined),
-    [components, hoveredFeatureId, hoveredFeatureType],
+    () => (highlight.targetType === "component" ? components.find((c) => c.id === highlight.targetId) : undefined),
+    [components, highlight.targetId, highlight.targetType],
   );
 
   const hoveredTrace = useMemo(
-    () => (hoveredFeatureType === "trace" ? traces.find((t) => t.id === hoveredFeatureId) : undefined),
-    [traces, hoveredFeatureId, hoveredFeatureType],
+    () => (highlight.targetType === "trace" ? traces.find((t) => t.id === highlight.targetId) : undefined),
+    [traces, highlight.targetId, highlight.targetType],
   );
 
   useEffect(() => {
