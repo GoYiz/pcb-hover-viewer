@@ -1753,6 +1753,7 @@ export default function PcbCanvas({
           offsetRef,
           updateHud,
           focusComponentById,
+          exportWorkbenchSession,
           cleanup: () => {
             view.removeEventListener("pointerdown", onPointerDown);
             view.removeEventListener("pointermove", onPointerMove);
@@ -1878,6 +1879,13 @@ export default function PcbCanvas({
   return (
     <div style={{ width, height, borderRadius: 12, overflow: "hidden", position: "relative" }}>
       <div ref={hostRef} style={{ width, height, borderRadius: 12, overflow: "hidden" }} />
+      <button
+        data-testid="export-session-trigger"
+        onClick={() => runtimeRef.current?.exportWorkbenchSession?.()}
+        style={{ position: "absolute", left: 8, bottom: 8, width: 1, height: 1, opacity: 0, pointerEvents: "auto" }}
+      >
+        export-session-trigger
+      </button>
       <div
         data-testid="canvas-state-bridge"
         style={{
