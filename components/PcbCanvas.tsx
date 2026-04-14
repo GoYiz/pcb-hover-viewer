@@ -62,6 +62,7 @@ export default function PcbCanvas({
     lm: "adaptive",
     gm: "major+minor",
     th: "adaptive-v1",
+    le: "-",
   });
 
   useEffect(() => {
@@ -309,6 +310,7 @@ export default function PcbCanvas({
         const selectionFilterRef = { value: "all" as "all" | "component" | "trace" };
         const detailVisibilityRef = { value: { grid: true, components: true, labels: true, measures: true } };
         const helpRef = { visible: false };
+        const exportStateRef = { last: "-" };
 
         const readUrlState = () => {
           if (typeof window === "undefined") return null;
@@ -399,6 +401,7 @@ export default function PcbCanvas({
             lm: "adaptive",
             gm: "major+minor",
             th: "adaptive-v1",
+            le: exportStateRef.last,
           };
           const bridgeKey = JSON.stringify(nextBridge);
           if (bridgeKeyRef.current !== bridgeKey) {
@@ -944,6 +947,8 @@ export default function PcbCanvas({
           const blob = new Blob([buildSelectionJson()], { type: "application/json;charset=utf-8" });
           const href = URL.createObjectURL(blob);
           triggerDownload(`${boardSlug}-selection.json`, href);
+          exportStateRef.last = "selection";
+          updateHud();
           window.setTimeout(() => URL.revokeObjectURL(href), 1500);
         };
 
@@ -976,6 +981,8 @@ export default function PcbCanvas({
           const blob = new Blob([buildWorkbenchSessionJson()], { type: "application/json;charset=utf-8" });
           const href = URL.createObjectURL(blob);
           triggerDownload(`${boardSlug}-workbench-session.json`, href);
+          exportStateRef.last = "session";
+          updateHud();
           window.setTimeout(() => URL.revokeObjectURL(href), 1500);
         };
 
@@ -1897,7 +1904,8 @@ selection_filter=${bridgeState.sf || "all"}
 visible_detail=${bridgeState.vd || "-"}
 label_mode=${bridgeState.lm || "adaptive"}
 grid_mode=${bridgeState.gm || "major+minor"}
-trace_hit=${bridgeState.th || "adaptive-v1"}`}
+trace_hit=${bridgeState.th || "adaptive-v1"}
+last_export=${bridgeState.le || "-"}`}
       </div>
     </div>
   );
