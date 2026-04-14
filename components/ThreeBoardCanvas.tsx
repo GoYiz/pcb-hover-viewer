@@ -17,7 +17,10 @@ type Props = {
   hoveredType?: "component" | "trace";
   directIds: string[];
   traceHighlightIds: string[];
+  selectedComponentIds?: string[];
+  selectedTraceIds?: string[];
   onHoverFeature: (type?: "component" | "trace", id?: string) => void;
+  onSelectFeature?: (type?: "component" | "trace", id?: string) => void;
 };
 
 type SceneRefs = {
@@ -35,18 +38,22 @@ function xy(x: number, y: number, bw: number, bh: number) {
   return new THREE.Vector3(x - bw / 2, -(y - bh / 2), 0);
 }
 
-function setCompColor(mesh: THREE.Mesh, mode: "normal" | "related" | "target") {
+function setCompColor(mesh: THREE.Mesh, mode: "normal" | "related" | "selected" | "target") {
   const mat = mesh.material as THREE.MeshStandardMaterial;
   if (mode === "target") mat.color.set("#f43f5e");
+  else if (mode === "selected") mat.color.set("#f59e0b");
   else if (mode === "related") mat.color.set("#22d3ee");
   else mat.color.set("#94a3b8");
-  mat.emissive.set(mode === "target" ? "#7f1d1d" : mode === "related" ? "#164e63" : "#0f172a");
+  mat.emissive.set(mode === "target" ? "#7f1d1d" : mode === "selected" ? "#78350f" : mode === "related" ? "#164e63" : "#0f172a");
 }
 
-function setTraceColor(line: THREE.Line, mode: "normal" | "related" | "target") {
+function setTraceColor(line: THREE.Line, mode: "normal" | "related" | "selected" | "target") {
   const mat = line.material as THREE.LineBasicMaterial;
   if (mode === "target") {
     mat.color.set("#f43f5e");
+    mat.opacity = 1;
+  } else if (mode === "selected") {
+    mat.color.set("#f59e0b");
     mat.opacity = 1;
   } else if (mode === "related") {
     mat.color.set("#22d3ee");
@@ -71,7 +78,10 @@ export default function ThreeBoardCanvas({
   hoveredType,
   directIds,
   traceHighlightIds,
+  selectedComponentIds = [],
+  selectedTraceIds = [],
   onHoverFeature,
+  onSelectFeature,
 }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const refs = useRef<SceneRefs | null>(null);
@@ -123,6 +133,7 @@ export default function ThreeBoardCanvas({
     refs.current = refsObj;
 
     let dragging = false;
+    let moved = false;
     let lx = 0;
     let ly = 0;
     let yaw = 0;
@@ -150,6 +161,7 @@ export default function ThreeBoardCanvas({
         const dy = py - ly;
         lx = px;
         ly = py;
+        if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
         yaw -= dx * 0.006;
         pitch = Math.max(0.2, Math.min(1.4, pitch + dy * 0.004));
         updateCamera();
@@ -172,13 +184,25 @@ export default function ThreeBoardCanvas({
 
     const pointerDown = (ev: PointerEvent) => {
       dragging = true;
+      moved = false;
       const rect = renderer.domElement.getBoundingClientRect();
       lx = ev.clientX - rect.left;
       ly = ev.clientY - rect.top;
     };
 
-    const pointerUp = () => {
+    const pointerUp = (ev: PointerEvent) => {
+      if (!dragging) return;
       dragging = false;
+      if (moved) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      const px = ev.clientX - rect.left;
+      const py = ev.clientY - rect.top;
+      mouse.x = (px / rect.width) * 2 - 1;
+      mouse.y = -(py / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const hit = raycaster.intersectObjects(refsObj.hoverables, false)[0];
+      const obj = hit?.object as THREE.Object3D & { userData?: { kind?: "component" | "trace"; id?: string } };
+      if (obj?.userData?.kind && obj?.userData?.id) onSelectFeature?.(obj.userData.kind, obj.userData.id);
     };
 
     const wheel = (ev: WheelEvent) => {
@@ -265,16 +289,18 @@ export default function ThreeBoardCanvas({
 
     for (const [id, mesh] of r.compMap) {
       const isTarget = hoveredType === "component" && hoveredId === id;
+      const isSelected = selectedComponentIds.includes(id);
       const isRelated = direct.has(id);
-      setCompColor(mesh, isTarget ? "target" : isRelated ? "related" : "normal");
+      setCompColor(mesh, isTarget ? "target" : isSelected ? "selected" : isRelated ? "related" : "normal");
     }
 
     for (const [id, line] of r.traceMap) {
       const isTarget = hoveredType === "trace" && hoveredId === id;
+      const isSelected = selectedTraceIds.includes(id);
       const isRelated = hlTraces.has(id);
-      setTraceColor(line, isTarget ? "target" : isRelated ? "related" : "normal");
+      setTraceColor(line, isTarget ? "target" : isSelected ? "selected" : isRelated ? "related" : "normal");
     }
-  }, [hoveredId, hoveredType, directIds, traceHighlightIds]);
+  }, [hoveredId, hoveredType, directIds, traceHighlightIds, selectedComponentIds, selectedTraceIds]);
 
   useEffect(() => {
     if (!focusComponentId) return;
@@ -283,6 +309,7 @@ export default function ThreeBoardCanvas({
     const mesh = r.compMap.get(focusComponentId);
     if (!mesh) return;
     const target = mesh.position.clone();
+    r.camera.position.set(target.x, target.y - boardHeightMm * 0.45, Math.max(boardWidthMm, boardHeightMm) * 0.72);
     r.camera.lookAt(target.x, target.y, 0);
   }, [focusComponentId]);
 

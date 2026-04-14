@@ -47,6 +47,7 @@ export default function BoardViewerClient({
   const [search, setSearch] = useState("");
   const [focusComponentId, setFocusComponentId] = useState<string | undefined>();
   const [canvasBridge, setCanvasBridge] = useState({ tool: "select", selectionFilter: "all", visibleDetail: "-", zoom: "1.000", selectedComponents: 0, selectedTraces: 0 });
+  const [urlSelection, setUrlSelection] = useState({ sc: [] as string[], st: [] as string[] });
 
   const hoveredFeatureId = useViewerStore((s) => s.hoveredFeatureId);
   const hoveredFeatureType = useViewerStore((s) => s.hoveredFeatureType);
@@ -178,6 +179,18 @@ export default function BoardViewerClient({
   }, [focusComponentId]);
 
   useEffect(() => {
+    const readUrlSelection = () => {
+      const url = new URL(window.location.href);
+      const sc = (url.searchParams.get("sc") || "").split(",").filter(Boolean);
+      const st = (url.searchParams.get("st") || "").split(",").filter(Boolean);
+      setUrlSelection((prev) => (prev.sc.join(",") === sc.join(",") && prev.st.join(",") === st.join(",")) ? prev : { sc, st });
+    };
+    readUrlSelection();
+    const timer = window.setInterval(readUrlSelection, 300);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     const parseBridge = () => {
       const node = document.querySelector('[data-testid="canvas-state-bridge"]');
       const text = node?.textContent || "";
@@ -211,6 +224,26 @@ export default function BoardViewerClient({
     url.searchParams.set("sc", id);
     url.searchParams.delete("st");
     window.history.replaceState({}, "", url.toString());
+  };
+
+  const applySharedSelection = (type?: "component" | "trace", id?: string) => {
+    const url = new URL(window.location.href);
+    if (!type || !id) {
+      url.searchParams.delete("sc");
+      url.searchParams.delete("st");
+      window.history.replaceState({}, "", url.toString());
+      return;
+    }
+    if (type === "component") {
+      url.searchParams.set("sc", id);
+      url.searchParams.delete("st");
+      setFocusComponentId(id);
+    } else {
+      url.searchParams.set("st", id);
+      url.searchParams.delete("sc");
+    }
+    window.history.replaceState({}, "", url.toString());
+    setHoveredFeature(type, id);
   };
 
   const stageStatus = viewMode === "leafer" ? "Realtime 2D workbench" : "Spatial inspection";
@@ -399,6 +432,8 @@ export default function BoardViewerClient({
                 hoveredType={highlight.targetType}
                 directIds={highlight.directComponentIds}
                 traceHighlightIds={highlight.traceIds}
+                selectedComponentIds={urlSelection.sc}
+                selectedTraceIds={urlSelection.st}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
               />
             ) : (
@@ -415,7 +450,10 @@ export default function BoardViewerClient({
                 hoveredType={highlight.targetType}
                 directIds={highlight.directComponentIds}
                 traceHighlightIds={highlight.traceIds}
+                selectedComponentIds={urlSelection.sc}
+                selectedTraceIds={urlSelection.st}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
+                onSelectFeature={(type, id) => applySharedSelection(type, id)}
               />
             )}
           </div>
