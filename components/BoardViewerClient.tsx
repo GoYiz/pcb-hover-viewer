@@ -432,8 +432,6 @@ export default function BoardViewerClient({
                 hoveredType={highlight.targetType}
                 directIds={highlight.directComponentIds}
                 traceHighlightIds={highlight.traceIds}
-                selectedComponentIds={urlSelection.sc}
-                selectedTraceIds={urlSelection.st}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
               />
             ) : (
