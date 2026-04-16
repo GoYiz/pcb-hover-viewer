@@ -345,7 +345,18 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
                 continue
             cref = pick_attr(child, 'componentRef', 'ComponentRef', 'compRef', 'CompRef')
             if cref and nid:
-                comp_pin_nets.setdefault(str(cref), set()).add(str(nid))
+                comp_pin_nets.setdefault(str(cref), set()).add(str(name or nid))
+
+    for ps in iter_elems(root, {'PadStack'}):
+        net_name = normalize_net_id(pick_attr(ps, 'net', 'Net', 'netRef', 'NetRef'))
+        if net_name == '$NONE$':
+            continue
+        for child in ps.iter():
+            if strip_ns(child.tag) != 'PinRef':
+                continue
+            cref = pick_attr(child, 'componentRef', 'ComponentRef', 'compRef', 'CompRef')
+            if cref:
+                comp_pin_nets.setdefault(str(cref), set()).add(str(net_name))
 
     standard_defs = parse_standard_defs(root, scale)
     pad_defs = {k: (v['w'], v['h']) for k, v in standard_defs.items()}
@@ -385,6 +396,10 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
             continue
         x = to_float(pick_attr(el, 'x', 'X', 'locX', 'LocationX')) * scale
         y = to_float(pick_attr(el, 'y', 'Y', 'locY', 'LocationY')) * scale
+        loc = next((c for c in el if strip_ns(c.tag) == 'Location'), None)
+        if loc is not None:
+            x = to_float(pick_attr(loc, 'x', 'X')) * scale or x
+            y = to_float(pick_attr(loc, 'y', 'Y')) * scale or y
         rot = to_float(pick_attr(el, 'rotation', 'Rotation', 'angle', 'Angle'))
         fp = pick_attr(el, 'packageRef', 'PackageRef', 'part', 'Part')
         xform = next((c for c in el if strip_ns(c.tag) == 'Xform'), None)
