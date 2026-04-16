@@ -102,6 +102,53 @@ def rotate_point(x: float, y: float, deg: float):
     return x * math.cos(r) - y * math.sin(r), x * math.sin(r) + y * math.cos(r)
 
 
+def circle_path(cx: float, cy: float, d: float, segments: int = 16):
+    r = max(d, 0.2) / 2
+    pts = []
+    for i in range(segments + 1):
+        t = math.tau * i / segments
+        pts.append([round(cx + math.cos(t) * r, 4), round(cy + math.sin(t) * r, 4)])
+    return pts
+
+
+def parse_poly_steps(poly: ET.Element, scale: float):
+    pts: list[list[float]] = []
+    for child in poly:
+        tag = strip_ns(child.tag)
+        if tag == 'PolyBegin':
+            x = to_float(pick_attr(child, 'x', 'X')) * scale
+            y = to_float(pick_attr(child, 'y', 'Y')) * scale
+            pts.append([round(x, 4), round(y, 4)])
+        elif tag == 'PolyStepSegment':
+            x = to_float(pick_attr(child, 'x', 'X')) * scale
+            y = to_float(pick_attr(child, 'y', 'Y')) * scale
+            pts.append([round(x, 4), round(y, 4)])
+        elif tag == 'PolyStepCurve' and pts:
+            x1, y1 = pts[-1]
+            x2 = to_float(pick_attr(child, 'x', 'X')) * scale
+            y2 = to_float(pick_attr(child, 'y', 'Y')) * scale
+            cx = to_float(pick_attr(child, 'centerX', 'CenterX', 'cx', 'CX')) * scale
+            cy = to_float(pick_attr(child, 'centerY', 'CenterY', 'cy', 'CY')) * scale
+            cw = str(pick_attr(child, 'clockwise', 'Clockwise', 'cw', 'CW') or '').lower() in {'1', 'true', 'yes'}
+            arc_pts = arc_to_polyline(x1, y1, x2, y2, cx, cy, cw, segments=12)
+            pts.extend(arc_pts[1:])
+    return pts
+
+
+def append_trace(traces, coords, trace_index, net_id, layer_id, width, path):
+    if len(path) < 2:
+        return trace_index
+    traces.append({
+        'id': f'T{trace_index}',
+        'netId': str(net_id),
+        'layerId': str(layer_id),
+        'width': round(width or 0.15, 4),
+        'path': path,
+    })
+    coords.extend((px, py) for px, py in path)
+    return trace_index + 1
+
+
 def parse_ipc2581(path: Path, board_id: str, board_name: str):
     tree = ET.parse(path)
     root = tree.getroot()
@@ -233,41 +280,59 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
 
     traces = []
     trace_index = 1
-    for el in iter_elems(root, {'Line', 'Polyline', 'Path', 'Segment', 'Arc'}):
-        tag = strip_ns(el.tag)
-        net_id = pick_attr(el, 'net', 'Net', 'netRef', 'NetRef') or 'UNKNOWN'
-        layer_id = pick_attr(el, 'layerRef', 'LayerRef', 'layer', 'Layer') or layers[0]['id']
-        width = to_float(pick_attr(el, 'width', 'Width', 'lineWidth', 'LineWidth'), 0.15) * scale
-        path = []
-        if tag in {'Line', 'Segment'}:
-            x1 = to_float(pick_attr(el, 'x1', 'X1', 'startX', 'StartX')) * scale
-            y1 = to_float(pick_attr(el, 'y1', 'Y1', 'startY', 'StartY')) * scale
-            x2 = to_float(pick_attr(el, 'x2', 'X2', 'endX', 'EndX')) * scale
-            y2 = to_float(pick_attr(el, 'y2', 'Y2', 'endY', 'EndY')) * scale
-            if any(v != 0 for v in (x1, y1, x2, y2)):
-                path = [[round(x1, 4), round(y1, 4)], [round(x2, 4), round(y2, 4)]]
-        elif tag in {'Polyline', 'Path'}:
-            path = parse_polyline_points(el, scale)
-        elif tag == 'Arc':
-            x1 = to_float(pick_attr(el, 'x1', 'X1', 'startX', 'StartX')) * scale
-            y1 = to_float(pick_attr(el, 'y1', 'Y1', 'startY', 'StartY')) * scale
-            x2 = to_float(pick_attr(el, 'x2', 'X2', 'endX', 'EndX')) * scale
-            y2 = to_float(pick_attr(el, 'y2', 'Y2', 'endY', 'EndY')) * scale
-            cx = to_float(pick_attr(el, 'cx', 'CX', 'centerX', 'CenterX')) * scale
-            cy = to_float(pick_attr(el, 'cy', 'CY', 'centerY', 'CenterY')) * scale
-            cw = str(pick_attr(el, 'clockwise', 'Clockwise', 'cw', 'CW') or '').lower() in {'1', 'true', 'yes'}
-            if any(v != 0 for v in (x1, y1, x2, y2, cx, cy)):
-                path = arc_to_polyline(x1, y1, x2, y2, cx, cy, cw)
-        if len(path) >= 2:
-            traces.append({
-                'id': f'T{trace_index}',
-                'netId': str(net_id),
-                'layerId': str(layer_id),
-                'width': round(width or 0.15, 4),
-                'path': path,
-            })
-            trace_index += 1
-            coords.extend((px, py) for px, py in path)
+
+    for profile in iter_elems(root, {'Profile'}):
+        for child in profile:
+            if strip_ns(child.tag) != 'Polygon':
+                continue
+            path = parse_poly_steps(child, scale)
+            if path and path[0] != path[-1]:
+                path.append(path[0])
+            trace_index = append_trace(traces, coords, trace_index, '$BOARD$', 'BOARD_EDGE', 0.1, path)
+
+    for lf in iter_elems(root, {'LayerFeature'}):
+        layer_id = pick_attr(lf, 'layerRef', 'LayerRef', 'layer', 'Layer') or layers[0]['id']
+        for set_el in lf:
+            if strip_ns(set_el.tag) != 'Set':
+                continue
+            net_id = pick_attr(set_el, 'net', 'Net', 'netRef', 'NetRef') or 'UNKNOWN'
+            for child in set_el:
+                tag = strip_ns(child.tag)
+                if tag in {'Line', 'Segment'}:
+                    width = to_float(pick_attr(child, 'width', 'Width', 'lineWidth', 'LineWidth'), 0.15) * scale
+                    x1 = to_float(pick_attr(child, 'x1', 'X1', 'startX', 'StartX')) * scale
+                    y1 = to_float(pick_attr(child, 'y1', 'Y1', 'startY', 'StartY')) * scale
+                    x2 = to_float(pick_attr(child, 'x2', 'X2', 'endX', 'EndX')) * scale
+                    y2 = to_float(pick_attr(child, 'y2', 'Y2', 'endY', 'EndY')) * scale
+                    path = [[round(x1, 4), round(y1, 4)], [round(x2, 4), round(y2, 4)]]
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, path)
+                elif tag == 'Arc':
+                    width = to_float(pick_attr(child, 'width', 'Width', 'lineWidth', 'LineWidth'), 0.15) * scale
+                    x1 = to_float(pick_attr(child, 'x1', 'X1', 'startX', 'StartX')) * scale
+                    y1 = to_float(pick_attr(child, 'y1', 'Y1', 'startY', 'StartY')) * scale
+                    x2 = to_float(pick_attr(child, 'x2', 'X2', 'endX', 'EndX')) * scale
+                    y2 = to_float(pick_attr(child, 'y2', 'Y2', 'endY', 'EndY')) * scale
+                    cx = to_float(pick_attr(child, 'cx', 'CX', 'centerX', 'CenterX')) * scale
+                    cy = to_float(pick_attr(child, 'cy', 'CY', 'centerY', 'CenterY')) * scale
+                    cw = str(pick_attr(child, 'clockwise', 'Clockwise', 'cw', 'CW') or '').lower() in {'1', 'true', 'yes'}
+                    path = arc_to_polyline(x1, y1, x2, y2, cx, cy, cw)
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, path)
+                elif tag in {'Polyline', 'Path'}:
+                    width = to_float(pick_attr(child, 'width', 'Width', 'lineWidth', 'LineWidth'), 0.15) * scale
+                    path = parse_polyline_points(child, scale)
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, path)
+                elif tag == 'Polygon':
+                    path = parse_poly_steps(child, scale)
+                    if path and path[0] != path[-1]:
+                        path.append(path[0])
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, 0.1, path)
+                elif tag == 'Pad':
+                    x = to_float(pick_attr(child, 'x', 'X')) * scale
+                    y = to_float(pick_attr(child, 'y', 'Y')) * scale
+                    pref = pick_attr(child, 'padstackDefRef', 'PadstackDefRef')
+                    w, h = pad_defs.get(str(pref), (0.8, 0.8))
+                    path = circle_path(x, y, max(w, h))
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, max(w, h), path)
 
     if not coords:
         coords = [(0.0, 0.0), (100.0, 60.0)]
