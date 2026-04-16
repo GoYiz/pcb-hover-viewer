@@ -55,6 +55,14 @@
       "file": "/examples/led_power_board_ipc.json",
       "components": 10,
       "traces": 72
+    },
+    {
+      "id": "switch_board_odb",
+      "name": "Switch Board ODB",
+      "source": "https://raw.githubusercontent.com/mgburr/ipc2581-to-kicad/main/samples/Switch_Board_ODB.zip",
+      "file": "/examples/switch_board_odb.json",
+      "components": 27,
+      "traces": 120
     }
   ]
 }
