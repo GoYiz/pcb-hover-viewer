@@ -64,5 +64,21 @@
       "components": 27,
       "traces": 120
     }
+  ],
+  "items": [
+    {
+      "id": "switch_board_ipc",
+      "name": "Switch Board IPC",
+      "description": "Imported from public IPC-2581 sample with richer geometry.",
+      "file": "/examples/switch_board_ipc.json",
+      "source": "https://raw.githubusercontent.com/mgburr/ipc2581-to-kicad/main/samples/SWITCH%20BOARD.xml",
+      "tags": [
+        "ipc2581",
+        "imported",
+        "cam"
+      ],
+      "components": 27,
+      "traces": 1147
+    }
   ]
 }
