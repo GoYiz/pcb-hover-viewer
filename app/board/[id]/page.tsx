@@ -19,6 +19,7 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
         boardHeightMm={board.board.heightMm}
         initialComponents={board.components}
         initialTraces={board.traces}
+        importMetadata={(board as { importMetadata?: import("@/types/pcb").ImportMetadata }).importMetadata}
       />
     </main>
   );

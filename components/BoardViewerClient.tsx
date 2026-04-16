@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { fetchBoardComponents, fetchBoardGeometry, fetchBoardMeta } from "@/lib/api";
 import { useViewerStore } from "@/store/viewerStore";
-import type { ComponentItem, TraceItem } from "@/types/pcb";
+import type { ComponentItem, TraceItem, ImportMetadata } from "@/types/pcb";
 
 const PcbCanvas = dynamic(() => import("@/components/PcbCanvas"), { ssr: false });
 const ThreeBoardCanvas = dynamic(() => import("@/components/ThreeBoardCanvas"), { ssr: false });
@@ -25,6 +25,7 @@ type Props = {
   boardHeightMm?: number;
   initialComponents?: ComponentItem[];
   initialTraces?: TraceItem[];
+  importMetadata?: ImportMetadata;
 };
 
 export default function BoardViewerClient({
@@ -34,6 +35,7 @@ export default function BoardViewerClient({
   boardHeightMm: initialBoardHeightMm,
   initialComponents,
   initialTraces,
+  importMetadata,
 }: Props) {
   const [components, setComponents] = useState<ComponentItem[]>(initialComponents || []);
   const [traces, setTraces] = useState<TraceItem[]>(initialTraces || []);
@@ -60,6 +62,9 @@ export default function BoardViewerClient({
     if (layerMode === "bcu") return ["B.Cu"];
     return ["F.Cu", "B.Cu"];
   }, [layerMode]);
+
+  const importWarnings = importMetadata?.warnings || [];
+  const topImportLayers = useMemo(() => Object.entries(importMetadata?.stats?.traceCountByLayer || {}).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 5), [importMetadata]);
 
   const netCount = useMemo(() => {
     const nets = new Set<string>();
@@ -525,6 +530,32 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Console state</span><strong>{error ? "Fault" : loading ? "Loading" : "Ready"}</strong></div>
             </div>
           </div>
+
+          {importMetadata && (
+            <div className="inspector-card inspector-card-dense">
+              <div className="inspector-title">Import telemetry</div>
+              <div className="inspector-grid">
+                <div className="inspector-kv"><span>Format</span><strong>{importMetadata.sourceFormat}</strong></div>
+                <div className="inspector-kv"><span>Warnings</span><strong>{importWarnings.length}</strong></div>
+                <div className="inspector-kv"><span>Layer classes</span><strong>{new Set(Object.values(importMetadata.layerCategories || {})).size}</strong></div>
+                <div className="inspector-kv"><span>Imported traces</span><strong>{importMetadata.stats?.traceCount || traces.length}</strong></div>
+              </div>
+              {importWarnings.length > 0 && (
+                <div className="focus-card focus-card-trace" style={{ marginTop: 14 }}>
+                  {importWarnings.map((warning) => (
+                    <div key={warning} className="focus-meta">• {warning}</div>
+                  ))}
+                </div>
+              )}
+              {topImportLayers.length > 0 && (
+                <div className="inspector-grid" style={{ marginTop: 14 }}>
+                  {topImportLayers.map(([layer, count]) => (
+                    <div key={layer} className="inspector-kv"><span>{layer}</span><strong>{count}</strong></div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="inspector-card inspector-card-dense">
             <div className="inspector-title">Console notes</div>

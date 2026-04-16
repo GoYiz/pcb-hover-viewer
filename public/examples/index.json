@@ -54,7 +54,9 @@
       "source": "https://raw.githubusercontent.com/mgburr/ipc2581-to-kicad/main/samples/led_power_board.xml",
       "file": "/examples/led_power_board_ipc.json",
       "components": 10,
-      "traces": 36
+      "traces": 36,
+      "format": "ipc2581",
+      "imported": true
     },
     {
       "id": "switch_board_odb",
@@ -62,7 +64,9 @@
       "source": "https://raw.githubusercontent.com/mgburr/ipc2581-to-kicad/main/samples/Switch_Board_ODB.zip",
       "file": "/examples/switch_board_odb.json",
       "components": 27,
-      "traces": 120
+      "traces": 120,
+      "format": "odbpp",
+      "imported": true
     },
     {
       "id": "switch_board_ipc",
@@ -70,7 +74,9 @@
       "source": "https://raw.githubusercontent.com/mgburr/ipc2581-to-kicad/main/samples/SWITCH%20BOARD.xml",
       "file": "/examples/switch_board_ipc.json",
       "components": 27,
-      "traces": 1422
+      "traces": 1422,
+      "format": "ipc2581",
+      "imported": true
     }
   ]
 }

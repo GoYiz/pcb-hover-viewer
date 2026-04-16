@@ -42,3 +42,18 @@ export type RelationsResponse = {
   nets: string[];
   traces: Array<{ id: string; netId: string }>;
 };
+
+
+export type ImportMetadata = {
+  sourceFormat: string;
+  sourcePath?: string;
+  stats?: {
+    layerCount?: number;
+    componentCount?: number;
+    traceCount?: number;
+    netCount?: number;
+    traceCountByLayer?: Record<string, number>;
+  };
+  layerCategories?: Record<string, string>;
+  warnings?: string[];
+};

@@ -23,6 +23,11 @@ export default function ExamplesClient({
   const [hoveredId, setHoveredId] = useState<string | undefined>(undefined);
 
   const active = examples[activeId];
+  const activeIndexItem = index.find((i) => i.id === activeId);
+  const metadata = active?.importMetadata;
+  const warningCount = metadata?.warnings?.length || 0;
+  const layerCategoryEntries = Object.entries(metadata?.layerCategories || {});
+  const topLayerStats = Object.entries(metadata?.stats?.traceCountByLayer || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
 
   const relation = useMemo(() => {
     if (!active || !hoveredId || !hoveredType) {
@@ -51,7 +56,7 @@ export default function ExamplesClient({
     return { directIds, traceIds, netIds };
   }, [active, hoveredId, hoveredType]);
 
-  const sourceHref = index.find((i) => i.id === activeId)?.source;
+  const sourceHref = activeIndexItem?.source;
   const catalogComponents = index.reduce((acc, item) => acc + item.components, 0);
   const activeDensity = active ? (active.components.length + active.traces.length) / Math.max(active.board.widthMm * active.board.heightMm, 1) : 0;
 
@@ -84,12 +89,12 @@ export default function ExamplesClient({
           <div className="metric-card">
             <span className="metric-label">Current target</span>
             <strong className="metric-value metric-value-sm">{active?.board.name || "—"}</strong>
-            <span className="metric-meta">active bench specimen</span>
+            <span className="metric-meta">{activeIndexItem?.format ? `${activeIndexItem.format} import` : "active bench specimen"}</span>
           </div>
           <div className="metric-card">
-            <span className="metric-label">Visual density</span>
-            <strong className="metric-value">{activeDensity.toFixed(2)}</strong>
-            <span className="metric-meta">objects per mm² benchmark ratio</span>
+            <span className="metric-label">Import warnings</span>
+            <strong className="metric-value">{warningCount}</strong>
+            <span className="metric-meta">{activeIndexItem?.imported ? "import pipeline quality flags" : "objects per mm² benchmark ratio"}</span>
           </div>
         </div>
       </section>
@@ -116,9 +121,9 @@ export default function ExamplesClient({
           <span className="summary-meta">trace segments</span>
         </div>
         <div className="summary-cell">
-          <span className="summary-label">Hover context</span>
-          <strong className="summary-value">{hoveredId || "Idle"}</strong>
-          <span className="summary-meta">{hoveredType || "no active target"}</span>
+          <span className="summary-label">Import status</span>
+          <strong className="summary-value">{activeIndexItem?.format?.toUpperCase() || "NATIVE"}</strong>
+          <span className="summary-meta">{warningCount ? `${warningCount} warnings` : (activeIndexItem?.imported ? "validated import" : "native example")}</span>
         </div>
       </section>
 
@@ -185,13 +190,15 @@ export default function ExamplesClient({
                   <div className="inspector-title">Example dossier</div>
                   <div className="inspector-meta">Normalized data imported from open hardware repositories</div>
                 </div>
-                <span className="signal-pill">Bench</span>
+                <span className="signal-pill">{activeIndexItem?.imported ? `Imported · ${activeIndexItem.format || "unknown"}` : "Bench"}</span>
               </div>
               <div className="inspector-grid">
                 <div className="inspector-kv"><span>Name</span><strong>{active.board.name}</strong></div>
                 <div className="inspector-kv"><span>Board size</span><strong>{active.board.widthMm} × {active.board.heightMm}</strong></div>
                 <div className="inspector-kv"><span>Components</span><strong>{active.components.length}</strong></div>
                 <div className="inspector-kv"><span>Trace segments</span><strong>{active.traces.length}</strong></div>
+                <div className="inspector-kv"><span>Warnings</span><strong>{warningCount}</strong></div>
+                <div className="inspector-kv"><span>Layer classes</span><strong>{new Set(layerCategoryEntries.map(([, v]) => v)).size}</strong></div>
               </div>
               {sourceHref && (
                 <a className="source-link" href={sourceHref} target="_blank">
@@ -212,6 +219,37 @@ export default function ExamplesClient({
                   <div className="inspector-kv"><span>Related traces</span><strong>{relation.traceIds.length}</strong></div>
                   <div className="inspector-kv"><span>Related components</span><strong>{relation.directIds.length}</strong></div>
                 </div>
+              )}
+            </div>
+
+            <div className="inspector-card inspector-card-dense">
+              <div className="inspector-title">Import telemetry</div>
+              {!metadata ? (
+                <p className="inspector-meta">No import metadata available for this specimen.</p>
+              ) : (
+                <>
+                  <div className="inspector-grid">
+                    <div className="inspector-kv"><span>Source format</span><strong>{metadata.sourceFormat}</strong></div>
+                    <div className="inspector-kv"><span>Layer count</span><strong>{metadata.stats?.layerCount || active.layers.length}</strong></div>
+                    <div className="inspector-kv"><span>Trace count</span><strong>{metadata.stats?.traceCount || active.traces.length}</strong></div>
+                    <div className="inspector-kv"><span>Net count</span><strong>{metadata.stats?.netCount || active.nets.length}</strong></div>
+                  </div>
+                  {metadata.warnings && metadata.warnings.length > 0 && (
+                    <div className="focus-card focus-card-trace" style={{ marginTop: 14 }}>
+                      <div className="focus-meta">Warnings</div>
+                      {metadata.warnings.map((w) => (
+                        <div key={w} className="focus-meta">• {w}</div>
+                      ))}
+                    </div>
+                  )}
+                  {topLayerStats.length > 0 && (
+                    <div className="inspector-grid" style={{ marginTop: 14 }}>
+                      {topLayerStats.map(([layer, count]) => (
+                        <div key={layer} className="inspector-kv"><span>{layer}</span><strong>{count}</strong></div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

@@ -8,6 +8,8 @@ export type ExampleIndexItem = {
   file: string;
   components: number;
   traces: number;
+  format?: string;
+  imported?: boolean;
 };
 
 export type ExampleBoardData = {
@@ -36,6 +38,19 @@ export type ExampleBoardData = {
     path: [number, number][];
   }>;
   nets: Array<{ id: string; name: string }>;
+  importMetadata?: {
+    sourceFormat: string;
+    sourcePath?: string;
+    stats?: {
+      layerCount?: number;
+      componentCount?: number;
+      traceCount?: number;
+      netCount?: number;
+      traceCountByLayer?: Record<string, number>;
+    };
+    layerCategories?: Record<string, string>;
+    warnings?: string[];
+  };
 };
 
 const EXAMPLES_DIR = path.join(process.cwd(), "public", "examples");
