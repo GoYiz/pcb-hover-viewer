@@ -13,7 +13,6 @@ ROOT = Path('/var/minis/workspace/pcb-hover-viewer')
 RAW_DIR = ROOT / 'data' / 'raw'
 OUT_DIR = ROOT / 'public' / 'examples'
 
-
 GEOM_TAGS = {'Line', 'Segment', 'Arc', 'Polyline', 'Path', 'Polygon', 'Cutout', 'Pad', 'Hole'}
 
 
@@ -86,6 +85,15 @@ def parse_polyline_points(el: ET.Element, scale: float) -> list[list[float]]:
     return pts
 
 
+def circle_path(cx: float, cy: float, d: float, segments: int = 24):
+    r = max(d, 0.2) / 2
+    pts = []
+    for i in range(segments + 1):
+        t = math.tau * i / segments
+        pts.append([round(cx + math.cos(t) * r, 4), round(cy + math.sin(t) * r, 4)])
+    return pts
+
+
 def arc_to_polyline(x1: float, y1: float, x2: float, y2: float, cx: float, cy: float, clockwise: bool, segments: int = 24):
     if math.hypot(x1 - x2, y1 - y2) < 1e-6:
         r = math.hypot(x1 - cx, y1 - cy)
@@ -107,15 +115,6 @@ def arc_to_polyline(x1: float, y1: float, x2: float, y2: float, cx: float, cy: f
 def rotate_point(x: float, y: float, deg: float):
     r = math.radians(deg)
     return x * math.cos(r) - y * math.sin(r), x * math.sin(r) + y * math.cos(r)
-
-
-def circle_path(cx: float, cy: float, d: float, segments: int = 24):
-    r = max(d, 0.2) / 2
-    pts = []
-    for i in range(segments + 1):
-        t = math.tau * i / segments
-        pts.append([round(cx + math.cos(t) * r, 4), round(cy + math.sin(t) * r, 4)])
-    return pts
 
 
 def rect_path(cx: float, cy: float, w: float, h: float):
@@ -194,12 +193,93 @@ def ensure_layer(layers: list[dict], seen: set[str], layer_id: str):
         layers.append({'id': layer_id, 'name': layer_id, 'zIndex': len(layers) + 1})
 
 
+def parse_standard_defs(root: ET.Element, scale: float):
+    defs = {}
+    for el in iter_elems(root, {'EntryStandard'}):
+        eid = pick_attr(el, 'id', 'ID')
+        if not eid:
+            continue
+        kind = None
+        w = h = drill = None
+        for child in el:
+            tag = strip_ns(child.tag)
+            if tag == 'RectCenter':
+                kind = 'rect'; w = to_float(pick_attr(child, 'width', 'Width')) * scale; h = to_float(pick_attr(child, 'height', 'Height')) * scale
+            elif tag == 'Oval':
+                kind = 'oval'; w = to_float(pick_attr(child, 'width', 'Width')) * scale; h = to_float(pick_attr(child, 'height', 'Height')) * scale
+            elif tag == 'Circle':
+                kind = 'circle'; d = to_float(pick_attr(child, 'diameter', 'Diameter')) * scale; w = h = d
+            elif tag == 'Drill':
+                drill = to_float(pick_attr(child, 'diameter', 'Diameter')) * scale
+        if w and h:
+            defs[str(eid)] = {'kind': kind or 'rect', 'w': w, 'h': h, 'drill': drill}
+    return defs
+
+
+def standard_ref_dims(pin_el: ET.Element, standard_defs: dict, scale: float):
+    locx = locy = 0.0
+    refid = None
+    for child in pin_el:
+        tag = strip_ns(child.tag)
+        if tag == 'Location':
+            locx = to_float(pick_attr(child, 'x', 'X')) * scale
+            locy = to_float(pick_attr(child, 'y', 'Y')) * scale
+        elif tag == 'StandardPrimitiveRef':
+            refid = pick_attr(child, 'id', 'ID')
+    if refid and refid in standard_defs:
+        d = standard_defs[refid]
+        return locx, locy, d['w'], d['h']
+    return None
+
+
+def parse_outline_rects(package_el: ET.Element, scale: float):
+    rects = []
+    for child in package_el:
+        if strip_ns(child.tag) != 'Outline':
+            continue
+        for node in child.iter():
+            if strip_ns(node.tag) == 'Polygon':
+                pts = parse_poly_steps(node, scale)
+                if pts:
+                    xs = [p[0] for p in pts]
+                    ys = [p[1] for p in pts]
+                    rects.append((min(xs), min(ys), max(xs), max(ys)))
+    return rects
+
+
 def iter_geometry_nodes(container: ET.Element):
     for el in container.iter():
         if el is container:
             continue
         if strip_ns(el.tag) in GEOM_TAGS:
             yield el
+
+
+def iter_padstack_geometries(root: ET.Element, standard_defs: dict, scale: float):
+    for ps in iter_elems(root, {'PadStack'}):
+        net_id = normalize_net_id(pick_attr(ps, 'net', 'Net', 'netRef', 'NetRef'))
+        for child in ps:
+            tag = strip_ns(child.tag)
+            if tag == 'LayerHole':
+                x = to_float(pick_attr(child, 'x', 'X')) * scale
+                y = to_float(pick_attr(child, 'y', 'Y')) * scale
+                d = to_float(pick_attr(child, 'diameter', 'Diameter'), 0.3) * scale
+                plating = (pick_attr(child, 'platingStatus', 'PlatingStatus') or '').strip().upper()
+                hole_net = net_id if net_id != '$NONE$' else ('$VIA$' if plating == 'VIA' else '$HOLE$')
+                yield {'layer_id': 'DRILL', 'net_id': hole_net, 'width': d, 'path': circle_path(x, y, d)}
+            elif tag == 'LayerPad':
+                layer_id = pick_attr(child, 'layerRef', 'LayerRef', 'layer', 'Layer') or 'UNKNOWN_LAYER'
+                loc = next((c for c in child if strip_ns(c.tag) == 'Location'), None)
+                ref = next((c for c in child if strip_ns(c.tag) == 'StandardPrimitiveRef'), None)
+                if loc is None or ref is None:
+                    continue
+                x = to_float(pick_attr(loc, 'x', 'X')) * scale
+                y = to_float(pick_attr(loc, 'y', 'Y')) * scale
+                rid = pick_attr(ref, 'id', 'ID')
+                dims = standard_defs.get(str(rid))
+                if not dims:
+                    continue
+                yield {'layer_id': layer_id, 'net_id': net_id, 'width': max(dims['w'], dims['h']), 'path': flash_path(x, y, dims['w'], dims['h'])}
 
 
 def parse_ipc2581(path: Path, board_id: str, board_name: str):
@@ -243,28 +323,8 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
             if cref and nid:
                 comp_pin_nets.setdefault(str(cref), set()).add(str(nid))
 
-    pad_defs: dict[str, tuple[float, float]] = {}
-    for el in iter_elems(root, {'EntryStandard'}):
-        eid = pick_attr(el, 'id', 'ID')
-        if not eid:
-            continue
-        w = h = None
-        for child in el:
-            tag = strip_ns(child.tag)
-            if tag == 'RectCenter':
-                w = to_float(pick_attr(child, 'width', 'Width')) * scale
-                h = to_float(pick_attr(child, 'height', 'Height')) * scale
-                break
-            if tag == 'Oval':
-                w = to_float(pick_attr(child, 'width', 'Width')) * scale
-                h = to_float(pick_attr(child, 'height', 'Height')) * scale
-                break
-            if tag == 'Circle':
-                d = to_float(pick_attr(child, 'diameter', 'Diameter')) * scale
-                w = h = d
-                break
-        if w and h:
-            pad_defs[str(eid)] = (w, h)
+    standard_defs = parse_standard_defs(root, scale)
+    pad_defs = {k: (v['w'], v['h']) for k, v in standard_defs.items()}
 
     package_map: dict[str, list[tuple[float, float, float, float]]] = {}
     for el in iter_elems(root, {'Package'}):
@@ -272,11 +332,21 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
         if not pname:
             continue
         rects = []
+        rects.extend(parse_outline_rects(el, scale))
         for child in el:
             if strip_ns(child.tag) != 'Pin':
                 continue
+            dims = standard_ref_dims(child, standard_defs, scale)
+            if dims is not None:
+                px, py, w, h = dims
+                rects.append((px - w / 2, py - h / 2, px + w / 2, py + h / 2))
+                continue
             px = to_float(pick_attr(child, 'x', 'X')) * scale
             py = to_float(pick_attr(child, 'y', 'Y')) * scale
+            loc = next((c for c in child if strip_ns(c.tag) == 'Location'), None)
+            if loc is not None:
+                px = to_float(pick_attr(loc, 'x', 'X')) * scale
+                py = to_float(pick_attr(loc, 'y', 'Y')) * scale
             pref = pick_attr(child, 'padstackDefRef', 'PadstackDefRef')
             w, h = pad_defs.get(str(pref), (0.8, 0.8))
             rects.append((px - w / 2, py - h / 2, px + w / 2, py + h / 2))
@@ -307,31 +377,19 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
                     tmp.append(str(net_id))
             net_ids = sorted(set(tmp))
         if fp and fp in package_map:
-            xs = []
-            ys = []
+            xs = []; ys = []
             for x1, y1, x2, y2 in package_map[fp]:
                 for cx, cy in ((x1, y1), (x2, y1), (x2, y2), (x1, y2)):
                     rx, ry = rotate_point(cx, cy, rot)
-                    xs.append(x + rx)
-                    ys.append(y + ry)
+                    xs.append(x + rx); ys.append(y + ry)
             bbox = [round(min(xs), 4), round(min(ys), 4), round(max(xs) - min(xs), 4), round(max(ys) - min(ys), 4)]
         else:
             bbox = [round(x - 0.7, 4), round(y - 0.5, 4), 1.4, 1.0]
-        components.append({
-            'id': str(ref),
-            'refdes': str(ref),
-            'x': round(x, 4),
-            'y': round(y, 4),
-            'rotation': round(rot, 4),
-            'bbox': bbox,
-            'footprint': fp,
-            'nets': [{'id': nid, 'name': net_map.get(nid, nid)} for nid in net_ids],
-        })
+        components.append({'id': str(ref), 'refdes': str(ref), 'x': round(x, 4), 'y': round(y, 4), 'rotation': round(rot, 4), 'bbox': bbox, 'footprint': fp, 'nets': [{'id': nid, 'name': net_map.get(nid, nid)} for nid in net_ids]})
         coords.append((x, y))
 
     traces = []
     trace_index = 1
-
     ensure_layer(layers, layer_seen, 'BOARD_EDGE')
     ensure_layer(layers, layer_seen, 'BOARD_CUTOUT')
     ensure_layer(layers, layer_seen, 'DRILL')
@@ -341,14 +399,16 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
             tag = strip_ns(child.tag)
             if tag == 'Polygon':
                 path = parse_poly_steps(child, scale)
-                if path and path[0] != path[-1]:
-                    path.append(path[0])
+                if path and path[0] != path[-1]: path.append(path[0])
                 trace_index = append_trace(traces, coords, trace_index, '$BOARD$', 'BOARD_EDGE', 0.1, path)
             elif tag == 'Cutout':
                 path = parse_poly_steps(child, scale)
-                if path and path[0] != path[-1]:
-                    path.append(path[0])
+                if path and path[0] != path[-1]: path.append(path[0])
                 trace_index = append_trace(traces, coords, trace_index, '$CUTOUT$', 'BOARD_CUTOUT', 0.1, path)
+
+    for pg in iter_padstack_geometries(root, standard_defs, scale):
+        ensure_layer(layers, layer_seen, pg['layer_id'])
+        trace_index = append_trace(traces, coords, trace_index, pg['net_id'], pg['layer_id'], pg['width'], pg['path'])
 
     for lf in iter_elems(root, {'LayerFeature'}):
         layer_id = pick_attr(lf, 'layerRef', 'LayerRef', 'layer', 'Layer') or layers[0]['id']
@@ -381,8 +441,7 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
                     trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, parse_polyline_points(geom, scale))
                 elif tag == 'Polygon':
                     path = parse_poly_steps(geom, scale)
-                    if path and path[0] != path[-1]:
-                        path.append(path[0])
+                    if path and path[0] != path[-1]: path.append(path[0])
                     trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, 0.1, path)
                 elif tag == 'Pad':
                     x = to_float(pick_attr(geom, 'x', 'X')) * scale
@@ -391,7 +450,6 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
                     w, h = pad_defs.get(str(pref), (0.8, 0.8))
                     trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, max(w, h), flash_path(x, y, w, h))
                 elif tag == 'Hole':
-                    ensure_layer(layers, layer_seen, 'DRILL')
                     x = to_float(pick_attr(geom, 'x', 'X')) * scale
                     y = to_float(pick_attr(geom, 'y', 'Y')) * scale
                     d = to_float(pick_attr(geom, 'diameter', 'Diameter'), 0.3) * scale
@@ -402,10 +460,8 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
     if not coords:
         coords = [(0.0, 0.0), (100.0, 60.0)]
 
-    min_x = min(x for x, _ in coords)
-    max_x = max(x for x, _ in coords)
-    min_y = min(y for _, y in coords)
-    max_y = max(y for _, y in coords)
+    min_x = min(x for x, _ in coords); max_x = max(x for x, _ in coords)
+    min_y = min(y for _, y in coords); max_y = max(y for _, y in coords)
     pad = 5.0
     width_mm = max(20.0, max_x - min_x + pad * 2)
     height_mm = max(20.0, max_y - min_y + pad * 2)
@@ -427,19 +483,7 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
     for nid in sorted(used_nets - known):
         nets.append({'id': nid, 'name': nid})
 
-    return {
-        'board': {
-            'id': board_id,
-            'name': board_name,
-            'version': 'imported-ipc2581',
-            'widthMm': round(width_mm, 2),
-            'heightMm': round(height_mm, 2),
-        },
-        'layers': layers,
-        'components': components,
-        'traces': traces,
-        'nets': nets,
-    }
+    return {'board': {'id': board_id, 'name': board_name, 'version': 'imported-ipc2581', 'widthMm': round(width_mm, 2), 'heightMm': round(height_mm, 2)}, 'layers': layers, 'components': components, 'traces': traces, 'nets': nets}
 
 
 def fetch(url: str) -> bytes:
@@ -452,30 +496,16 @@ def main():
     if len(sys.argv) < 4:
         print('usage: python import_ipc2581.py <input.xml|url> <board_id> <board_name> [output.json]')
         raise SystemExit(1)
-    src = sys.argv[1]
-    board_id = sys.argv[2]
-    board_name = sys.argv[3]
+    src = sys.argv[1]; board_id = sys.argv[2]; board_name = sys.argv[3]
     out = Path(sys.argv[4]) if len(sys.argv) > 4 else OUT_DIR / f'{board_id}.json'
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    out.parent.mkdir(parents=True, exist_ok=True)
-
+    RAW_DIR.mkdir(parents=True, exist_ok=True); out.parent.mkdir(parents=True, exist_ok=True)
     if src.startswith('http://') or src.startswith('https://'):
-        raw = fetch(src)
-        raw_path = RAW_DIR / f'{board_id}.xml'
-        raw_path.write_bytes(raw)
-        in_path = raw_path
+        raw = fetch(src); raw_path = RAW_DIR / f'{board_id}.xml'; raw_path.write_bytes(raw); in_path = raw_path
     else:
         in_path = Path(src)
-
     data = parse_ipc2581(in_path, board_id, board_name)
     out.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
-    print(json.dumps({
-        'out': str(out),
-        'board': data['board'],
-        'components': len(data['components']),
-        'traces': len(data['traces']),
-        'nets': len(data['nets']),
-    }, ensure_ascii=False))
+    print(json.dumps({'out': str(out), 'board': data['board'], 'components': len(data['components']), 'traces': len(data['traces']), 'nets': len(data['nets'])}, ensure_ascii=False))
 
 
 if __name__ == '__main__':
