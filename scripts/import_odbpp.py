@@ -39,14 +39,17 @@ def parse_netlist(text: str):
     return net_map
 
 def parse_components(text: str, min_x: float, min_y: float, pad: float, net_map: dict[str,str]):
-    comps=[]; current=None; nets=set()
+    comps=[]; current=None; nets=set(); pin_pts=[]
     for line in text.splitlines():
         s=line.strip()
         if s.startswith('# CMP'):
             if current:
+                if pin_pts:
+                    xs=[x for x,_ in pin_pts]; ys=[y for _,y in pin_pts]
+                    current['bbox']=[round(min(xs)-0.35,4), round(min(ys)-0.35,4), round(max(xs)-min(xs)+0.7,4), round(max(ys)-min(ys)+0.7,4)]
                 current['nets']=[{'id':nid,'name':net_map.get(nid,nid)} for nid in sorted(nets)]
                 comps.append(current)
-            current=None; nets=set(); continue
+            current=None; nets=set(); pin_pts=[]; continue
         if s.startswith('CMP '):
             parts=s.split()
             if len(parts)>=7:
@@ -56,9 +59,17 @@ def parse_components(text: str, min_x: float, min_y: float, pad: float, net_map:
         if s.startswith('TOP ') and current:
             parts=s.split()
             if len(parts)>=8:
+                try:
+                    px=float(parts[2])-min_x+pad; py=float(parts[3])-min_y+pad
+                    pin_pts.append((px,py))
+                except Exception:
+                    pass
                 net_id=parts[-1]
                 if net_id.isdigit() and net_id!='0': nets.add(net_id)
     if current:
+        if pin_pts:
+            xs=[x for x,_ in pin_pts]; ys=[y for _,y in pin_pts]
+            current['bbox']=[round(min(xs)-0.35,4), round(min(ys)-0.35,4), round(max(xs)-min(xs)+0.7,4), round(max(ys)-min(ys)+0.7,4)]
         current['nets']=[{'id':nid,'name':net_map.get(nid,nid)} for nid in sorted(nets)]
         comps.append(current)
     return comps

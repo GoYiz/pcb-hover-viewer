@@ -97,6 +97,11 @@ def build_bbox_from_points(points: list[list[float]]):
     return [round(min_x, 4), round(min_y, 4), round(max_x - min_x, 4), round(max_y - min_y, 4)]
 
 
+def rotate_point(x: float, y: float, deg: float):
+    r = math.radians(deg)
+    return x * math.cos(r) - y * math.sin(r), x * math.sin(r) + y * math.cos(r)
+
+
 def parse_ipc2581(path: Path, board_id: str, board_name: str):
     tree = ET.parse(path)
     root = tree.getroot()
@@ -126,11 +131,58 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
         layers = [{'id': 'F.Cu', 'name': 'F.Cu', 'zIndex': 1}, {'id': 'B.Cu', 'name': 'B.Cu', 'zIndex': 2}]
 
     net_map: dict[str, str] = {}
+    comp_pin_nets: dict[str, set[str]] = {}
     for el in iter_elems(root, {'Net', 'LogicalNet'}):
         nid = pick_attr(el, 'id', 'ID', 'name', 'Name')
         name = pick_attr(el, 'name', 'Name', 'netName', 'NetName') or nid
         if nid:
             net_map[str(nid)] = str(name)
+        for child in el.iter():
+            if strip_ns(child.tag) != 'PinRef':
+                continue
+            cref = pick_attr(child, 'componentRef', 'ComponentRef', 'compRef', 'CompRef')
+            if cref and nid:
+                comp_pin_nets.setdefault(str(cref), set()).add(str(nid))
+
+    pad_defs: dict[str, tuple[float, float]] = {}
+    for el in iter_elems(root, {'EntryStandard'}):
+        eid = pick_attr(el, 'id', 'ID')
+        if not eid:
+            continue
+        w = h = None
+        for child in el:
+            tag = strip_ns(child.tag)
+            if tag == 'RectCenter':
+                w = to_float(pick_attr(child, 'width', 'Width')) * scale
+                h = to_float(pick_attr(child, 'height', 'Height')) * scale
+                break
+            if tag == 'Oval':
+                w = to_float(pick_attr(child, 'width', 'Width')) * scale
+                h = to_float(pick_attr(child, 'height', 'Height')) * scale
+                break
+            if tag == 'Circle':
+                d = to_float(pick_attr(child, 'diameter', 'Diameter')) * scale
+                w = h = d
+                break
+        if w and h:
+            pad_defs[str(eid)] = (w, h)
+
+    package_map: dict[str, list[tuple[float, float, float, float]]] = {}
+    for el in iter_elems(root, {'Package'}):
+        pname = pick_attr(el, 'name', 'Name')
+        if not pname:
+            continue
+        rects = []
+        for child in el:
+            if strip_ns(child.tag) != 'Pin':
+                continue
+            px = to_float(pick_attr(child, 'x', 'X')) * scale
+            py = to_float(pick_attr(child, 'y', 'Y')) * scale
+            pref = pick_attr(child, 'padstackDefRef', 'PadstackDefRef')
+            w, h = pad_defs.get(str(pref), (0.8, 0.8))
+            rects.append((px - w / 2, py - h / 2, px + w / 2, py + h / 2))
+        if rects:
+            package_map[str(pname)] = rects
 
     components = []
     coords = []
@@ -142,13 +194,31 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
         y = to_float(pick_attr(el, 'y', 'Y', 'locY', 'LocationY')) * scale
         rot = to_float(pick_attr(el, 'rotation', 'Rotation', 'angle', 'Angle'))
         fp = pick_attr(el, 'packageRef', 'PackageRef', 'part', 'Part')
-        net_ids = []
-        for child in el.iter():
-            net_id = pick_attr(child, 'net', 'Net', 'netRef', 'NetRef')
-            if net_id:
-                net_ids.append(str(net_id))
-        net_ids = sorted(set(net_ids))
-        bbox = [round(x - 0.7, 4), round(y - 0.5, 4), 1.4, 1.0]
+        xform = next((c for c in el if strip_ns(c.tag) == 'Xform'), None)
+        if xform is not None:
+            x = to_float(pick_attr(xform, 'x', 'X')) * scale or x
+            y = to_float(pick_attr(xform, 'y', 'Y')) * scale or y
+            rot = to_float(pick_attr(xform, 'rotation', 'Rotation')) or rot
+        net_ids = sorted(comp_pin_nets.get(str(ref), set()))
+        if not net_ids:
+            tmp = []
+            for child in el.iter():
+                net_id = pick_attr(child, 'net', 'Net', 'netRef', 'NetRef')
+                if net_id:
+                    tmp.append(str(net_id))
+            net_ids = sorted(set(tmp))
+        if fp and fp in package_map:
+            xs = []
+            ys = []
+            for x1, y1, x2, y2 in package_map[fp]:
+                corners = [(x1,y1),(x2,y1),(x2,y2),(x1,y2)]
+                for cx, cy in corners:
+                    rx, ry = rotate_point(cx, cy, rot)
+                    xs.append(x + rx)
+                    ys.append(y + ry)
+            bbox = [round(min(xs),4), round(min(ys),4), round(max(xs)-min(xs),4), round(max(ys)-min(ys),4)]
+        else:
+            bbox = [round(x - 0.7, 4), round(y - 0.5, 4), 1.4, 1.0]
         components.append({
             'id': str(ref),
             'refdes': str(ref),
@@ -156,6 +226,7 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
             'y': round(y, 4),
             'rotation': round(rot, 4),
             'bbox': bbox,
+            'footprint': fp,
             'nets': [{'id': nid, 'name': net_map.get(nid, nid)} for nid in net_ids],
         })
         coords.append((x, y))
