@@ -47,6 +47,14 @@
       "file": "/examples/mcp3561_stress_4x4.json",
       "components": 832,
       "traces": 5376
+    },
+    {
+      "id": "led_power_board_ipc",
+      "name": "LED Power Board IPC",
+      "source": "https://raw.githubusercontent.com/mgburr/ipc2581-to-kicad/main/samples/led_power_board.xml",
+      "file": "/examples/led_power_board_ipc.json",
+      "components": 10,
+      "traces": 72
     }
   ]
 }

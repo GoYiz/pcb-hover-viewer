@@ -1,0 +1,1384 @@
+{
+  "board": {
+    "id": "led_power_board_ipc",
+    "name": "LED Power Board IPC",
+    "version": "imported-ipc2581",
+    "widthMm": 52.6,
+    "heightMm": 37.6
+  },
+  "layers": [
+    {
+      "id": "TOP_COPPER",
+      "name": "TOP_COPPER",
+      "zIndex": 1
+    },
+    {
+      "id": "BOTTOM_COPPER",
+      "name": "BOTTOM_COPPER",
+      "zIndex": 2
+    },
+    {
+      "id": "TOP_SOLDERMASK",
+      "name": "TOP_SOLDERMASK",
+      "zIndex": 3
+    },
+    {
+      "id": "BOTTOM_SOLDERMASK",
+      "name": "BOTTOM_SOLDERMASK",
+      "zIndex": 4
+    },
+    {
+      "id": "TOP_PASTE",
+      "name": "TOP_PASTE",
+      "zIndex": 5
+    },
+    {
+      "id": "BOTTOM_PASTE",
+      "name": "BOTTOM_PASTE",
+      "zIndex": 6
+    },
+    {
+      "id": "TOP_SILKSCREEN",
+      "name": "TOP_SILKSCREEN",
+      "zIndex": 7
+    },
+    {
+      "id": "BOTTOM_SILKSCREEN",
+      "name": "BOTTOM_SILKSCREEN",
+      "zIndex": 8
+    },
+    {
+      "id": "TOP_ASSEMBLY",
+      "name": "TOP_ASSEMBLY",
+      "zIndex": 9
+    },
+    {
+      "id": "BOARD_EDGE",
+      "name": "BOARD_EDGE",
+      "zIndex": 10
+    },
+    {
+      "id": "DOCUMENT",
+      "name": "DOCUMENT",
+      "zIndex": 11
+    }
+  ],
+  "components": [
+    {
+      "id": "J1",
+      "refdes": "J1",
+      "x": 7.6,
+      "y": 7.6,
+      "rotation": 0.0,
+      "bbox": [
+        6.9,
+        7.1,
+        1.4,
+        1.0
+      ],
+      "nets": []
+    },
+    {
+      "id": "C1",
+      "refdes": "C1",
+      "x": 7.6,
+      "y": 7.6,
+      "rotation": 0.0,
+      "bbox": [
+        6.9,
+        7.1,
+        1.4,
+        1.0
+      ],
+      "nets": []
+    },
+    {
+      "id": "U1",
+      "refdes": "U1",
+      "x": 7.6,
+      "y": 7.6,
+      "rotation": 0.0,
+      "bbox": [
+        6.9,
+        7.1,
+        1.4,
+        1.0
+      ],
+      "nets": []
+    },
+    {
+      "id": "C2",
+      "refdes": "C2",
+      "x": 7.6,
+      "y": 7.6,
+      "rotation": 0.0,
+      "bbox": [
+        6.9,
+        7.1,
+        1.4,
+        1.0
+      ],
+      "nets": []
+    },
+    {
+      "id": "C3",
+      "refdes": "C3",
+      "x": 7.6,
+      "y": 7.6,
+      "rotation": 0.0,
+      "bbox": [
+        6.9,
+        7.1,
+        1.4,
+        1.0
+      ],
+      "nets": []
+    },
+    {
+      "id": "R1",
+      "refdes": "R1",
+      "x": 7.6,
+      "y": 7.6,
+      "rotation": 0.0,
+      "bbox": [
+        6.9,
+        7.1,
+        1.4,
+        1.0
+      ],
+      "nets": []
+    },
+    {
+      "id": "D1",
+      "refdes": "D1",
+      "x": 7.6,
+      "y": 7.6,
+      "rotation": 0.0,
+      "bbox": [
+        6.9,
+        7.1,
+        1.4,
+        1.0
+      ],
+      "nets": []
+    },
+    {
+      "id": "R2",
+      "refdes": "R2",
+      "x": 7.6,
+      "y": 7.6,
+      "rotation": 0.0,
+      "bbox": [
+        6.9,
+        7.1,
+        1.4,
+        1.0
+      ],
+      "nets": []
+    },
+    {
+      "id": "H1",
+      "refdes": "H1",
+      "x": 7.6,
+      "y": 7.6,
+      "rotation": 0.0,
+      "bbox": [
+        6.9,
+        7.1,
+        1.4,
+        1.0
+      ],
+      "nets": []
+    },
+    {
+      "id": "H2",
+      "refdes": "H2",
+      "x": 7.6,
+      "y": 7.6,
+      "rotation": 0.0,
+      "bbox": [
+        6.9,
+        7.1,
+        1.4,
+        1.0
+      ],
+      "nets": []
+    }
+  ],
+  "traces": [
+    {
+      "id": "T1",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          6.0,
+          6.8
+        ],
+        [
+          6.0,
+          8.4
+        ]
+      ]
+    },
+    {
+      "id": "T2",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          6.0,
+          8.4
+        ],
+        [
+          9.2,
+          8.4
+        ]
+      ]
+    },
+    {
+      "id": "T3",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          9.2,
+          8.4
+        ],
+        [
+          9.2,
+          6.8
+        ]
+      ]
+    },
+    {
+      "id": "T4",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          9.2,
+          6.8
+        ],
+        [
+          6.0,
+          6.8
+        ]
+      ]
+    },
+    {
+      "id": "T5",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          6.0,
+          5.8
+        ],
+        [
+          6.0,
+          6.8
+        ]
+      ]
+    },
+    {
+      "id": "T6",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          6.1,
+          6.85
+        ],
+        [
+          6.1,
+          8.35
+        ]
+      ]
+    },
+    {
+      "id": "T7",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          6.1,
+          8.35
+        ],
+        [
+          9.1,
+          8.35
+        ]
+      ]
+    },
+    {
+      "id": "T8",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          9.1,
+          8.35
+        ],
+        [
+          9.1,
+          6.85
+        ]
+      ]
+    },
+    {
+      "id": "T9",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          9.1,
+          6.85
+        ],
+        [
+          6.1,
+          6.85
+        ]
+      ]
+    },
+    {
+      "id": "T10",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          7.35,
+          8.3
+        ],
+        [
+          7.85,
+          8.3
+        ]
+      ]
+    },
+    {
+      "id": "T11",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          7.35,
+          6.9
+        ],
+        [
+          7.85,
+          6.9
+        ]
+      ]
+    },
+    {
+      "id": "T12",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          6.6,
+          7.1
+        ],
+        [
+          6.6,
+          8.1
+        ]
+      ]
+    },
+    {
+      "id": "T13",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          6.6,
+          8.1
+        ],
+        [
+          8.6,
+          8.1
+        ]
+      ]
+    },
+    {
+      "id": "T14",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          8.6,
+          8.1
+        ],
+        [
+          8.6,
+          7.1
+        ]
+      ]
+    },
+    {
+      "id": "T15",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          8.6,
+          7.1
+        ],
+        [
+          6.6,
+          7.1
+        ]
+      ]
+    },
+    {
+      "id": "T16",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          7.4,
+          8.15
+        ],
+        [
+          7.8,
+          8.15
+        ]
+      ]
+    },
+    {
+      "id": "T17",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          7.4,
+          7.05
+        ],
+        [
+          7.8,
+          7.05
+        ]
+      ]
+    },
+    {
+      "id": "T18",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          6.8,
+          7.2
+        ],
+        [
+          6.8,
+          8.0
+        ]
+      ]
+    },
+    {
+      "id": "T19",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          6.8,
+          8.0
+        ],
+        [
+          8.4,
+          8.0
+        ]
+      ]
+    },
+    {
+      "id": "T20",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          8.4,
+          8.0
+        ],
+        [
+          8.4,
+          7.2
+        ]
+      ]
+    },
+    {
+      "id": "T21",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          8.4,
+          7.2
+        ],
+        [
+          6.8,
+          7.2
+        ]
+      ]
+    },
+    {
+      "id": "T22",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          7.4,
+          8.15
+        ],
+        [
+          7.8,
+          8.15
+        ]
+      ]
+    },
+    {
+      "id": "T23",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          7.4,
+          7.05
+        ],
+        [
+          7.8,
+          7.05
+        ]
+      ]
+    },
+    {
+      "id": "T24",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          8.1,
+          7.05
+        ],
+        [
+          8.1,
+          8.15
+        ]
+      ]
+    },
+    {
+      "id": "T25",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          6.8,
+          7.2
+        ],
+        [
+          6.8,
+          8.0
+        ]
+      ]
+    },
+    {
+      "id": "T26",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          6.8,
+          8.0
+        ],
+        [
+          8.4,
+          8.0
+        ]
+      ]
+    },
+    {
+      "id": "T27",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          8.4,
+          8.0
+        ],
+        [
+          8.4,
+          7.2
+        ]
+      ]
+    },
+    {
+      "id": "T28",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          8.4,
+          7.2
+        ],
+        [
+          6.8,
+          7.2
+        ]
+      ]
+    },
+    {
+      "id": "T29",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          6.1,
+          6.4
+        ],
+        [
+          6.1,
+          8.8
+        ]
+      ]
+    },
+    {
+      "id": "T30",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          6.1,
+          8.8
+        ],
+        [
+          11.64,
+          8.8
+        ]
+      ]
+    },
+    {
+      "id": "T31",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          11.64,
+          8.8
+        ],
+        [
+          11.64,
+          6.4
+        ]
+      ]
+    },
+    {
+      "id": "T32",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          11.64,
+          6.4
+        ],
+        [
+          6.1,
+          6.4
+        ]
+      ]
+    },
+    {
+      "id": "T33",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          6.1,
+          6.4
+        ],
+        [
+          7.1,
+          5.8
+        ]
+      ]
+    },
+    {
+      "id": "T34",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.12,
+      "path": [
+        [
+          7.1,
+          5.8
+        ],
+        [
+          8.1,
+          6.4
+        ]
+      ]
+    },
+    {
+      "id": "T35",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          6.3,
+          6.6
+        ],
+        [
+          6.3,
+          8.6
+        ]
+      ]
+    },
+    {
+      "id": "T36",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          6.3,
+          8.6
+        ],
+        [
+          11.44,
+          8.6
+        ]
+      ]
+    },
+    {
+      "id": "T37",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          11.44,
+          8.6
+        ],
+        [
+          11.44,
+          6.6
+        ]
+      ]
+    },
+    {
+      "id": "T38",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          11.44,
+          6.6
+        ],
+        [
+          6.3,
+          6.6
+        ]
+      ]
+    },
+    {
+      "id": "T39",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.05,
+      "path": [
+        [
+          5.0,
+          5.0
+        ],
+        [
+          10.2,
+          5.0
+        ]
+      ]
+    },
+    {
+      "id": "T40",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.05,
+      "path": [
+        [
+          10.2,
+          5.0
+        ],
+        [
+          10.2,
+          10.2
+        ]
+      ]
+    },
+    {
+      "id": "T41",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.05,
+      "path": [
+        [
+          10.2,
+          10.2
+        ],
+        [
+          5.0,
+          10.2
+        ]
+      ]
+    },
+    {
+      "id": "T42",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.05,
+      "path": [
+        [
+          5.0,
+          10.2
+        ],
+        [
+          5.0,
+          5.0
+        ]
+      ]
+    },
+    {
+      "id": "T43",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.4,
+      "path": [
+        [
+          12.6,
+          20.1
+        ],
+        [
+          12.6,
+          15.6
+        ]
+      ]
+    },
+    {
+      "id": "T44",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.4,
+      "path": [
+        [
+          12.6,
+          15.6
+        ],
+        [
+          18.6,
+          15.6
+        ]
+      ]
+    },
+    {
+      "id": "T45",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.4,
+      "path": [
+        [
+          18.6,
+          15.6
+        ],
+        [
+          22.6,
+          15.6
+        ]
+      ]
+    },
+    {
+      "id": "T46",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.4,
+      "path": [
+        [
+          22.6,
+          15.6
+        ],
+        [
+          22.6,
+          21.4
+        ]
+      ]
+    },
+    {
+      "id": "T47",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.4,
+      "path": [
+        [
+          22.6,
+          21.4
+        ],
+        [
+          26.65,
+          21.4
+        ]
+      ]
+    },
+    {
+      "id": "T48",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.5,
+      "path": [
+        [
+          15.14,
+          20.1
+        ],
+        [
+          15.14,
+          27.6
+        ]
+      ]
+    },
+    {
+      "id": "T49",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.5,
+      "path": [
+        [
+          15.14,
+          27.6
+        ],
+        [
+          20.6,
+          27.6
+        ]
+      ]
+    },
+    {
+      "id": "T50",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.5,
+      "path": [
+        [
+          20.6,
+          27.6
+        ],
+        [
+          20.6,
+          15.6
+        ]
+      ]
+    },
+    {
+      "id": "T51",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.5,
+      "path": [
+        [
+          27.6,
+          21.4
+        ],
+        [
+          27.6,
+          23.6
+        ]
+      ]
+    },
+    {
+      "id": "T52",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.5,
+      "path": [
+        [
+          27.6,
+          23.6
+        ],
+        [
+          27.6,
+          27.6
+        ]
+      ]
+    },
+    {
+      "id": "T53",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.5,
+      "path": [
+        [
+          27.6,
+          27.6
+        ],
+        [
+          20.6,
+          27.6
+        ]
+      ]
+    },
+    {
+      "id": "T54",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.5,
+      "path": [
+        [
+          36.6,
+          15.6
+        ],
+        [
+          39.6,
+          15.6
+        ]
+      ]
+    },
+    {
+      "id": "T55",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.5,
+      "path": [
+        [
+          36.6,
+          24.6
+        ],
+        [
+          39.6,
+          24.6
+        ]
+      ]
+    },
+    {
+      "id": "T56",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.3,
+      "path": [
+        [
+          28.55,
+          21.4
+        ],
+        [
+          31.6,
+          21.4
+        ]
+      ]
+    },
+    {
+      "id": "T57",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.3,
+      "path": [
+        [
+          31.6,
+          21.4
+        ],
+        [
+          31.6,
+          15.6
+        ]
+      ]
+    },
+    {
+      "id": "T58",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.3,
+      "path": [
+        [
+          31.6,
+          15.6
+        ],
+        [
+          34.6,
+          15.6
+        ]
+      ]
+    },
+    {
+      "id": "T59",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.3,
+      "path": [
+        [
+          31.6,
+          21.4
+        ],
+        [
+          31.6,
+          24.6
+        ]
+      ]
+    },
+    {
+      "id": "T60",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.3,
+      "path": [
+        [
+          31.6,
+          24.6
+        ],
+        [
+          34.6,
+          24.6
+        ]
+      ]
+    },
+    {
+      "id": "T61",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.3,
+      "path": [
+        [
+          31.6,
+          21.4
+        ],
+        [
+          35.6,
+          21.4
+        ]
+      ]
+    },
+    {
+      "id": "T62",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.3,
+      "path": [
+        [
+          35.6,
+          21.4
+        ],
+        [
+          40.6,
+          19.3
+        ]
+      ]
+    },
+    {
+      "id": "T63",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.25,
+      "path": [
+        [
+          40.6,
+          20.9
+        ],
+        [
+          40.6,
+          22.1
+        ]
+      ]
+    },
+    {
+      "id": "T64",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.25,
+      "path": [
+        [
+          40.6,
+          22.1
+        ],
+        [
+          42.85,
+          22.1
+        ]
+      ]
+    },
+    {
+      "id": "T65",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.25,
+      "path": [
+        [
+          42.85,
+          22.1
+        ],
+        [
+          42.85,
+          20.1
+        ]
+      ]
+    },
+    {
+      "id": "T66",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.25,
+      "path": [
+        [
+          44.35,
+          20.1
+        ],
+        [
+          45.6,
+          20.1
+        ]
+      ]
+    },
+    {
+      "id": "T67",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.25,
+      "path": [
+        [
+          45.6,
+          20.1
+        ],
+        [
+          45.6,
+          22.6
+        ]
+      ]
+    },
+    {
+      "id": "T68",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.25,
+      "path": [
+        [
+          45.6,
+          22.6
+        ],
+        [
+          45.6,
+          25.6
+        ]
+      ]
+    },
+    {
+      "id": "T69",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.25,
+      "path": [
+        [
+          45.6,
+          25.6
+        ],
+        [
+          44.4,
+          25.6
+        ]
+      ]
+    },
+    {
+      "id": "T70",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.15,
+      "path": [
+        [
+          17.6,
+          30.1
+        ],
+        [
+          37.6,
+          30.1
+        ]
+      ]
+    },
+    {
+      "id": "T71",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          7.6,
+          5.6
+        ],
+        [
+          47.6,
+          5.6
+        ]
+      ]
+    },
+    {
+      "id": "T72",
+      "netId": "UNKNOWN",
+      "layerId": "TOP_COPPER",
+      "width": 0.1,
+      "path": [
+        [
+          5.6,
+          7.6
+        ],
+        [
+          5.6,
+          32.6
+        ]
+      ]
+    }
+  ],
+  "nets": [
+    {
+      "id": "GND",
+      "name": "GND"
+    },
+    {
+      "id": "LED_A",
+      "name": "LED_A"
+    },
+    {
+      "id": "LED_K",
+      "name": "LED_K"
+    },
+    {
+      "id": "VIN",
+      "name": "VIN"
+    },
+    {
+      "id": "VOUT",
+      "name": "VOUT"
+    }
+  ]
+}
