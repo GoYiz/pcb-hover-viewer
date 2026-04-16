@@ -65,6 +65,7 @@ export default function BoardViewerClient({
 
   const importWarnings = importMetadata?.warnings || [];
   const topImportLayers = useMemo(() => Object.entries(importMetadata?.stats?.traceCountByLayer || {}).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 5), [importMetadata]);
+  const importSemantics = useMemo(() => Object.entries(importMetadata?.stats?.traceCountBySemantic || {}).sort((a, b) => Number(b[1]) - Number(a[1])), [importMetadata]);
 
   const netCount = useMemo(() => {
     const nets = new Set<string>();
@@ -544,6 +545,13 @@ export default function BoardViewerClient({
                 <div className="focus-card focus-card-trace" style={{ marginTop: 14 }}>
                   {importWarnings.map((warning) => (
                     <div key={warning} className="focus-meta">• {warning}</div>
+                  ))}
+                </div>
+              )}
+              {importSemantics.length > 0 && (
+                <div className="inspector-grid" style={{ marginTop: 14 }}>
+                  {importSemantics.map(([name, count]) => (
+                    <div key={name} className="inspector-kv"><span>{name}</span><strong>{count}</strong></div>
                   ))}
                 </div>
               )}

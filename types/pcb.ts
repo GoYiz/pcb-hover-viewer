@@ -53,6 +53,7 @@ export type ImportMetadata = {
     traceCount?: number;
     netCount?: number;
     traceCountByLayer?: Record<string, number>;
+    traceCountBySemantic?: Record<string, number>;
   };
   layerCategories?: Record<string, string>;
   warnings?: string[];

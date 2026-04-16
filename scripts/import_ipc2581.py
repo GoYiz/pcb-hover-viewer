@@ -174,7 +174,7 @@ def element_width(el: ET.Element, scale: float, default: float = 0.15) -> float:
     return default
 
 
-def append_trace(traces, coords, trace_index, net_id, layer_id, width, path):
+def append_trace(traces, coords, trace_index, net_id, layer_id, width, path, semantic_counts=None, semantic: str | None = None):
     if len(path) < 2:
         return trace_index
     traces.append({
@@ -185,6 +185,8 @@ def append_trace(traces, coords, trace_index, net_id, layer_id, width, path):
         'path': path,
     })
     coords.extend((px, py) for px, py in path)
+    if semantic_counts is not None and semantic:
+        semantic_counts[semantic] += 1
     return trace_index + 1
 
 
@@ -281,6 +283,30 @@ def iter_padstack_geometries(root: ET.Element, standard_defs: dict, scale: float
                 if not dims:
                     continue
                 yield {'layer_id': layer_id, 'net_id': net_id, 'width': max(dims['w'], dims['h']), 'path': flash_path(x, y, dims['w'], dims['h'])}
+
+
+def classify_trace_semantic(layer_id: str, net_id: str) -> str:
+    layer = (layer_id or '').lower()
+    net = normalize_net_id(net_id)
+    if layer == 'drill':
+        return 'drill'
+    if 'edge' in layer or 'cutout' in layer or 'outline' in layer:
+        return 'board_outline'
+    if 'overlay' in layer or 'silk' in layer or 'designator' in layer:
+        return 'graphics'
+    if 'mechanical' in layer or 'document' in layer or 'drawing' in layer:
+        return 'graphics'
+    if 'keep-out' in layer or 'keepout' in layer:
+        return 'zone'
+    if 'paste' in layer or 'solder' in layer or 'mask' in layer or 'tenting' in layer:
+        return 'graphics'
+    if net in {'$VIA$'}:
+        return 'via'
+    if net in {'$BOARD$', '$CUTOUT$'}:
+        return 'board_outline'
+    if net == '$NONE$':
+        return 'graphics'
+    return 'copper'
 
 
 def classify_layer(layer_id: str) -> str:
@@ -429,6 +455,7 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
 
     traces = []
     trace_index = 1
+    semantic_counts = Counter()
     ensure_layer(layers, layer_seen, 'BOARD_EDGE')
     ensure_layer(layers, layer_seen, 'BOARD_CUTOUT')
     ensure_layer(layers, layer_seen, 'DRILL')
@@ -439,15 +466,16 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
             if tag == 'Polygon':
                 path = parse_poly_steps(child, scale)
                 if path and path[0] != path[-1]: path.append(path[0])
-                trace_index = append_trace(traces, coords, trace_index, '$BOARD$', 'BOARD_EDGE', 0.1, path)
+                trace_index = append_trace(traces, coords, trace_index, '$BOARD$', 'BOARD_EDGE', 0.1, path, semantic_counts, 'board_outline')
             elif tag == 'Cutout':
                 path = parse_poly_steps(child, scale)
                 if path and path[0] != path[-1]: path.append(path[0])
-                trace_index = append_trace(traces, coords, trace_index, '$CUTOUT$', 'BOARD_CUTOUT', 0.1, path)
+                trace_index = append_trace(traces, coords, trace_index, '$CUTOUT$', 'BOARD_CUTOUT', 0.1, path, semantic_counts, 'board_outline')
 
     for pg in iter_padstack_geometries(root, standard_defs, scale):
         ensure_layer(layers, layer_seen, pg['layer_id'])
-        trace_index = append_trace(traces, coords, trace_index, pg['net_id'], pg['layer_id'], pg['width'], pg['path'])
+        semantic = classify_trace_semantic(pg['layer_id'], pg['net_id'])
+        trace_index = append_trace(traces, coords, trace_index, pg['net_id'], pg['layer_id'], pg['width'], pg['path'], semantic_counts, semantic)
 
     for lf in iter_elems(root, {'LayerFeature'}):
         layer_id = pick_attr(lf, 'layerRef', 'LayerRef', 'layer', 'Layer') or layers[0]['id']
@@ -464,7 +492,8 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
                     y1 = to_float(pick_attr(geom, 'y1', 'Y1', 'startY', 'StartY')) * scale
                     x2 = to_float(pick_attr(geom, 'x2', 'X2', 'endX', 'EndX')) * scale
                     y2 = to_float(pick_attr(geom, 'y2', 'Y2', 'endY', 'EndY')) * scale
-                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, [[round(x1, 4), round(y1, 4)], [round(x2, 4), round(y2, 4)]])
+                    semantic = classify_trace_semantic(layer_id, net_id)
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, [[round(x1, 4), round(y1, 4)], [round(x2, 4), round(y2, 4)]], semantic_counts, semantic)
                 elif tag == 'Arc':
                     width = element_width(geom, scale, 0.15)
                     x1 = to_float(pick_attr(geom, 'x1', 'X1', 'startX', 'StartX')) * scale
@@ -474,27 +503,32 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
                     cx = to_float(pick_attr(geom, 'cx', 'CX', 'centerX', 'CenterX')) * scale
                     cy = to_float(pick_attr(geom, 'cy', 'CY', 'centerY', 'CenterY')) * scale
                     cw = str(pick_attr(geom, 'clockwise', 'Clockwise', 'cw', 'CW') or '').lower() in {'1', 'true', 'yes'}
-                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, arc_to_polyline(x1, y1, x2, y2, cx, cy, cw))
+                    semantic = classify_trace_semantic(layer_id, net_id)
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, arc_to_polyline(x1, y1, x2, y2, cx, cy, cw), semantic_counts, semantic)
                 elif tag in {'Polyline', 'Path'}:
                     width = element_width(geom, scale, 0.15)
-                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, parse_polyline_points(geom, scale))
+                    semantic = classify_trace_semantic(layer_id, net_id)
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, parse_polyline_points(geom, scale), semantic_counts, semantic)
                 elif tag == 'Polygon':
                     path = parse_poly_steps(geom, scale)
                     if path and path[0] != path[-1]: path.append(path[0])
-                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, 0.1, path)
+                    semantic = classify_trace_semantic(layer_id, net_id)
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, 0.1, path, semantic_counts, semantic)
                 elif tag == 'Pad':
                     x = to_float(pick_attr(geom, 'x', 'X')) * scale
                     y = to_float(pick_attr(geom, 'y', 'Y')) * scale
                     pref = pick_attr(geom, 'padstackDefRef', 'PadstackDefRef')
                     w, h = pad_defs.get(str(pref), (0.8, 0.8))
-                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, max(w, h), flash_path(x, y, w, h))
+                    semantic = classify_trace_semantic(layer_id, net_id)
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, max(w, h), flash_path(x, y, w, h), semantic_counts, semantic)
                 elif tag == 'Hole':
                     x = to_float(pick_attr(geom, 'x', 'X')) * scale
                     y = to_float(pick_attr(geom, 'y', 'Y')) * scale
                     d = to_float(pick_attr(geom, 'diameter', 'Diameter'), 0.3) * scale
                     plating = (pick_attr(geom, 'platingStatus', 'PlatingStatus') or '').strip().upper()
                     hole_net = net_id if net_id != '$NONE$' else ('$VIA$' if plating == 'VIA' else '$HOLE$')
-                    trace_index = append_trace(traces, coords, trace_index, hole_net, 'DRILL', d, circle_path(x, y, d))
+                    semantic = classify_trace_semantic('DRILL', hole_net)
+                    trace_index = append_trace(traces, coords, trace_index, hole_net, 'DRILL', d, circle_path(x, y, d), semantic_counts, semantic)
 
     if not coords:
         coords = [(0.0, 0.0), (100.0, 60.0)]
@@ -525,8 +559,9 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
     layer_trace_counts = Counter(t['layerId'] for t in traces)
     layer_categories = {layer['id']: classify_layer(layer['id']) for layer in layers}
     warnings = []
-    if any(t['netId'] == '$NONE$' for t in traces):
-        warnings.append('Some geometry remains unbound to a logical net ($NONE$).')
+    none_count = sum(1 for t in traces if t['netId'] == '$NONE$')
+    if none_count:
+        warnings.append(f'Some geometry remains unbound to a logical net ($NONE$): {none_count} items.')
     if not any(layer_categories.get(layer['id']) == 'copper' for layer in layers):
         warnings.append('No copper-classified layers were detected.')
     if not any(layer_categories.get(layer['id']) == 'drill' for layer in layers):
@@ -540,6 +575,7 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
             'traceCount': len(traces),
             'netCount': len(nets),
             'traceCountByLayer': dict(sorted(layer_trace_counts.items())),
+            'traceCountBySemantic': dict(sorted(semantic_counts.items())),
         },
         'layerCategories': layer_categories,
         'warnings': warnings,

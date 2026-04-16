@@ -1395,6 +1395,11 @@
         "DOCUMENT": 2,
         "TOP_COPPER": 29,
         "TOP_SILKSCREEN": 1
+      },
+      "traceCountBySemantic": {
+        "board_outline": 1,
+        "copper": 32,
+        "graphics": 3
       }
     },
     "layerCategories": {
@@ -1413,7 +1418,7 @@
       "DRILL": "drill"
     },
     "warnings": [
-      "Some geometry remains unbound to a logical net ($NONE$)."
+      "Some geometry remains unbound to a logical net ($NONE$): 3 items."
     ]
   }
 }

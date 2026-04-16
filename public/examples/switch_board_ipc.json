@@ -270246,6 +270246,13 @@
         "Top Paste": 66,
         "Top Solder": 68,
         "Top Tenting": 12
+      },
+      "traceCountBySemantic": {
+        "board_outline": 5,
+        "copper": 278,
+        "drill": 26,
+        "graphics": 1072,
+        "zone": 41
       }
     },
     "layerCategories": {
@@ -270276,7 +270283,7 @@
       "DRILL": "drill"
     },
     "warnings": [
-      "Some geometry remains unbound to a logical net ($NONE$)."
+      "Some geometry remains unbound to a logical net ($NONE$): 991 items."
     ]
   }
 }

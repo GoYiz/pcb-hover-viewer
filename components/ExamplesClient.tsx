@@ -28,6 +28,7 @@ export default function ExamplesClient({
   const warningCount = metadata?.warnings?.length || 0;
   const layerCategoryEntries = Object.entries(metadata?.layerCategories || {});
   const topLayerStats = Object.entries(metadata?.stats?.traceCountByLayer || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const semanticStats = Object.entries(metadata?.stats?.traceCountBySemantic || {}).sort((a, b) => b[1] - a[1]);
 
   const relation = useMemo(() => {
     if (!active || !hoveredId || !hoveredType) {
@@ -239,6 +240,13 @@ export default function ExamplesClient({
                       <div className="focus-meta">Warnings</div>
                       {metadata.warnings.map((w) => (
                         <div key={w} className="focus-meta">• {w}</div>
+                      ))}
+                    </div>
+                  )}
+                  {semanticStats.length > 0 && (
+                    <div className="inspector-grid" style={{ marginTop: 14 }}>
+                      {semanticStats.map(([name, count]) => (
+                        <div key={name} className="inspector-kv"><span>{name}</span><strong>{count}</strong></div>
                       ))}
                     </div>
                   )}
