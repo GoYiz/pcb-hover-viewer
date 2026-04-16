@@ -261,6 +261,12 @@ def iter_geometry_nodes(container: ET.Element):
 def iter_padstack_geometries(root: ET.Element, standard_defs: dict, scale: float):
     for ps in iter_elems(root, {'PadStack'}):
         net_id = normalize_net_id(pick_attr(ps, 'net', 'Net', 'netRef', 'NetRef'))
+        has_pinref = any(strip_ns(el.tag) == 'PinRef' for el in ps.iter())
+        hole_tags = [c for c in ps if strip_ns(c.tag) == 'LayerHole']
+        via_like = False
+        if hole_tags and not has_pinref:
+            plating = (pick_attr(hole_tags[0], 'platingStatus', 'PlatingStatus') or '').strip().upper()
+            via_like = plating == 'VIA' or True
         for child in ps:
             tag = strip_ns(child.tag)
             if tag == 'LayerHole':
@@ -269,7 +275,7 @@ def iter_padstack_geometries(root: ET.Element, standard_defs: dict, scale: float
                 d = to_float(pick_attr(child, 'diameter', 'Diameter'), 0.3) * scale
                 plating = (pick_attr(child, 'platingStatus', 'PlatingStatus') or '').strip().upper()
                 hole_net = net_id if net_id != '$NONE$' else ('$VIA$' if plating == 'VIA' else '$HOLE$')
-                yield {'layer_id': 'DRILL', 'net_id': hole_net, 'width': d, 'path': circle_path(x, y, d)}
+                yield {'layer_id': 'DRILL', 'net_id': hole_net, 'width': d, 'path': circle_path(x, y, d), 'semantic_hint': 'via' if via_like else 'drill', 'count_object': False}
             elif tag == 'LayerPad':
                 layer_id = pick_attr(child, 'layerRef', 'LayerRef', 'layer', 'Layer') or 'UNKNOWN_LAYER'
                 loc = next((c for c in child if strip_ns(c.tag) == 'Location'), None)
@@ -282,7 +288,7 @@ def iter_padstack_geometries(root: ET.Element, standard_defs: dict, scale: float
                 dims = standard_defs.get(str(rid))
                 if not dims:
                     continue
-                yield {'layer_id': layer_id, 'net_id': net_id, 'width': max(dims['w'], dims['h']), 'path': flash_path(x, y, dims['w'], dims['h'])}
+                yield {'layer_id': layer_id, 'net_id': net_id, 'width': max(dims['w'], dims['h']), 'path': flash_path(x, y, dims['w'], dims['h']), 'semantic_hint': 'via' if via_like else classify_trace_semantic(layer_id, net_id), 'count_object': False}
 
 
 def classify_trace_semantic(layer_id: str, net_id: str) -> str:
@@ -456,6 +462,7 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
     traces = []
     trace_index = 1
     semantic_counts = Counter()
+    object_semantic_counts = Counter()
     ensure_layer(layers, layer_seen, 'BOARD_EDGE')
     ensure_layer(layers, layer_seen, 'BOARD_CUTOUT')
     ensure_layer(layers, layer_seen, 'DRILL')
@@ -466,15 +473,19 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
             if tag == 'Polygon':
                 path = parse_poly_steps(child, scale)
                 if path and path[0] != path[-1]: path.append(path[0])
+                object_semantic_counts['board_outline'] += 1
                 trace_index = append_trace(traces, coords, trace_index, '$BOARD$', 'BOARD_EDGE', 0.1, path, semantic_counts, 'board_outline')
             elif tag == 'Cutout':
                 path = parse_poly_steps(child, scale)
                 if path and path[0] != path[-1]: path.append(path[0])
+                object_semantic_counts['board_outline'] += 1
                 trace_index = append_trace(traces, coords, trace_index, '$CUTOUT$', 'BOARD_CUTOUT', 0.1, path, semantic_counts, 'board_outline')
 
     for pg in iter_padstack_geometries(root, standard_defs, scale):
         ensure_layer(layers, layer_seen, pg['layer_id'])
-        semantic = classify_trace_semantic(pg['layer_id'], pg['net_id'])
+        semantic = pg.get('semantic_hint') or classify_trace_semantic(pg['layer_id'], pg['net_id'])
+        if pg.get('count_object', False) is not False:
+            object_semantic_counts[semantic] += 1
         trace_index = append_trace(traces, coords, trace_index, pg['net_id'], pg['layer_id'], pg['width'], pg['path'], semantic_counts, semantic)
 
     for lf in iter_elems(root, {'LayerFeature'}):
@@ -558,6 +569,50 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
 
     layer_trace_counts = Counter(t['layerId'] for t in traces)
     layer_categories = {layer['id']: classify_layer(layer['id']) for layer in layers}
+
+    # Object-level semantic counts: closer to external bucket semantics than path-level counts
+    object_semantic_counts = Counter()
+    for profile in iter_elems(root, {'Profile'}):
+        for child in profile:
+            tag = strip_ns(child.tag)
+            if tag not in {'Polygon', 'Cutout'}:
+                continue
+            segs = sum(1 for c in child if strip_ns(c.tag) == 'PolyStepSegment')
+            arcs = sum(1 for c in child if strip_ns(c.tag) == 'PolyStepCurve')
+            object_semantic_counts['board_outline'] += segs + arcs
+    for ps in iter_elems(root, {'PadStack'}):
+        has_pinref = any(strip_ns(el.tag) == 'PinRef' for el in ps.iter())
+        has_hole = any(strip_ns(c.tag) == 'LayerHole' for c in ps)
+        if has_hole and not has_pinref:
+            object_semantic_counts['via'] += 1
+    for lf in iter_elems(root, {'LayerFeature'}):
+        layer_id = pick_attr(lf, 'layerRef', 'LayerRef', 'layer', 'Layer') or layers[0]['id']
+        layer_sem = classify_layer(layer_id)
+        for set_el in lf:
+            if strip_ns(set_el.tag) != 'Set':
+                continue
+            for geom in iter_geometry_nodes(set_el):
+                tag = strip_ns(geom.tag)
+                if tag == 'Polygon':
+                    if layer_sem in {'keepout', 'copper'}:
+                        object_semantic_counts['zone'] += 1
+                    else:
+                        object_semantic_counts['graphics'] += 1
+                elif tag in {'Line', 'Segment', 'Arc', 'Polyline', 'Path'}:
+                    if layer_sem == 'copper':
+                        object_semantic_counts['copper'] += 1
+                    elif layer_sem == 'drill':
+                        object_semantic_counts['drill'] += 1
+                    else:
+                        object_semantic_counts['graphics'] += 1
+                elif tag == 'Hole':
+                    object_semantic_counts['drill'] += 1
+                elif tag == 'Pad':
+                    if layer_sem == 'copper':
+                        object_semantic_counts['copper'] += 1
+                    else:
+                        object_semantic_counts['graphics'] += 1
+
     warnings = []
     none_count = sum(1 for t in traces if t['netId'] == '$NONE$')
     if none_count:
@@ -576,6 +631,7 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
             'netCount': len(nets),
             'traceCountByLayer': dict(sorted(layer_trace_counts.items())),
             'traceCountBySemantic': dict(sorted(semantic_counts.items())),
+            'objectCountBySemantic': dict(sorted(object_semantic_counts.items())),
         },
         'layerCategories': layer_categories,
         'warnings': warnings,

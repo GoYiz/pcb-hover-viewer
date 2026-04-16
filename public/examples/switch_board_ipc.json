@@ -270249,10 +270249,19 @@
       },
       "traceCountBySemantic": {
         "board_outline": 5,
-        "copper": 278,
-        "drill": 26,
+        "copper": 254,
+        "drill": 14,
         "graphics": 1072,
+        "via": 36,
         "zone": 41
+      },
+      "objectCountBySemantic": {
+        "board_outline": 213,
+        "copper": 120,
+        "drill": 198,
+        "graphics": 753,
+        "via": 12,
+        "zone": 71
       }
     },
     "layerCategories": {

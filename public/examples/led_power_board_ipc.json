@@ -1400,6 +1400,12 @@
         "board_outline": 1,
         "copper": 32,
         "graphics": 3
+      },
+      "objectCountBySemantic": {
+        "board_outline": 5,
+        "copper": 31,
+        "graphics": 3,
+        "zone": 1
       }
     },
     "layerCategories": {
