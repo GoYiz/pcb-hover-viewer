@@ -1380,5 +1380,40 @@
       "id": "$NONE$",
       "name": "$NONE$"
     }
-  ]
+  ],
+  "importMetadata": {
+    "sourceFormat": "ipc2581",
+    "sourcePath": "/var/minis/workspace/pcb-hover-viewer/data/raw/led_power_board_ipc.xml",
+    "stats": {
+      "layerCount": 13,
+      "componentCount": 10,
+      "traceCount": 36,
+      "netCount": 7,
+      "traceCountByLayer": {
+        "BOARD_EDGE": 1,
+        "BOTTOM_COPPER": 3,
+        "DOCUMENT": 2,
+        "TOP_COPPER": 29,
+        "TOP_SILKSCREEN": 1
+      }
+    },
+    "layerCategories": {
+      "TOP_COPPER": "copper",
+      "BOTTOM_COPPER": "copper",
+      "TOP_SOLDERMASK": "soldermask",
+      "BOTTOM_SOLDERMASK": "soldermask",
+      "TOP_PASTE": "paste",
+      "BOTTOM_PASTE": "paste",
+      "TOP_SILKSCREEN": "silkscreen",
+      "BOTTOM_SILKSCREEN": "silkscreen",
+      "TOP_ASSEMBLY": "assembly",
+      "BOARD_EDGE": "board_outline",
+      "DOCUMENT": "mechanical",
+      "BOARD_CUTOUT": "board_outline",
+      "DRILL": "drill"
+    },
+    "warnings": [
+      "Some geometry remains unbound to a logical net ($NONE$)."
+    ]
+  }
 }

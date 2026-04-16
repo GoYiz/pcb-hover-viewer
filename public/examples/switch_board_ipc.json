@@ -269991,5 +269991,64 @@
       "id": "PGND",
       "name": "PGND"
     }
-  ]
+  ],
+  "importMetadata": {
+    "sourceFormat": "ipc2581",
+    "sourcePath": "/var/minis/workspace/pcb-hover-viewer/data/raw/switch_board_ipc.xml",
+    "stats": {
+      "layerCount": 25,
+      "componentCount": 27,
+      "traceCount": 1422,
+      "netCount": 19,
+      "traceCountByLayer": {
+        "BOARD_CUTOUT": 4,
+        "BOARD_EDGE": 1,
+        "Bottom Layer": 43,
+        "Bottom Paste": 3,
+        "Bottom Solder": 5,
+        "Bottom Tenting": 12,
+        "DRILL": 26,
+        "Drill Drawing (Top Layer - Bottom Layer)": 633,
+        "Keep-Out Layer": 41,
+        "Mechanical 13": 5,
+        "Mechanical 15": 56,
+        "Mechanical 20": 40,
+        "Top Layer": 245,
+        "Top Overlay": 162,
+        "Top Paste": 66,
+        "Top Solder": 68,
+        "Top Tenting": 12
+      }
+    },
+    "layerCategories": {
+      "Top Paste": "paste",
+      "Top Overlay": "silkscreen",
+      "Top Solder": "soldermask",
+      "Top Layer": "copper",
+      "Dielectric 1": "other",
+      "Bottom Layer": "copper",
+      "Bottom Solder": "soldermask",
+      "Bottom Overlay": "silkscreen",
+      "Bottom Paste": "paste",
+      "Keep-Out Layer": "keepout",
+      "Mechanical 1": "mechanical",
+      "Top Tenting": "soldermask",
+      "Bottom Tenting": "soldermask",
+      "Top Designator": "silkscreen",
+      "Bottom Designator": "silkscreen",
+      "Top Assembly": "assembly",
+      "Bottom Assembly": "assembly",
+      "Mechanical 13": "mechanical",
+      "Mechanical 15": "mechanical",
+      "Mechanical 20": "mechanical",
+      "Drill Drawing (Top Layer - Bottom Layer)": "drill",
+      "Drill Guide (Top Layer - Bottom Layer)": "drill",
+      "BOARD_EDGE": "board_outline",
+      "BOARD_CUTOUT": "board_outline",
+      "DRILL": "drill"
+    },
+    "warnings": [
+      "Some geometry remains unbound to a logical net ($NONE$)."
+    ]
+  }
 }

@@ -5,6 +5,7 @@ import math
 import re
 import sys
 import urllib.request
+from collections import Counter
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Iterable
@@ -282,6 +283,29 @@ def iter_padstack_geometries(root: ET.Element, standard_defs: dict, scale: float
                 yield {'layer_id': layer_id, 'net_id': net_id, 'width': max(dims['w'], dims['h']), 'path': flash_path(x, y, dims['w'], dims['h'])}
 
 
+def classify_layer(layer_id: str) -> str:
+    s = (layer_id or '').lower()
+    if 'drill' in s or s == 'drill':
+        return 'drill'
+    if 'edge' in s or 'cutout' in s or 'outline' in s or 'profile' in s:
+        return 'board_outline'
+    if 'overlay' in s or 'silk' in s or 'designator' in s:
+        return 'silkscreen'
+    if 'paste' in s:
+        return 'paste'
+    if 'solder' in s or 'mask' in s or 'tenting' in s:
+        return 'soldermask'
+    if 'assembly' in s:
+        return 'assembly'
+    if 'keep-out' in s or 'keepout' in s:
+        return 'keepout'
+    if 'mechanical' in s or 'document' in s or 'drawing' in s:
+        return 'mechanical'
+    if 'layer' in s or 'copper' in s or s in {'top layer', 'bottom layer', 'top_copper', 'bottom_copper', 'f.cu', 'b.cu'}:
+        return 'copper'
+    return 'other'
+
+
 def parse_ipc2581(path: Path, board_id: str, board_name: str):
     tree = ET.parse(path)
     root = tree.getroot()
@@ -483,7 +507,30 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
     for nid in sorted(used_nets - known):
         nets.append({'id': nid, 'name': nid})
 
-    return {'board': {'id': board_id, 'name': board_name, 'version': 'imported-ipc2581', 'widthMm': round(width_mm, 2), 'heightMm': round(height_mm, 2)}, 'layers': layers, 'components': components, 'traces': traces, 'nets': nets}
+    layer_trace_counts = Counter(t['layerId'] for t in traces)
+    layer_categories = {layer['id']: classify_layer(layer['id']) for layer in layers}
+    warnings = []
+    if any(t['netId'] == '$NONE$' for t in traces):
+        warnings.append('Some geometry remains unbound to a logical net ($NONE$).')
+    if not any(layer_categories.get(layer['id']) == 'copper' for layer in layers):
+        warnings.append('No copper-classified layers were detected.')
+    if not any(layer_categories.get(layer['id']) == 'drill' for layer in layers):
+        warnings.append('No drill-classified layers were detected.')
+    import_metadata = {
+        'sourceFormat': 'ipc2581',
+        'sourcePath': str(path),
+        'stats': {
+            'layerCount': len(layers),
+            'componentCount': len(components),
+            'traceCount': len(traces),
+            'netCount': len(nets),
+            'traceCountByLayer': dict(sorted(layer_trace_counts.items())),
+        },
+        'layerCategories': layer_categories,
+        'warnings': warnings,
+    }
+
+    return {'board': {'id': board_id, 'name': board_name, 'version': 'imported-ipc2581', 'widthMm': round(width_mm, 2), 'heightMm': round(height_mm, 2)}, 'layers': layers, 'components': components, 'traces': traces, 'nets': nets, 'importMetadata': import_metadata}
 
 
 def fetch(url: str) -> bytes:
@@ -504,6 +551,7 @@ def main():
     else:
         in_path = Path(src)
     data = parse_ipc2581(in_path, board_id, board_name)
+    data.setdefault('importMetadata', {})['sourcePath'] = str(in_path)
     out.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps({'out': str(out), 'board': data['board'], 'components': len(data['components']), 'traces': len(data['traces']), 'nets': len(data['nets'])}, ensure_ascii=False))
 

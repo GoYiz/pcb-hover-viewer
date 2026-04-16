@@ -43,5 +43,11 @@ for case in CASES:
     assert not missing, (case['id'], 'missing layers', missing)
     assert data['board']['widthMm'] > 0 and data['board']['heightMm'] > 0, (case['id'], 'invalid board size')
     assert data['nets'], (case['id'], 'nets empty')
-    print(case['id'], 'OK', len(data['components']), len(data['traces']), len(data['nets']))
+    meta = data.get('importMetadata')
+    assert meta and meta.get('sourceFormat') == 'ipc2581', (case['id'], 'missing importMetadata')
+    assert isinstance(meta.get('warnings'), list), (case['id'], 'warnings missing')
+    assert isinstance(meta.get('layerCategories'), dict), (case['id'], 'layerCategories missing')
+    stats = meta.get('stats') or {}
+    assert stats.get('traceCount') == len(data['traces']), (case['id'], 'traceCount mismatch')
+    print(case['id'], 'OK', len(data['components']), len(data['traces']), len(data['nets']), 'warnings', len(meta.get('warnings', [])))
 print('validate_ipc_import: OK')
