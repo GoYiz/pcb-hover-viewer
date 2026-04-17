@@ -573,10 +573,13 @@ export default function PcbCanvas({
           const filterCompBtn = createToolbarButton(674, 46, 46, 18, "Comp", selectionFilterRef.value === "component", "rgba(245,158,11,0.82)");
           const filterTraceBtn = createToolbarButton(726, 46, 50, 18, "Trace", selectionFilterRef.value === "trace", "rgba(59,130,246,0.82)");
           const helpBtn = createToolbarButton(782, 46, 42, 18, helpRef.visible ? "Hide?" : "Help", helpRef.visible, "rgba(14,165,233,0.82)");
-          const gridBtn = createToolbarButton(830, 46, 42, 18, "Grid", detailVisibilityRef.value.grid, "rgba(16,185,129,0.82)");
-          const compBtn = createToolbarButton(878, 46, 44, 18, "Comp", detailVisibilityRef.value.components, "rgba(245,158,11,0.82)");
-          const labelBtn = createToolbarButton(928, 46, 46, 18, "Label", detailVisibilityRef.value.labels, "rgba(168,85,247,0.82)");
-          const measBtn = createToolbarButton(980, 46, 44, 18, "Meas", detailVisibilityRef.value.measures, "rgba(6,182,212,0.82)");
+          const presetAllBtn = createToolbarButton(830, 46, 34, 18, "All+", false, "rgba(30,64,175,0.78)");
+          const presetCopperBtn = createToolbarButton(870, 46, 52, 18, "Copper", false, "rgba(2,132,199,0.80)");
+          const presetFabBtn = createToolbarButton(928, 46, 34, 18, "Fab", false, "rgba(124,58,237,0.82)");
+          const gridBtn = createToolbarButton(968, 46, 42, 18, "Grid", detailVisibilityRef.value.grid, "rgba(16,185,129,0.82)");
+          const compBtn = createToolbarButton(1016, 46, 44, 18, "Comp", detailVisibilityRef.value.components, "rgba(245,158,11,0.82)");
+          const labelBtn = createToolbarButton(1066, 46, 46, 18, "Label", detailVisibilityRef.value.labels, "rgba(168,85,247,0.82)");
+          const measBtn = createToolbarButton(1118, 46, 44, 18, "Meas", detailVisibilityRef.value.measures, "rgba(6,182,212,0.82)");
           const zoneBtn = createToolbarButton(830, 70, 42, 18, "Zone", detailVisibilityRef.value.zones, "rgba(59,130,246,0.82)");
           const viaBtn = createToolbarButton(878, 70, 40, 18, "Via", detailVisibilityRef.value.vias, "rgba(14,165,233,0.82)");
           const padBtn = createToolbarButton(924, 70, 42, 18, "Pads", detailVisibilityRef.value.pads, "rgba(251,191,36,0.82)");
@@ -600,6 +603,9 @@ export default function PcbCanvas({
           for (const node of [filterCompBtn.bg, filterCompBtn.text]) node.on("pointer.tap", () => { selectionFilterRef.value = "component"; renderVisibility(); });
           for (const node of [filterTraceBtn.bg, filterTraceBtn.text]) node.on("pointer.tap", () => { selectionFilterRef.value = "trace"; renderVisibility(); });
           for (const node of [helpBtn.bg, helpBtn.text]) node.on("pointer.tap", () => { toggleHelp(); renderToolbars(); });
+          for (const node of [presetAllBtn.bg, presetAllBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.zones = true; detailVisibilityRef.value.vias = true; detailVisibilityRef.value.pads = true; detailVisibilityRef.value.keepouts = true; detailVisibilityRef.value.silkscreen = true; detailVisibilityRef.value.drills = true; renderVisibility(); });
+          for (const node of [presetCopperBtn.bg, presetCopperBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.zones = true; detailVisibilityRef.value.vias = true; detailVisibilityRef.value.pads = true; detailVisibilityRef.value.keepouts = false; detailVisibilityRef.value.silkscreen = false; detailVisibilityRef.value.drills = false; renderVisibility(); });
+          for (const node of [presetFabBtn.bg, presetFabBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.zones = false; detailVisibilityRef.value.vias = false; detailVisibilityRef.value.pads = false; detailVisibilityRef.value.keepouts = true; detailVisibilityRef.value.silkscreen = true; detailVisibilityRef.value.drills = true; renderVisibility(); });
           for (const node of [gridBtn.bg, gridBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.grid = !detailVisibilityRef.value.grid; renderVisibility(); });
           for (const node of [compBtn.bg, compBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.components = !detailVisibilityRef.value.components; renderVisibility(); });
           for (const node of [labelBtn.bg, labelBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.labels = !detailVisibilityRef.value.labels; renderVisibility(); });
