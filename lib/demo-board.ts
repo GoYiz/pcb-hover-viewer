@@ -26,16 +26,79 @@ export const DEMO_BOARD = {
     { id: "P1", netId: "PP_VDD_MAIN", layerId: "F.Cu", width: 0.8, path: [[27.2, 19.2], [28.8, 19.2], [28.8, 20.8], [27.2, 20.8], [27.2, 19.2]] as [number, number][] },
   ],
   keepouts: [
-    { id: "K1", netId: '$', layerId: "Keep-Out Layer", width: 0.1, path: [[44, 12], [52, 12], [52, 22], [44, 22], [44, 12]] as [number, number][] },
+    { id: "K1", netId: "", layerId: "Keep-Out Layer", width: 0.1, path: [[44, 12], [52, 12], [52, 22], [44, 22], [44, 12]] as [number, number][] },
   ],
   silkscreen: [
-    { id: "S1", netId: '$', layerId: "F.SilkS", width: 0.12, path: [[16, 14], [42, 14]] as [number, number][] },
+    { id: "S1", netId: "", layerId: "F.SilkS", width: 0.12, path: [[16, 14], [42, 14]] as [number, number][] },
   ],
   drills: [
-    { id: "D1", netId: '$', layerId: "DRILL", width: 0.7, path: [[36.35, 20], [36.2899, 20.2475], [36.1232, 20.438], [35.888, 20.4987], [35.6527, 20.438], [35.4861, 20.2475], [35.426, 20], [35.4861, 19.7525], [35.6527, 19.562], [35.888, 19.5013], [36.1232, 19.562], [36.2899, 19.7525], [36.35, 20]] as [number, number][] },
+    { id: "D1", netId: "", layerId: "DRILL", width: 0.7, path: [[36.35, 20], [36.2899, 20.2475], [36.1232, 20.438], [35.888, 20.4987], [35.6527, 20.438], [35.4861, 20.2475], [35.426, 20], [35.4861, 19.7525], [35.6527, 19.562], [35.888, 19.5013], [36.1232, 19.562], [36.2899, 19.7525], [36.35, 20]] as [number, number][] },
   ],
 };
 
+export const DEMO_BOARD_LAYERS = [
+  { id: "F.Cu", name: "F.Cu", zIndex: 1 },
+  { id: "B.Cu", name: "B.Cu", zIndex: 2 },
+];
+
 export function getDemoBoardById(id: string) {
   return id === DEMO_BOARD.board.id ? DEMO_BOARD : null;
+}
+
+export function getDemoBoardMetaById(id: string) {
+  const board = getDemoBoardById(id);
+  if (!board) return null;
+  return { board: board.board, layers: DEMO_BOARD_LAYERS };
+}
+
+export function getDemoBoardComponentsById(id: string, search = "") {
+  const board = getDemoBoardById(id);
+  if (!board) return null;
+  const needle = search.trim().toUpperCase();
+  return {
+    boardId: board.board.id,
+    components: board.components
+      .filter((component) => !needle || component.refdes.toUpperCase().includes(needle))
+      .map((component) => ({ ...component, netIds: [...(component.netIds || [])] })),
+  };
+}
+
+function isBottomLikeLayer(layer: string) {
+  const value = layer.trim().toUpperCase();
+  return value === "BOTTOM" || value === "B.CU" || value === "B_CU";
+}
+
+export function getDemoBoardGeometryById(id: string, layer = "TOP") {
+  const board = getDemoBoardById(id);
+  if (!board) return null;
+  const includeTopGeometry = !isBottomLikeLayer(layer);
+  return {
+    boardId: board.board.id,
+    layer,
+    traces: includeTopGeometry ? [...board.traces] : [],
+    zones: includeTopGeometry ? [...(board.zones || [])] : [],
+    vias: includeTopGeometry ? [...(board.vias || [])] : [],
+    pads: includeTopGeometry ? [...(board.pads || [])] : [],
+    keepouts: includeTopGeometry ? [...(board.keepouts || [])] : [],
+    silkscreen: includeTopGeometry ? [...(board.silkscreen || [])] : [],
+    drills: includeTopGeometry ? [...(board.drills || [])] : [],
+  };
+}
+
+export function getDemoBoardRelationsById(id: string, featureType: string, featureId: string) {
+  const board = getDemoBoardById(id);
+  if (!board) return null;
+  let netIds: string[] = [];
+  if (featureType === "component") {
+    netIds = [...new Set(board.components.find((component) => component.id === featureId)?.netIds || [])];
+  } else if (featureType === "trace") {
+    const trace = board.traces.find((item) => item.id === featureId);
+    netIds = trace?.netId ? [trace.netId] : [];
+  }
+  const traces = board.traces.filter((trace) => netIds.includes(trace.netId)).map((trace) => ({ id: trace.id, netId: trace.netId }));
+  const direct = board.components
+    .filter((component) => !(featureType === "component" && component.id === featureId))
+    .filter((component) => (component.netIds || []).some((netId) => netIds.includes(netId)))
+    .map((component) => ({ targetType: "component", targetId: component.id, relationType: "electrical", weight: 1 }));
+  return { target: { type: featureType, id: featureId }, direct, nets: netIds, traces };
 }
