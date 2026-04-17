@@ -60,7 +60,6 @@ export default function ExamplesClient({
 
   const sourceHref = activeIndexItem?.source;
   const catalogComponents = index.reduce((acc, item) => acc + item.components, 0);
-  const geometryBuckets = Object.entries(metadata?.stats?.geometryArrayCounts || {}).sort((a, b) => b[1] - a[1]);
   const totalGeometry = geometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0);
   const activeDensity = active ? (active.components.length + totalGeometry) / Math.max(active.board.widthMm * active.board.heightMm, 1) : 0;
 
