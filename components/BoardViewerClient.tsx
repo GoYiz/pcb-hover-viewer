@@ -25,6 +25,12 @@ type Props = {
   boardHeightMm?: number;
   initialComponents?: ComponentItem[];
   initialTraces?: TraceItem[];
+  initialZones?: TraceItem[];
+  initialVias?: TraceItem[];
+  initialPads?: TraceItem[];
+  initialKeepouts?: TraceItem[];
+  initialSilkscreen?: TraceItem[];
+  initialDrills?: TraceItem[];
   importMetadata?: ImportMetadata;
 };
 
@@ -35,10 +41,22 @@ export default function BoardViewerClient({
   boardHeightMm: initialBoardHeightMm,
   initialComponents,
   initialTraces,
+  initialZones,
+  initialVias,
+  initialPads,
+  initialKeepouts,
+  initialSilkscreen,
+  initialDrills,
   importMetadata,
 }: Props) {
   const [components, setComponents] = useState<ComponentItem[]>(initialComponents || []);
   const [traces, setTraces] = useState<TraceItem[]>(initialTraces || []);
+  const [zones] = useState<TraceItem[]>(initialZones || []);
+  const [vias] = useState<TraceItem[]>(initialVias || []);
+  const [pads] = useState<TraceItem[]>(initialPads || []);
+  const [keepouts] = useState<TraceItem[]>(initialKeepouts || []);
+  const [silkscreen] = useState<TraceItem[]>(initialSilkscreen || []);
+  const [drills] = useState<TraceItem[]>(initialDrills || []);
   const [boardWidthMm, setBoardWidthMm] = useState(initialBoardWidthMm || 160);
   const [boardHeightMm, setBoardHeightMm] = useState(initialBoardHeightMm || 90);
   const [loading, setLoading] = useState(!(initialComponents?.length && initialTraces?.length));
@@ -68,6 +86,7 @@ export default function BoardViewerClient({
   const importSemantics = useMemo(() => Object.entries(importMetadata?.stats?.traceCountBySemantic || {}).sort((a, b) => Number(b[1]) - Number(a[1])), [importMetadata]);
   const importGeometryBuckets = useMemo(() => Object.entries(importMetadata?.stats?.geometryArrayCounts || {}).sort((a, b) => Number(b[1]) - Number(a[1])), [importMetadata]);
   const totalImportedGeometry = useMemo(() => importGeometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0), [importGeometryBuckets]);
+  const liveEnabledOverlays = useMemo(() => (canvasBridge.visibleDetail || '').split(',').map((s) => s.trim()).filter((name) => ['zones','vias','pads','keepouts','silkscreen','drills'].includes(name)), [canvasBridge.visibleDetail]);
 
   const netCount = useMemo(() => {
     const nets = new Set<string>();
@@ -455,6 +474,12 @@ export default function BoardViewerClient({
                 boardHeightMm={boardHeightMm}
                 components={components}
                 traces={traces}
+                zones={zones}
+                vias={vias}
+                pads={pads}
+                keepouts={keepouts}
+                silkscreen={silkscreen}
+                drills={drills}
                 visibleLayers={visibleLayers}
                 focusComponentId={focusComponentId}
                 hoveredId={highlight.targetId}
@@ -543,6 +568,7 @@ export default function BoardViewerClient({
                 <div className="inspector-kv"><span>Layer classes</span><strong>{new Set(Object.values(importMetadata.layerCategories || {})).size}</strong></div>
                 <div className="inspector-kv"><span>Imported copper traces</span><strong>{importMetadata.stats?.traceCount || traces.length}</strong></div>
                 <div className="inspector-kv"><span>Total imported geometry</span><strong>{totalImportedGeometry}</strong></div>
+                <div className="inspector-kv"><span>Enabled overlays</span><strong>{liveEnabledOverlays.join(', ') || '—'}</strong></div>
               </div>
               {importWarnings.length > 0 && (
                 <div className="focus-card focus-card-trace" style={{ marginTop: 14 }}>

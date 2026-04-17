@@ -19,6 +19,12 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
         boardHeightMm={board.board.heightMm}
         initialComponents={board.components}
         initialTraces={board.traces}
+        initialZones={(board as { zones?: import("@/types/pcb").TraceItem[] }).zones}
+        initialVias={(board as { vias?: import("@/types/pcb").TraceItem[] }).vias}
+        initialPads={(board as { pads?: import("@/types/pcb").TraceItem[] }).pads}
+        initialKeepouts={(board as { keepouts?: import("@/types/pcb").TraceItem[] }).keepouts}
+        initialSilkscreen={(board as { silkscreen?: import("@/types/pcb").TraceItem[] }).silkscreen}
+        initialDrills={(board as { drills?: import("@/types/pcb").TraceItem[] }).drills}
         importMetadata={(board as { importMetadata?: import("@/types/pcb").ImportMetadata }).importMetadata}
       />
     </main>
