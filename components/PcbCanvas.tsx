@@ -556,6 +556,9 @@ export default function PcbCanvas({
           toolbarLayer.clear();
           const overlayLegend = new Text({ x: 734, y: 73, text: "Overlays", fill: "#94a3b8", fontSize: 10.5 });
           toolbarLayer.add(overlayLegend);
+          const isAllPreset = detailVisibilityRef.value.zones && detailVisibilityRef.value.vias && detailVisibilityRef.value.pads && detailVisibilityRef.value.keepouts && detailVisibilityRef.value.silkscreen && detailVisibilityRef.value.drills;
+          const isCopperPreset = detailVisibilityRef.value.zones && detailVisibilityRef.value.vias && detailVisibilityRef.value.pads && !detailVisibilityRef.value.keepouts && !detailVisibilityRef.value.silkscreen && !detailVisibilityRef.value.drills;
+          const isFabPreset = !detailVisibilityRef.value.zones && !detailVisibilityRef.value.vias && !detailVisibilityRef.value.pads && detailVisibilityRef.value.keepouts && detailVisibilityRef.value.silkscreen && detailVisibilityRef.value.drills;
           const selectBtn = createToolbarButton(32, 112, 42, 28, "Sel", toolModeRef.value === "select", "rgba(245,158,11,0.82)");
           const measureBtn = createToolbarButton(32, 146, 42, 28, "Mea", toolModeRef.value === "measure", "rgba(167,139,250,0.82)");
           const panBtn = createToolbarButton(32, 180, 42, 28, "Pan", toolModeRef.value === "pan", "rgba(34,211,238,0.82)");
@@ -573,9 +576,9 @@ export default function PcbCanvas({
           const filterCompBtn = createToolbarButton(674, 46, 46, 18, "Comp", selectionFilterRef.value === "component", "rgba(245,158,11,0.82)");
           const filterTraceBtn = createToolbarButton(726, 46, 50, 18, "Trace", selectionFilterRef.value === "trace", "rgba(59,130,246,0.82)");
           const helpBtn = createToolbarButton(782, 46, 42, 18, helpRef.visible ? "Hide?" : "Help", helpRef.visible, "rgba(14,165,233,0.82)");
-          const presetAllBtn = createToolbarButton(830, 46, 34, 18, "All+", false, "rgba(30,64,175,0.78)");
-          const presetCopperBtn = createToolbarButton(870, 46, 52, 18, "Copper", false, "rgba(2,132,199,0.80)");
-          const presetFabBtn = createToolbarButton(928, 46, 34, 18, "Fab", false, "rgba(124,58,237,0.82)");
+          const presetAllBtn = createToolbarButton(830, 46, 34, 18, "All+", isAllPreset, "rgba(30,64,175,0.78)");
+          const presetCopperBtn = createToolbarButton(870, 46, 52, 18, "Copper", isCopperPreset, "rgba(2,132,199,0.80)");
+          const presetFabBtn = createToolbarButton(928, 46, 34, 18, "Fab", isFabPreset, "rgba(124,58,237,0.82)");
           const gridBtn = createToolbarButton(968, 46, 42, 18, "Grid", detailVisibilityRef.value.grid, "rgba(16,185,129,0.82)");
           const compBtn = createToolbarButton(1016, 46, 44, 18, "Comp", detailVisibilityRef.value.components, "rgba(245,158,11,0.82)");
           const labelBtn = createToolbarButton(1066, 46, 46, 18, "Label", detailVisibilityRef.value.labels, "rgba(168,85,247,0.82)");
