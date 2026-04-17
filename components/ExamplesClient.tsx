@@ -180,6 +180,7 @@ export default function ExamplesClient({
                 silkscreen={active.silkscreen || []}
                 drills={active.drills || []}
                 zones={active.zones || []}
+                vias={active.vias || []}
                 hoveredId={hoveredId}
                 hoveredType={hoveredType}
                 directIds={relation.directIds}
