@@ -12,6 +12,7 @@ type Props = {
   traces: TraceItem[];
   pads?: TraceItem[];
   keepouts?: TraceItem[];
+  silkscreen?: TraceItem[];
   visibleLayers?: string[];
   focusComponentId?: string;
   hoveredId?: string;
@@ -42,6 +43,7 @@ export default function PcbCanvas({
   traces,
   pads = [],
   keepouts = [],
+  silkscreen = [],
   visibleLayers = ["F.Cu", "B.Cu"],
   focusComponentId,
   hoveredId,
@@ -85,6 +87,7 @@ export default function PcbCanvas({
         const keepoutLayer = new Group();
         const traceLayer = new Group();
         const padLayer = new Group();
+        const silkLayer = new Group();
         const compLayer = new Group();
         const overlayLayer = new Group();
         leafer.add(gridLayer);
@@ -92,6 +95,7 @@ export default function PcbCanvas({
         leafer.add(keepoutLayer);
         leafer.add(traceLayer);
         leafer.add(padLayer);
+        leafer.add(silkLayer);
         leafer.add(compLayer);
         leafer.add(overlayLayer);
 
@@ -376,7 +380,7 @@ export default function PcbCanvas({
         };
 
         const applyCamera = () => {
-          for (const layer of [gridLayer, boardLayer, keepoutLayer, traceLayer, padLayer, compLayer]) {
+          for (const layer of [gridLayer, boardLayer, keepoutLayer, traceLayer, padLayer, silkLayer, compLayer]) {
             layer.scaleX = scaleRef.value;
             layer.scaleY = scaleRef.value;
             layer.x = offsetRef.x;
@@ -1480,6 +1484,10 @@ export default function PcbCanvas({
           renderOverlayPath(padLayer, pad, { stroke: 'rgba(251,191,36,0.95)', fill: 'rgba(250,204,21,0.18)', opacity: 0.9, strokeWidth: 1.1 });
         }
 
+        for (const silk of silkscreen) {
+          renderOverlayPath(silkLayer, silk, { stroke: 'rgba(226,232,240,0.92)', opacity: 0.82, strokeWidth: 0.9 });
+        }
+
         for (const trace of traces) {
           const points: number[] = [];
           let minX = Infinity;
@@ -1827,7 +1835,7 @@ export default function PcbCanvas({
       } catch {}
       runtimeRef.current = null;
     };
-  }, [width, height, boardWidthMm, boardHeightMm, components, traces, pads, keepouts, onHoverFeature]);
+  }, [width, height, boardWidthMm, boardHeightMm, components, traces, pads, keepouts, silkscreen, onHoverFeature]);
 
   useEffect(() => {
     const rt = runtimeRef.current;

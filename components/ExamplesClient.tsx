@@ -177,6 +177,7 @@ export default function ExamplesClient({
                 traces={active.traces}
                 pads={active.pads || []}
                 keepouts={active.keepouts || []}
+                silkscreen={active.silkscreen || []}
                 hoveredId={hoveredId}
                 hoveredType={hoveredType}
                 directIds={relation.directIds}
