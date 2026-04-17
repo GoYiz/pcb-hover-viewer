@@ -1,4 +1,4 @@
-import type { BoardMeta, ComponentItem, RelationsResponse, TraceItem } from "@/types/pcb";
+import type { BoardGeometry, BoardMeta, ComponentItem, RelationsResponse } from "@/types/pcb";
 
 export async function fetchBoardMeta(boardId: string) {
   const res = await fetch(`/api/boards/${boardId}/meta`, { cache: "no-store" });
@@ -15,17 +15,7 @@ export async function fetchBoardComponents(boardId: string) {
 export async function fetchBoardGeometry(boardId: string, layer = "TOP") {
   const res = await fetch(`/api/boards/${boardId}/geometry?layer=${layer}`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch geometry");
-  return (await res.json()) as {
-    boardId: string;
-    layer: string;
-    traces: TraceItem[];
-    zones: TraceItem[];
-    vias: TraceItem[];
-    pads: TraceItem[];
-    keepouts: TraceItem[];
-    silkscreen: TraceItem[];
-    drills: TraceItem[];
-  };
+  return (await res.json()) as BoardGeometry;
 }
 
 export async function fetchRelations(

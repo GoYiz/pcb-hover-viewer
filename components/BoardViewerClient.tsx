@@ -18,6 +18,8 @@ const TOOL_SECTIONS = [
   { title: "Actions", items: ["Export", "Snapshot"] },
 ];
 
+const OVERLAY_DETAIL_NAMES = ["zones", "vias", "pads", "keepouts", "silkscreen", "documentation", "mechanical", "graphics", "drills"];
+
 type Props = {
   boardId: string;
   boardName?: string;
@@ -30,6 +32,9 @@ type Props = {
   initialPads?: TraceItem[];
   initialKeepouts?: TraceItem[];
   initialSilkscreen?: TraceItem[];
+  initialDocumentation?: TraceItem[];
+  initialMechanical?: TraceItem[];
+  initialGraphics?: TraceItem[];
   initialDrills?: TraceItem[];
   importMetadata?: ImportMetadata;
 };
@@ -46,17 +51,23 @@ export default function BoardViewerClient({
   initialPads,
   initialKeepouts,
   initialSilkscreen,
+  initialDocumentation,
+  initialMechanical,
+  initialGraphics,
   initialDrills,
   importMetadata,
 }: Props) {
   const [components, setComponents] = useState<ComponentItem[]>(initialComponents || []);
   const [traces, setTraces] = useState<TraceItem[]>(initialTraces || []);
-  const [zones] = useState<TraceItem[]>(initialZones || []);
-  const [vias] = useState<TraceItem[]>(initialVias || []);
-  const [pads] = useState<TraceItem[]>(initialPads || []);
-  const [keepouts] = useState<TraceItem[]>(initialKeepouts || []);
-  const [silkscreen] = useState<TraceItem[]>(initialSilkscreen || []);
-  const [drills] = useState<TraceItem[]>(initialDrills || []);
+  const [zones, setZones] = useState<TraceItem[]>(initialZones || []);
+  const [vias, setVias] = useState<TraceItem[]>(initialVias || []);
+  const [pads, setPads] = useState<TraceItem[]>(initialPads || []);
+  const [keepouts, setKeepouts] = useState<TraceItem[]>(initialKeepouts || []);
+  const [silkscreen, setSilkscreen] = useState<TraceItem[]>(initialSilkscreen || []);
+  const [documentation, setDocumentation] = useState<TraceItem[]>(initialDocumentation || []);
+  const [mechanical, setMechanical] = useState<TraceItem[]>(initialMechanical || []);
+  const [graphics, setGraphics] = useState<TraceItem[]>(initialGraphics || []);
+  const [drills, setDrills] = useState<TraceItem[]>(initialDrills || []);
   const [boardWidthMm, setBoardWidthMm] = useState(initialBoardWidthMm || 160);
   const [boardHeightMm, setBoardHeightMm] = useState(initialBoardHeightMm || 90);
   const [loading, setLoading] = useState(!(initialComponents?.length && initialTraces?.length));
@@ -86,7 +97,7 @@ export default function BoardViewerClient({
   const importSemantics = useMemo(() => Object.entries(importMetadata?.stats?.traceCountBySemantic || {}).sort((a, b) => Number(b[1]) - Number(a[1])), [importMetadata]);
   const importGeometryBuckets = useMemo(() => Object.entries(importMetadata?.stats?.geometryArrayCounts || {}).sort((a, b) => Number(b[1]) - Number(a[1])), [importMetadata]);
   const totalImportedGeometry = useMemo(() => importGeometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0), [importGeometryBuckets]);
-  const liveEnabledOverlays = useMemo(() => (canvasBridge.visibleDetail || '').split(',').map((s) => s.trim()).filter((name) => ['zones','vias','pads','keepouts','silkscreen','drills'].includes(name)), [canvasBridge.visibleDetail]);
+  const liveEnabledOverlays = useMemo(() => (canvasBridge.visibleDetail || '').split(',').map((s) => s.trim()).filter((name) => OVERLAY_DETAIL_NAMES.includes(name)), [canvasBridge.visibleDetail]);
 
   const netCount = useMemo(() => {
     const nets = new Set<string>();
@@ -134,7 +145,16 @@ export default function BoardViewerClient({
         setBoardWidthMm(meta.board.widthMm);
         setBoardHeightMm(meta.board.heightMm);
         setComponents(comps.components);
-        setTraces(geom.traces);
+        setTraces(geom.traces || []);
+        setZones(geom.zones || []);
+        setVias(geom.vias || []);
+        setPads(geom.pads || []);
+        setKeepouts(geom.keepouts || []);
+        setSilkscreen(geom.silkscreen || []);
+        setDocumentation(geom.documentation || []);
+        setMechanical(geom.mechanical || []);
+        setGraphics(geom.graphics || []);
+        setDrills(geom.drills || []);
       } catch (e) {
         if (!alive) return;
         setError(e instanceof Error ? e.message : "Failed to load board");
@@ -243,7 +263,8 @@ export default function BoardViewerClient({
       const text = node?.textContent || "";
       if (!text) return;
       const pick = (key: string) => {
-        const m = text.match(new RegExp(`${key}=([^\n]+)`));
+        const m = text.match(new RegExp(`${key}=([^
+]+)`));
         return m ? m[1].trim() : "";
       };
       const tool = pick("tool") || "select";
@@ -279,79 +300,65 @@ export default function BoardViewerClient({
       url.searchParams.delete("sc");
       url.searchParams.delete("st");
       window.history.replaceState({}, "", url.toString());
-      setHoveredFeature(undefined, undefined);
       return;
     }
     if (type === "component") {
       url.searchParams.set("sc", id);
       url.searchParams.delete("st");
-      setFocusComponentId(id);
     } else {
       url.searchParams.set("st", id);
       url.searchParams.delete("sc");
     }
     window.history.replaceState({}, "", url.toString());
-    setHoveredFeature(type, id);
   };
 
-  const stageStatus = viewMode === "leafer" ? "Realtime 2D workbench" : "Spatial inspection";
-  const targetLabel = hoveredFeatureType === "component" ? hoveredComponent?.refdes || highlight.targetId || "None" : highlight.targetId || "None";
-  const sourceHint = loading ? "Streaming geometry" : error ? "Load fault" : "Live board state";
+  const stageStatus = loading ? "Loading board" : error ? "Data fault" : boardName || "Live workbench";
+  const sourceHint = importMetadata?.sourceFormat ? `${importMetadata.sourceFormat} import` : "API-backed board";
 
   return (
     <div className="console-shell">
-      <section className="console-hero console-hero-board">
+      <section className="console-hero workbench-hero workbench-hero-refined">
         <div className="hero-copy">
           <div className="eyebrow">PCB INTELLIGENCE WORKBENCH</div>
-          <h1 className="hero-title">{boardName || boardId}</h1>
+          <h1 className="hero-title">{boardName || "Board viewer"}</h1>
           <p className="hero-subtitle">
-            Industrial-grade inspection console for layer isolation, relation tracing, precision measurement, and workbench state export.
+            Multi-surface board inspection with shared relation highlighting, search-driven navigation, live measurement telemetry, and production-style workbench controls.
           </p>
           <div className="hero-chip-row">
-            <span className="console-chip console-chip-cyan">{viewMode === "leafer" ? "Leafer 2D" : "Three 3D"}</span>
-            <span className="console-chip console-chip-amber">Electrical graph</span>
-            <span className="console-chip">{layerMode === "all" ? "All copper" : layerMode === "fcu" ? "Front copper" : "Back copper"}</span>
+            <span className="console-chip console-chip-cyan">Canvas selection + graph context</span>
+            <span className="console-chip console-chip-amber">2D/3D synchronized review</span>
+            <span className="console-chip">Session-aware URL state</span>
           </div>
         </div>
 
         <div className="hero-metrics">
           <div className="metric-card metric-card-accent">
-            <span className="metric-label">Board envelope</span>
-            <strong className="metric-value">{boardWidthMm} × {boardHeightMm}</strong>
-            <span className="metric-meta">millimetres</span>
+            <span className="metric-label">Board size</span>
+            <strong className="metric-value">{boardWidthMm.toFixed(1)} × {boardHeightMm.toFixed(1)}</strong>
+            <span className="metric-meta">millimetres · calibrated work envelope</span>
           </div>
           <div className="metric-card">
             <span className="metric-label">Components</span>
             <strong className="metric-value">{components.length}</strong>
-            <span className="metric-meta">placement objects</span>
+            <span className="metric-meta">searchable inspection targets</span>
           </div>
           <div className="metric-card">
-            <span className="metric-label">Trace segments</span>
+            <span className="metric-label">Copper traces</span>
             <strong className="metric-value">{traces.length}</strong>
-            <span className="metric-meta">routed geometry</span>
+            <span className="metric-meta">routed electrical primitives</span>
           </div>
           <div className="metric-card">
-            <span className="metric-label">Distinct nets</span>
-            <strong className="metric-value">{netCount}</strong>
-            <span className="metric-meta">electrical relationships</span>
+            <span className="metric-label">Imported geometry</span>
+            <strong className="metric-value">{totalImportedGeometry}</strong>
+            <span className="metric-meta">all semantic buckets combined</span>
           </div>
         </div>
       </section>
 
-      <section className="summary-rail">
+      <section className="summary-rail summary-rail-workbench">
         <div className="summary-cell">
-          <span className="summary-label">Renderer</span>
-          <strong className="summary-value">{viewMode === "leafer" ? "Leafer" : "Three"}</strong>
-          <span className="summary-meta">{stageStatus}</span>
-        </div>
-        <div className="summary-cell">
-          <span className="summary-label">Layer scope</span>
-          <strong className="summary-value">{layerMode.toUpperCase()}</strong>
-          <span className="summary-meta">{visibleLayers.join(" + ")}</span>
-        </div>
-        <div className="summary-cell">
-          <span className="summary-label">Current target</span>
-          <strong className="summary-value">{targetLabel}</strong>
+          <span className="summary-label">Focus target</span>
+          <strong className="summary-value">{highlight.targetId || "None"}</strong>
           <span className="summary-meta">{highlight.targetType || "Awaiting hover"}</span>
         </div>
         <div className="summary-cell">
@@ -479,6 +486,9 @@ export default function BoardViewerClient({
                 pads={pads}
                 keepouts={keepouts}
                 silkscreen={silkscreen}
+                documentation={documentation}
+                mechanical={mechanical}
+                graphics={graphics}
                 drills={drills}
                 visibleLayers={visibleLayers}
                 focusComponentId={focusComponentId}
@@ -518,97 +528,46 @@ export default function BoardViewerClient({
                 <div className="inspector-title">Relation monitor</div>
                 <div className="inspector-meta">Shared visual grammar across 2D and 3D review</div>
               </div>
-              <span className="signal-pill">{highlight.targetId ? "Tracking" : "Idle"}</span>
+              <span className="signal-pill">{viewMode === "leafer" ? "2D surface" : "3D surface"}</span>
             </div>
             <div className="inspector-grid">
-              <div className="inspector-kv"><span>Target</span><strong>{highlight.targetId || "None"}</strong></div>
-              <div className="inspector-kv"><span>Type</span><strong>{highlight.targetType || "—"}</strong></div>
-              <div className="inspector-kv"><span>Connected nets</span><strong>{highlight.netIds.length}</strong></div>
-              <div className="inspector-kv"><span>Related traces</span><strong>{highlight.traceIds.length}</strong></div>
-              <div className="inspector-kv"><span>Related components</span><strong>{highlight.directComponentIds.length}</strong></div>
-              <div className="inspector-kv"><span>Layer mode</span><strong>{layerMode.toUpperCase()}</strong></div>
+              <div className="inspector-kv"><span>Hovered component</span><strong>{hoveredComponent?.refdes || "—"}</strong></div>
+              <div className="inspector-kv"><span>Hovered trace</span><strong>{hoveredTrace?.id || "—"}</strong></div>
+              <div className="inspector-kv"><span>Direct components</span><strong>{highlight.directComponentIds.length}</strong></div>
+              <div className="inspector-kv"><span>Highlighted traces</span><strong>{highlight.traceIds.length}</strong></div>
+              <div className="inspector-kv"><span>Context nets</span><strong>{highlight.netIds.length}</strong></div>
+              <div className="inspector-kv"><span>Layer visibility</span><strong>{visibleLayers.join(", ")}</strong></div>
             </div>
           </div>
 
           <div className="inspector-card inspector-card-dense">
-            <div className="inspector-title">Object dossier</div>
-            {hoveredComponent ? (
-              <div className="focus-card">
-                <div className="focus-refdes">{hoveredComponent.refdes}</div>
-                <div className="focus-meta">{hoveredComponent.footprint || "Unknown footprint"}</div>
-                <div className="focus-meta">nets: {(hoveredComponent.netIds || []).join(", ") || "—"}</div>
+            <div className="inspector-title">Import telemetry</div>
+            <div className="inspector-grid">
+              <div className="inspector-kv"><span>Warnings</span><strong>{importWarnings.length}</strong></div>
+              <div className="inspector-kv"><span>Imported geometry</span><strong>{totalImportedGeometry}</strong></div>
+              <div className="inspector-kv"><span>Enabled overlays</span><strong>{liveEnabledOverlays.join(", ") || "—"}</strong></div>
+              <div className="inspector-kv"><span>Source format</span><strong>{importMetadata?.sourceFormat || "native"}</strong></div>
+            </div>
+            {importGeometryBuckets.length > 0 && (
+              <div className="inspector-grid" style={{ marginTop: 14 }}>
+                {importGeometryBuckets.map(([name, count]) => (
+                  <div key={name} className="inspector-kv"><span>{name}</span><strong>{count}</strong></div>
+                ))}
               </div>
-            ) : hoveredTrace ? (
-              <div className="focus-card focus-card-trace">
-                <div className="focus-refdes">{hoveredTrace.id}</div>
-                <div className="focus-meta">layer: {hoveredTrace.layerId}</div>
-                <div className="focus-meta">net: {hoveredTrace.netId}</div>
-              </div>
-            ) : (
-              <p className="inspector-meta">No active object. Hover a trace or component to populate this dossier.</p>
             )}
-          </div>
-
-          <div className="inspector-card inspector-card-dense">
-            <div className="inspector-title">Bench context</div>
-            <div className="inspector-grid">
-              <div className="inspector-kv"><span>Board</span><strong>{boardName || boardId}</strong></div>
-              <div className="inspector-kv"><span>Envelope</span><strong>{boardWidthMm} × {boardHeightMm}</strong></div>
-              <div className="inspector-kv"><span>Renderer</span><strong>{viewMode === "leafer" ? "Leafer" : "Three"}</strong></div>
-              <div className="inspector-kv"><span>Console state</span><strong>{error ? "Fault" : loading ? "Loading" : "Ready"}</strong></div>
-              <div className="inspector-kv"><span>Enabled overlays</span><strong>{liveEnabledOverlays.join(', ') || '—'}</strong></div>
-            </div>
-          </div>
-
-          {importMetadata && (
-            <div className="inspector-card inspector-card-dense">
-              <div className="inspector-title">Import telemetry</div>
-              <div className="inspector-grid">
-                <div className="inspector-kv"><span>Format</span><strong>{importMetadata.sourceFormat}</strong></div>
-                <div className="inspector-kv"><span>Warnings</span><strong>{importWarnings.length}</strong></div>
-                <div className="inspector-kv"><span>Layer classes</span><strong>{new Set(Object.values(importMetadata.layerCategories || {})).size}</strong></div>
-                <div className="inspector-kv"><span>Imported copper traces</span><strong>{importMetadata.stats?.traceCount || traces.length}</strong></div>
-                <div className="inspector-kv"><span>Total imported geometry</span><strong>{totalImportedGeometry}</strong></div>
+            {importSemantics.length > 0 && (
+              <div className="focus-card" style={{ marginTop: 14 }}>
+                <div className="focus-meta">Semantic summary</div>
+                <div className="focus-meta">{importSemantics.map(([name, count]) => `${name}:${count}`).join(" · ")}</div>
               </div>
-              {importWarnings.length > 0 && (
-                <div className="focus-card focus-card-trace" style={{ marginTop: 14 }}>
-                  {importWarnings.map((warning) => (
-                    <div key={warning} className="focus-meta">• {warning}</div>
-                  ))}
-                </div>
-              )}
-              {importGeometryBuckets.length > 0 && (
-                <div className="inspector-grid" style={{ marginTop: 14 }}>
-                  {importGeometryBuckets.map(([name, count]) => (
-                    <div key={name} className="inspector-kv"><span>{name}</span><strong>{count}</strong></div>
-                  ))}
-                </div>
-              )}
-              {importSemantics.length > 0 && (
-                <div className="focus-card" style={{ marginTop: 14 }}>
-                  {importSemantics.map(([name, count]) => (
-                    <div key={name} className="focus-meta">• {name}: {count}</div>
-                  ))}
-                </div>
-              )}
-              {topImportLayers.length > 0 && (
-                <div className="inspector-grid" style={{ marginTop: 14 }}>
-                  {topImportLayers.map(([layer, count]) => (
-                    <div key={layer} className="inspector-kv"><span>{layer}</span><strong>{count}</strong></div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="inspector-card inspector-card-dense">
-            <div className="inspector-title">Console notes</div>
-            <ul className="tips-list">
-              <li>Wheel to zoom, drag to pan / orbit.</li>
-              <li>Shift + drag box-selects in 2D workbench.</li>
-              <li>Search drives focus, URL selection, and export state.</li>
-              <li>Leafer is tuned for dense board inspection and annotation.</li>
-            </ul>
+            )}
+            {topImportLayers.length > 0 && (
+              <div className="inspector-grid" style={{ marginTop: 14 }}>
+                {topImportLayers.map(([layer, count]) => (
+                  <div key={layer} className="inspector-kv"><span>{layer}</span><strong>{count}</strong></div>
+                ))}
+              </div>
+            )}
           </div>
         </aside>
       </section>

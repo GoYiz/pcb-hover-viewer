@@ -31,6 +31,21 @@ export type TraceItem = {
   path: [number, number][];
 };
 
+export type BoardGeometry = {
+  boardId: string;
+  layer: string;
+  traces: TraceItem[];
+  zones: TraceItem[];
+  vias: TraceItem[];
+  pads: TraceItem[];
+  keepouts: TraceItem[];
+  silkscreen: TraceItem[];
+  documentation: TraceItem[];
+  mechanical: TraceItem[];
+  graphics: TraceItem[];
+  drills: TraceItem[];
+};
+
 export type RelationsResponse = {
   target: { type: string; id: string };
   direct: Array<{
@@ -42,7 +57,6 @@ export type RelationsResponse = {
   nets: string[];
   traces: Array<{ id: string; netId: string }>;
 };
-
 
 export type ImportMetadata = {
   sourceFormat: string;
