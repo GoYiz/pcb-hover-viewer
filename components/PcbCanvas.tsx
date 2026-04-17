@@ -14,6 +14,7 @@ type Props = {
   keepouts?: TraceItem[];
   silkscreen?: TraceItem[];
   drills?: TraceItem[];
+  zones?: TraceItem[];
   visibleLayers?: string[];
   focusComponentId?: string;
   hoveredId?: string;
@@ -46,6 +47,7 @@ export default function PcbCanvas({
   keepouts = [],
   silkscreen = [],
   drills = [],
+  zones = [],
   visibleLayers = ["F.Cu", "B.Cu"],
   focusComponentId,
   hoveredId,
@@ -86,6 +88,7 @@ export default function PcbCanvas({
         const leafer = new Leafer({ view: viewId });
         const gridLayer = new Group();
         const boardLayer = new Group();
+        const zoneLayer = new Group();
         const keepoutLayer = new Group();
         const traceLayer = new Group();
         const padLayer = new Group();
@@ -95,6 +98,7 @@ export default function PcbCanvas({
         const overlayLayer = new Group();
         leafer.add(gridLayer);
         leafer.add(boardLayer);
+        leafer.add(zoneLayer);
         leafer.add(keepoutLayer);
         leafer.add(traceLayer);
         leafer.add(padLayer);
@@ -324,7 +328,7 @@ export default function PcbCanvas({
         const SNAP_RADIUS = 12;
         const toolModeRef = { value: "select" as "select" | "measure" | "pan" };
         const selectionFilterRef = { value: "all" as "all" | "component" | "trace" };
-        const detailVisibilityRef = { value: { grid: true, components: true, labels: true, measures: true, pads: true, keepouts: true, silkscreen: true, drills: true } };
+        const detailVisibilityRef = { value: { grid: true, components: true, labels: true, measures: true, pads: true, keepouts: true, silkscreen: true, drills: true, zones: true } };
         const helpRef = { visible: false };
         const exportStateRef = { last: "-" };
 
@@ -372,7 +376,7 @@ export default function PcbCanvas({
           else params.set("tool", toolModeRef.value);
           if (selectionFilterRef.value === "all") params.delete("sf");
           else params.set("sf", selectionFilterRef.value);
-          if (visibleDetailList.length === 8) params.delete("vd");
+          if (visibleDetailList.length === 9) params.delete("vd");
           else params.set("vd", visibleDetailList.join(","));
           window.history.replaceState({}, "", url.toString());
         };
@@ -384,7 +388,7 @@ export default function PcbCanvas({
         };
 
         const applyCamera = () => {
-          for (const layer of [gridLayer, boardLayer, keepoutLayer, traceLayer, padLayer, drillLayer, silkLayer, compLayer]) {
+          for (const layer of [gridLayer, boardLayer, zoneLayer, keepoutLayer, traceLayer, padLayer, drillLayer, silkLayer, compLayer]) {
             layer.scaleX = scaleRef.value;
             layer.scaleY = scaleRef.value;
             layer.x = offsetRef.x;
@@ -567,10 +571,11 @@ export default function PcbCanvas({
           const compBtn = createToolbarButton(878, 46, 44, 18, "Comp", detailVisibilityRef.value.components, "rgba(245,158,11,0.82)");
           const labelBtn = createToolbarButton(928, 46, 46, 18, "Label", detailVisibilityRef.value.labels, "rgba(168,85,247,0.82)");
           const measBtn = createToolbarButton(980, 46, 44, 18, "Meas", detailVisibilityRef.value.measures, "rgba(6,182,212,0.82)");
-          const padBtn = createToolbarButton(1030, 46, 42, 18, "Pads", detailVisibilityRef.value.pads, "rgba(251,191,36,0.82)");
-          const keepBtn = createToolbarButton(1078, 46, 44, 18, "Keep", detailVisibilityRef.value.keepouts, "rgba(239,68,68,0.82)");
-          const silkBtn = createToolbarButton(1128, 46, 42, 18, "Silk", detailVisibilityRef.value.silkscreen, "rgba(226,232,240,0.82)");
-          const drillBtn = createToolbarButton(1176, 46, 42, 18, "Drll", detailVisibilityRef.value.drills, "rgba(148,163,184,0.82)");
+          const zoneBtn = createToolbarButton(1030, 46, 42, 18, "Zone", detailVisibilityRef.value.zones, "rgba(59,130,246,0.82)");
+          const padBtn = createToolbarButton(1078, 46, 42, 18, "Pads", detailVisibilityRef.value.pads, "rgba(251,191,36,0.82)");
+          const keepBtn = createToolbarButton(1126, 46, 44, 18, "Keep", detailVisibilityRef.value.keepouts, "rgba(239,68,68,0.82)");
+          const silkBtn = createToolbarButton(1176, 46, 42, 18, "Silk", detailVisibilityRef.value.silkscreen, "rgba(226,232,240,0.82)");
+          const drillBtn = createToolbarButton(1224, 46, 42, 18, "Drll", detailVisibilityRef.value.drills, "rgba(148,163,184,0.82)");
           for (const node of [selectBtn.bg, selectBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "select"; renderVisibility(); });
           for (const node of [measureBtn.bg, measureBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "measure"; renderVisibility(); });
           for (const node of [panBtn.bg, panBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "pan"; renderVisibility(); });
@@ -592,6 +597,7 @@ export default function PcbCanvas({
           for (const node of [compBtn.bg, compBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.components = !detailVisibilityRef.value.components; renderVisibility(); });
           for (const node of [labelBtn.bg, labelBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.labels = !detailVisibilityRef.value.labels; renderVisibility(); });
           for (const node of [measBtn.bg, measBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.measures = !detailVisibilityRef.value.measures; renderVisibility(); });
+          for (const node of [zoneBtn.bg, zoneBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.zones = !detailVisibilityRef.value.zones; renderVisibility(); });
           for (const node of [padBtn.bg, padBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.pads = !detailVisibilityRef.value.pads; renderVisibility(); });
           for (const node of [keepBtn.bg, keepBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.keepouts = !detailVisibilityRef.value.keepouts; renderVisibility(); });
           for (const node of [silkBtn.bg, silkBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.silkscreen = !detailVisibilityRef.value.silkscreen; renderVisibility(); });
@@ -1349,6 +1355,7 @@ export default function PcbCanvas({
             if (!line) continue;
             line.visible = visibleLayers.length ? visibleLayers.includes(String(trace.layerId)) : true;
           }
+          zoneLayer.visible = detailVisibilityRef.value.zones;
           keepoutLayer.visible = detailVisibilityRef.value.keepouts;
           padLayer.visible = detailVisibilityRef.value.pads;
           silkLayer.visible = detailVisibilityRef.value.silkscreen;
@@ -1493,6 +1500,10 @@ export default function PcbCanvas({
           targetLayer.add(line);
         };
 
+        for (const zone of zones) {
+          renderOverlayPath(zoneLayer, zone, { stroke: 'rgba(96,165,250,0.55)', fill: 'rgba(37,99,235,0.10)', opacity: 0.68, strokeWidth: 1.0 });
+        }
+
         for (const keepout of keepouts) {
           renderOverlayPath(keepoutLayer, keepout, { stroke: 'rgba(248,113,113,0.95)', fill: 'rgba(127,29,29,0.18)', opacity: 0.95, strokeWidth: 1.4 });
         }
@@ -1580,6 +1591,7 @@ export default function PcbCanvas({
               components: initialUrlState.vd.includes("components"),
               labels: initialUrlState.vd.includes("labels"),
               measures: initialUrlState.vd.includes("measures"),
+              zones: initialUrlState.vd.includes("zones"),
               pads: initialUrlState.vd.includes("pads"),
               keepouts: initialUrlState.vd.includes("keepouts"),
               silkscreen: initialUrlState.vd.includes("silkscreen"),
@@ -1860,7 +1872,7 @@ export default function PcbCanvas({
       } catch {}
       runtimeRef.current = null;
     };
-  }, [width, height, boardWidthMm, boardHeightMm, components, traces, pads, keepouts, silkscreen, drills, onHoverFeature]);
+  }, [width, height, boardWidthMm, boardHeightMm, components, traces, pads, keepouts, silkscreen, drills, zones, onHoverFeature]);
 
   useEffect(() => {
     const rt = runtimeRef.current;

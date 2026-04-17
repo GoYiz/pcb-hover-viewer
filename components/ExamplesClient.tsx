@@ -179,6 +179,7 @@ export default function ExamplesClient({
                 keepouts={active.keepouts || []}
                 silkscreen={active.silkscreen || []}
                 drills={active.drills || []}
+                zones={active.zones || []}
                 hoveredId={hoveredId}
                 hoveredType={hoveredType}
                 directIds={relation.directIds}
