@@ -556,6 +556,7 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Envelope</span><strong>{boardWidthMm} × {boardHeightMm}</strong></div>
               <div className="inspector-kv"><span>Renderer</span><strong>{viewMode === "leafer" ? "Leafer" : "Three"}</strong></div>
               <div className="inspector-kv"><span>Console state</span><strong>{error ? "Fault" : loading ? "Loading" : "Ready"}</strong></div>
+              <div className="inspector-kv"><span>Enabled overlays</span><strong>{liveEnabledOverlays.join(', ') || '—'}</strong></div>
             </div>
           </div>
 
@@ -568,7 +569,6 @@ export default function BoardViewerClient({
                 <div className="inspector-kv"><span>Layer classes</span><strong>{new Set(Object.values(importMetadata.layerCategories || {})).size}</strong></div>
                 <div className="inspector-kv"><span>Imported copper traces</span><strong>{importMetadata.stats?.traceCount || traces.length}</strong></div>
                 <div className="inspector-kv"><span>Total imported geometry</span><strong>{totalImportedGeometry}</strong></div>
-                <div className="inspector-kv"><span>Enabled overlays</span><strong>{liveEnabledOverlays.join(', ') || '—'}</strong></div>
               </div>
               {importWarnings.length > 0 && (
                 <div className="focus-card focus-card-trace" style={{ marginTop: 14 }}>
