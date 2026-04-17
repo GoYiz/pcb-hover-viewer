@@ -559,9 +559,9 @@ export default function BoardViewerClient({
                 </div>
               )}
               {importSemantics.length > 0 && (
-                <div className="inspector-grid" style={{ marginTop: 14 }}>
+                <div className="focus-card" style={{ marginTop: 14 }}>
                   {importSemantics.map(([name, count]) => (
-                    <div key={name} className="inspector-kv"><span>{name}</span><strong>{count}</strong></div>
+                    <div key={name} className="focus-meta">• {name}: {count}</div>
                   ))}
                 </div>
               )}

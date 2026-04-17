@@ -255,10 +255,9 @@ export default function ExamplesClient({
                     </div>
                   )}
                   {semanticStats.length > 0 && (
-                    <div className="inspector-grid" style={{ marginTop: 14 }}>
-                      {semanticStats.map(([name, count]) => (
-                        <div key={name} className="inspector-kv"><span>{name}</span><strong>{count}</strong></div>
-                      ))}
+                    <div className="focus-card" style={{ marginTop: 14 }}>
+                      <div className="focus-meta">Semantic summary</div>
+                      <div className="focus-meta">{semanticStats.map(([name, count]) => `${name}:${count}`).join(' · ')}</div>
                     </div>
                   )}
                   {topLayerStats.length > 0 && (
