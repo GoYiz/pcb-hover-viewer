@@ -61,6 +61,7 @@ export default function ExamplesClient({
   const sourceHref = activeIndexItem?.source;
   const catalogComponents = index.reduce((acc, item) => acc + item.components, 0);
   const totalGeometry = geometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0);
+  const enabledOverlayNames = geometryBuckets.map(([name]) => name).filter((name) => ['zones','vias','pads','keepouts','silkscreen','drills'].includes(name));
   const activeDensity = active ? (active.components.length + totalGeometry) / Math.max(active.board.widthMm * active.board.heightMm, 1) : 0;
 
   return (
@@ -210,6 +211,7 @@ export default function ExamplesClient({
                 <div className="inspector-kv"><span>Total geometry</span><strong>{totalGeometry}</strong></div>
                 <div className="inspector-kv"><span>Warnings</span><strong>{warningCount}</strong></div>
                 <div className="inspector-kv"><span>Layer classes</span><strong>{new Set(layerCategoryEntries.map(([, v]) => v)).size}</strong></div>
+                <div className="inspector-kv"><span>Enabled overlays</span><strong>{enabledOverlayNames.join(', ') || '—'}</strong></div>
               </div>
               {sourceHref && (
                 <a className="source-link" href={sourceHref} target="_blank">

@@ -140,9 +140,9 @@ export default function PcbCanvas({
         });
         overlayLayer.add(selectionBar);
 
-        const topToolbar = new Rect({ x: 24, y: 40, width: 1010, height: 30, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
+        const topToolbar = new Rect({ x: 24, y: 40, width: 1260, height: 54, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
         overlayLayer.add(topToolbar);
-        const sideToolbar = new Rect({ x: 24, y: 80, width: 58, height: 126, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
+        const sideToolbar = new Rect({ x: 24, y: 104, width: 58, height: 126, fill: "rgba(15,23,42,0.82)", stroke: "rgba(148,163,184,0.24)", strokeWidth: 1, cornerRadius: 10 });
         overlayLayer.add(sideToolbar);
         const toolbarLayer = new Group();
         overlayLayer.add(toolbarLayer);
@@ -554,9 +554,11 @@ export default function PcbCanvas({
 
         const renderToolbars = () => {
           toolbarLayer.clear();
-          const selectBtn = createToolbarButton(32, 88, 42, 28, "Sel", toolModeRef.value === "select", "rgba(245,158,11,0.82)");
-          const measureBtn = createToolbarButton(32, 122, 42, 28, "Mea", toolModeRef.value === "measure", "rgba(167,139,250,0.82)");
-          const panBtn = createToolbarButton(32, 156, 42, 28, "Pan", toolModeRef.value === "pan", "rgba(34,211,238,0.82)");
+          const overlayLegend = new Text({ x: 734, y: 73, text: "Overlays", fill: "#94a3b8", fontSize: 10.5 });
+          toolbarLayer.add(overlayLegend);
+          const selectBtn = createToolbarButton(32, 112, 42, 28, "Sel", toolModeRef.value === "select", "rgba(245,158,11,0.82)");
+          const measureBtn = createToolbarButton(32, 146, 42, 28, "Mea", toolModeRef.value === "measure", "rgba(167,139,250,0.82)");
+          const panBtn = createToolbarButton(32, 180, 42, 28, "Pan", toolModeRef.value === "pan", "rgba(34,211,238,0.82)");
           const fitBtn = createToolbarButton(32, 46, 42, 18, "Fit", false, "rgba(30,64,175,0.78)");
           const ctrBtn = createToolbarButton(80, 46, 58, 18, "CenterSel", false, "rgba(8,145,178,0.75)");
           const zoomBtn = createToolbarButton(144, 46, 52, 18, "ZoomSel", false, "rgba(30,64,175,0.78)");
@@ -575,12 +577,12 @@ export default function PcbCanvas({
           const compBtn = createToolbarButton(878, 46, 44, 18, "Comp", detailVisibilityRef.value.components, "rgba(245,158,11,0.82)");
           const labelBtn = createToolbarButton(928, 46, 46, 18, "Label", detailVisibilityRef.value.labels, "rgba(168,85,247,0.82)");
           const measBtn = createToolbarButton(980, 46, 44, 18, "Meas", detailVisibilityRef.value.measures, "rgba(6,182,212,0.82)");
-          const zoneBtn = createToolbarButton(1030, 46, 42, 18, "Zone", detailVisibilityRef.value.zones, "rgba(59,130,246,0.82)");
-          const viaBtn = createToolbarButton(1078, 46, 40, 18, "Via", detailVisibilityRef.value.vias, "rgba(14,165,233,0.82)");
-          const padBtn = createToolbarButton(1124, 46, 42, 18, "Pads", detailVisibilityRef.value.pads, "rgba(251,191,36,0.82)");
-          const keepBtn = createToolbarButton(1172, 46, 44, 18, "Keep", detailVisibilityRef.value.keepouts, "rgba(239,68,68,0.82)");
-          const silkBtn = createToolbarButton(1222, 46, 42, 18, "Silk", detailVisibilityRef.value.silkscreen, "rgba(226,232,240,0.82)");
-          const drillBtn = createToolbarButton(1270, 46, 42, 18, "Drll", detailVisibilityRef.value.drills, "rgba(148,163,184,0.82)");
+          const zoneBtn = createToolbarButton(830, 70, 42, 18, "Zone", detailVisibilityRef.value.zones, "rgba(59,130,246,0.82)");
+          const viaBtn = createToolbarButton(878, 70, 40, 18, "Via", detailVisibilityRef.value.vias, "rgba(14,165,233,0.82)");
+          const padBtn = createToolbarButton(924, 70, 42, 18, "Pads", detailVisibilityRef.value.pads, "rgba(251,191,36,0.82)");
+          const keepBtn = createToolbarButton(972, 70, 44, 18, "Keep", detailVisibilityRef.value.keepouts, "rgba(239,68,68,0.82)");
+          const silkBtn = createToolbarButton(1022, 70, 42, 18, "Silk", detailVisibilityRef.value.silkscreen, "rgba(226,232,240,0.82)");
+          const drillBtn = createToolbarButton(1070, 70, 42, 18, "Drll", detailVisibilityRef.value.drills, "rgba(148,163,184,0.82)");
           for (const node of [selectBtn.bg, selectBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "select"; renderVisibility(); });
           for (const node of [measureBtn.bg, measureBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "measure"; renderVisibility(); });
           for (const node of [panBtn.bg, panBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "pan"; renderVisibility(); });
