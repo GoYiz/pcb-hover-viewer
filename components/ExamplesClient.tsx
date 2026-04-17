@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { ExampleBoardData, ExampleIndexItem } from "@/lib/examples";
 
@@ -21,6 +21,7 @@ export default function ExamplesClient({
   const [activeId, setActiveId] = useState(index[0]?.id || "");
   const [hoveredType, setHoveredType] = useState<"component" | "trace" | undefined>(undefined);
   const [hoveredId, setHoveredId] = useState<string | undefined>(undefined);
+  const [liveVisibleDetail, setLiveVisibleDetail] = useState<string[]>([]);
 
   const active = examples[activeId];
   const activeIndexItem = index.find((i) => i.id === activeId);
@@ -61,8 +62,23 @@ export default function ExamplesClient({
   const sourceHref = activeIndexItem?.source;
   const catalogComponents = index.reduce((acc, item) => acc + item.components, 0);
   const totalGeometry = geometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0);
-  const enabledOverlayNames = geometryBuckets.map(([name]) => name).filter((name) => ['zones','vias','pads','keepouts','silkscreen','drills'].includes(name));
+  const importedOverlayNames = geometryBuckets.map(([name]) => name).filter((name) => ['zones','vias','pads','keepouts','silkscreen','drills'].includes(name));
+  const enabledOverlayNames = (liveVisibleDetail.length ? liveVisibleDetail : importedOverlayNames).filter((name) => ['zones','vias','pads','keepouts','silkscreen','drills'].includes(name));
   const activeDensity = active ? (active.components.length + totalGeometry) / Math.max(active.board.widthMm * active.board.heightMm, 1) : 0;
+
+  useEffect(() => {
+    const readBridge = () => {
+      const el = document.querySelector('[data-testid="canvas-state-bridge"]');
+      const text = el?.textContent || '';
+      const m = text.match(/visible_detail=([^\n]+)/);
+      if (!m) return;
+      const items = m[1].split(',').map((s) => s.trim()).filter(Boolean);
+      setLiveVisibleDetail(items);
+    };
+    readBridge();
+    const id = window.setInterval(readBridge, 400);
+    return () => window.clearInterval(id);
+  }, [activeId]);
 
   return (
     <div className="console-shell examples-shell">
