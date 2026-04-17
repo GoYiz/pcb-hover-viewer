@@ -54,6 +54,8 @@ export type ImportMetadata = {
     netCount?: number;
     traceCountByLayer?: Record<string, number>;
     traceCountBySemantic?: Record<string, number>;
+    objectCountBySemantic?: Record<string, number>;
+    geometryArrayCounts?: Record<string, number>;
   };
   layerCategories?: Record<string, string>;
   warnings?: string[];
