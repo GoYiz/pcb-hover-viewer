@@ -175,6 +175,8 @@ export default function ExamplesClient({
                 boardHeightMm={active.board.heightMm}
                 components={active.components}
                 traces={active.traces}
+                pads={active.pads || []}
+                keepouts={active.keepouts || []}
                 hoveredId={hoveredId}
                 hoveredType={hoveredType}
                 directIds={relation.directIds}

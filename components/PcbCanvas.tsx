@@ -10,6 +10,8 @@ type Props = {
   boardHeightMm: number;
   components: ComponentItem[];
   traces: TraceItem[];
+  pads?: TraceItem[];
+  keepouts?: TraceItem[];
   visibleLayers?: string[];
   focusComponentId?: string;
   hoveredId?: string;
@@ -38,6 +40,8 @@ export default function PcbCanvas({
   boardHeightMm,
   components,
   traces,
+  pads = [],
+  keepouts = [],
   visibleLayers = ["F.Cu", "B.Cu"],
   focusComponentId,
   hoveredId,
@@ -78,12 +82,16 @@ export default function PcbCanvas({
         const leafer = new Leafer({ view: viewId });
         const gridLayer = new Group();
         const boardLayer = new Group();
+        const keepoutLayer = new Group();
         const traceLayer = new Group();
+        const padLayer = new Group();
         const compLayer = new Group();
         const overlayLayer = new Group();
         leafer.add(gridLayer);
         leafer.add(boardLayer);
+        leafer.add(keepoutLayer);
         leafer.add(traceLayer);
+        leafer.add(padLayer);
         leafer.add(compLayer);
         leafer.add(overlayLayer);
 
@@ -368,7 +376,7 @@ export default function PcbCanvas({
         };
 
         const applyCamera = () => {
-          for (const layer of [gridLayer, boardLayer, traceLayer, compLayer]) {
+          for (const layer of [gridLayer, boardLayer, keepoutLayer, traceLayer, padLayer, compLayer]) {
             layer.scaleX = scaleRef.value;
             layer.scaleY = scaleRef.value;
             layer.x = offsetRef.x;
@@ -1430,6 +1438,48 @@ export default function PcbCanvas({
           }
         };
 
+        const renderOverlayPath = (targetLayer: any, feature: TraceItem, style: { stroke: string; fill?: string; opacity?: number; strokeWidth?: number }) => {
+          const points: number[] = [];
+          let minX = Infinity;
+          let minY = Infinity;
+          let maxX = -Infinity;
+          let maxY = -Infinity;
+          for (const [x, y] of feature.path) {
+            const px = mapX(x, boardWidthMm, width);
+            const py = mapY(y, boardHeightMm, height);
+            points.push(px, py);
+            minX = Math.min(minX, px);
+            minY = Math.min(minY, py);
+            maxX = Math.max(maxX, px);
+            maxY = Math.max(maxY, py);
+          }
+          if (points.length < 4) return;
+          if (style.fill && Number.isFinite(minX) && Number.isFinite(minY) && Number.isFinite(maxX) && Number.isFinite(maxY)) {
+            const fillRect = new Rect({
+              x: minX,
+              y: minY,
+              width: Math.max(1, maxX - minX),
+              height: Math.max(1, maxY - minY),
+              fill: style.fill,
+              stroke: 'rgba(0,0,0,0)',
+              strokeWidth: 0,
+              opacity: Math.min(style.opacity ?? 1, 0.22),
+              cornerRadius: 2,
+            });
+            targetLayer.add(fillRect);
+          }
+          const line = new Line({ points, stroke: style.stroke, strokeWidth: style.strokeWidth ?? 1.2, opacity: style.opacity ?? 1, hitRadius: 0, hitFill: 'rgba(0,0,0,0)' });
+          targetLayer.add(line);
+        };
+
+        for (const keepout of keepouts) {
+          renderOverlayPath(keepoutLayer, keepout, { stroke: 'rgba(248,113,113,0.95)', fill: 'rgba(127,29,29,0.18)', opacity: 0.95, strokeWidth: 1.4 });
+        }
+
+        for (const pad of pads) {
+          renderOverlayPath(padLayer, pad, { stroke: 'rgba(251,191,36,0.95)', fill: 'rgba(250,204,21,0.18)', opacity: 0.9, strokeWidth: 1.1 });
+        }
+
         for (const trace of traces) {
           const points: number[] = [];
           let minX = Infinity;
@@ -1777,7 +1827,7 @@ export default function PcbCanvas({
       } catch {}
       runtimeRef.current = null;
     };
-  }, [width, height, boardWidthMm, boardHeightMm, components, traces, onHoverFeature]);
+  }, [width, height, boardWidthMm, boardHeightMm, components, traces, pads, keepouts, onHoverFeature]);
 
   useEffect(() => {
     const rt = runtimeRef.current;
