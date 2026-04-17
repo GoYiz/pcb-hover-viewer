@@ -33,5 +33,11 @@ export async function GET(
       width: t.width,
       path: JSON.parse(t.pathJson) as [number, number][],
     })),
+    zones: [],
+    vias: [],
+    pads: [],
+    keepouts: [],
+    silkscreen: [],
+    drills: [],
   });
 }
