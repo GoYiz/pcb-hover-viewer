@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import BoardViewerClient from "@/components/BoardViewerClient";
-import { getDemoBoardById } from "@/lib/demo-board";
+import { getHostedBoardById } from "@/lib/hosted-board";
 
 export const dynamic = "force-dynamic";
 
 export default async function BoardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const board = getDemoBoardById(id);
+  const board = getHostedBoardById(id);
 
   if (!board) notFound();
 
@@ -19,13 +19,13 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
         boardHeightMm={board.board.heightMm}
         initialComponents={board.components}
         initialTraces={board.traces}
-        initialZones={(board as { zones?: import("@/types/pcb").TraceItem[] }).zones}
-        initialVias={(board as { vias?: import("@/types/pcb").TraceItem[] }).vias}
-        initialPads={(board as { pads?: import("@/types/pcb").TraceItem[] }).pads}
-        initialKeepouts={(board as { keepouts?: import("@/types/pcb").TraceItem[] }).keepouts}
-        initialSilkscreen={(board as { silkscreen?: import("@/types/pcb").TraceItem[] }).silkscreen}
-        initialDrills={(board as { drills?: import("@/types/pcb").TraceItem[] }).drills}
-        importMetadata={(board as { importMetadata?: import("@/types/pcb").ImportMetadata }).importMetadata}
+        initialZones={board.zones}
+        initialVias={board.vias}
+        initialPads={board.pads}
+        initialKeepouts={board.keepouts}
+        initialSilkscreen={board.silkscreen}
+        initialDrills={board.drills}
+        importMetadata={board.importMetadata}
       />
     </main>
   );

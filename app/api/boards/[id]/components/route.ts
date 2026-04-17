@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getDemoBoardComponentsById } from "@/lib/demo-board";
+import { getHostedBoardComponentsById } from "@/lib/hosted-board";
 
 function parseBBox(input: string): [number, number, number, number] {
   try {
@@ -20,17 +20,33 @@ export async function GET(
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search")?.trim() || "";
 
-  const demo = getDemoBoardComponentsById(id, search);
-  if (demo) return NextResponse.json(demo);
+  const hosted = getHostedBoardComponentsById(id, search);
+  if (hosted) return NextResponse.json(hosted);
 
   const components = await prisma.component.findMany({
     where: {
       boardId: id,
-      ...(search ? { refdes: { contains: search } } : {}),
+      ...(search
+        ? {
+            refdes: {
+              contains: search,
+            },
+          }
+        : {}),
     },
     select: {
-      id: true, refdes: true, footprint: true, x: true, y: true, rotation: true, bboxJson: true,
-      pins: { select: { netId: true } },
+      id: true,
+      refdes: true,
+      footprint: true,
+      x: true,
+      y: true,
+      rotation: true,
+      bboxJson: true,
+      pins: {
+        select: {
+          netId: true,
+        },
+      },
     },
     orderBy: { refdes: "asc" },
     take: search ? 50 : 1000,
@@ -39,8 +55,14 @@ export async function GET(
   return NextResponse.json({
     boardId: id,
     components: components.map((c) => ({
-      id: c.id, refdes: c.refdes, footprint: c.footprint, x: c.x, y: c.y, rotation: c.rotation,
-      bbox: parseBBox(c.bboxJson), netIds: [...new Set(c.pins.map((p) => p.netId))],
+      id: c.id,
+      refdes: c.refdes,
+      footprint: c.footprint,
+      x: c.x,
+      y: c.y,
+      rotation: c.rotation,
+      bbox: parseBBox(c.bboxJson),
+      netIds: [...new Set(c.pins.map((p) => p.netId))],
     })),
   });
 }

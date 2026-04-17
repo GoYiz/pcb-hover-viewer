@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getDemoBoardGeometryById } from "@/lib/demo-board";
+import { getHostedBoardGeometryById } from "@/lib/hosted-board";
 
 export async function GET(
   req: Request,
@@ -10,22 +10,55 @@ export async function GET(
   const { searchParams } = new URL(req.url);
   const layer = searchParams.get("layer") || "TOP";
 
-  const demo = getDemoBoardGeometryById(id, layer);
-  if (demo) return NextResponse.json(demo);
+  const hosted = getHostedBoardGeometryById(id, layer);
+  if (hosted) return NextResponse.json(hosted);
 
   const [traces, overlays] = await Promise.all([
     prisma.trace.findMany({
-      where: { boardId: id, layerId: layer },
-      select: { id: true, netId: true, layerId: true, pathJson: true, width: true },
+      where: {
+        boardId: id,
+        layerId: layer,
+      },
+      select: {
+        id: true,
+        netId: true,
+        layerId: true,
+        pathJson: true,
+        width: true,
+      },
     }),
     prisma.overlayGeometry.findMany({
-      where: { boardId: id, layerId: layer },
-      select: { id: true, netId: true, layerId: true, kind: true, pathJson: true, width: true },
+      where: {
+        boardId: id,
+        layerId: layer,
+      },
+      select: {
+        id: true,
+        netId: true,
+        layerId: true,
+        kind: true,
+        pathJson: true,
+        width: true,
+      },
     }),
   ]);
 
-  const mappedTraces = traces.map((t) => ({ id: t.id, netId: t.netId, layerId: t.layerId, width: t.width, path: JSON.parse(t.pathJson) as [number, number][] }));
-  const mappedOverlays = overlays.map((t) => ({ id: t.id, netId: t.netId || "", layerId: t.layerId, width: t.width, path: JSON.parse(t.pathJson) as [number, number][], kind: t.kind }));
+  const mappedTraces = traces.map((t) => ({
+    id: t.id,
+    netId: t.netId,
+    layerId: t.layerId,
+    width: t.width,
+    path: JSON.parse(t.pathJson) as [number, number][],
+  }));
+
+  const mappedOverlays = overlays.map((t) => ({
+    id: t.id,
+    netId: t.netId || "",
+    layerId: t.layerId,
+    width: t.width,
+    path: JSON.parse(t.pathJson) as [number, number][],
+    kind: t.kind,
+  }));
 
   return NextResponse.json({
     boardId: id,
