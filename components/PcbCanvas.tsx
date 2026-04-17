@@ -324,7 +324,7 @@ export default function PcbCanvas({
         const SNAP_RADIUS = 12;
         const toolModeRef = { value: "select" as "select" | "measure" | "pan" };
         const selectionFilterRef = { value: "all" as "all" | "component" | "trace" };
-        const detailVisibilityRef = { value: { grid: true, components: true, labels: true, measures: true } };
+        const detailVisibilityRef = { value: { grid: true, components: true, labels: true, measures: true, pads: true, keepouts: true, silkscreen: true, drills: true } };
         const helpRef = { visible: false };
         const exportStateRef = { last: "-" };
 
@@ -372,7 +372,7 @@ export default function PcbCanvas({
           else params.set("tool", toolModeRef.value);
           if (selectionFilterRef.value === "all") params.delete("sf");
           else params.set("sf", selectionFilterRef.value);
-          if (visibleDetailList.length === 4) params.delete("vd");
+          if (visibleDetailList.length === 8) params.delete("vd");
           else params.set("vd", visibleDetailList.join(","));
           window.history.replaceState({}, "", url.toString());
         };
@@ -567,6 +567,10 @@ export default function PcbCanvas({
           const compBtn = createToolbarButton(878, 46, 44, 18, "Comp", detailVisibilityRef.value.components, "rgba(245,158,11,0.82)");
           const labelBtn = createToolbarButton(928, 46, 46, 18, "Label", detailVisibilityRef.value.labels, "rgba(168,85,247,0.82)");
           const measBtn = createToolbarButton(980, 46, 44, 18, "Meas", detailVisibilityRef.value.measures, "rgba(6,182,212,0.82)");
+          const padBtn = createToolbarButton(1030, 46, 42, 18, "Pads", detailVisibilityRef.value.pads, "rgba(251,191,36,0.82)");
+          const keepBtn = createToolbarButton(1078, 46, 44, 18, "Keep", detailVisibilityRef.value.keepouts, "rgba(239,68,68,0.82)");
+          const silkBtn = createToolbarButton(1128, 46, 42, 18, "Silk", detailVisibilityRef.value.silkscreen, "rgba(226,232,240,0.82)");
+          const drillBtn = createToolbarButton(1176, 46, 42, 18, "Drll", detailVisibilityRef.value.drills, "rgba(148,163,184,0.82)");
           for (const node of [selectBtn.bg, selectBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "select"; renderVisibility(); });
           for (const node of [measureBtn.bg, measureBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "measure"; renderVisibility(); });
           for (const node of [panBtn.bg, panBtn.text]) node.on("pointer.tap", () => { toolModeRef.value = "pan"; renderVisibility(); });
@@ -588,6 +592,10 @@ export default function PcbCanvas({
           for (const node of [compBtn.bg, compBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.components = !detailVisibilityRef.value.components; renderVisibility(); });
           for (const node of [labelBtn.bg, labelBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.labels = !detailVisibilityRef.value.labels; renderVisibility(); });
           for (const node of [measBtn.bg, measBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.measures = !detailVisibilityRef.value.measures; renderVisibility(); });
+          for (const node of [padBtn.bg, padBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.pads = !detailVisibilityRef.value.pads; renderVisibility(); });
+          for (const node of [keepBtn.bg, keepBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.keepouts = !detailVisibilityRef.value.keepouts; renderVisibility(); });
+          for (const node of [silkBtn.bg, silkBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.silkscreen = !detailVisibilityRef.value.silkscreen; renderVisibility(); });
+          for (const node of [drillBtn.bg, drillBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.drills = !detailVisibilityRef.value.drills; renderVisibility(); });
         };
 
         const renderInspector = () => {
@@ -1263,7 +1271,8 @@ export default function PcbCanvas({
           line.strokeWidth = (isTarget ? 5 : isSelected ? 4.5 : isRelated ? 4 : 2) / Math.max(scaleRef.value * 0.9, 0.8);
           line.opacity = isTarget || isSelected || isRelated ? 1 : 0.45;
           line.hitRadius = getTraceHitRadius(id);
-          line.visible = true;
+          const trace = traces.find((tr) => tr.id === id);
+          line.visible = trace ? (visibleLayers.length ? visibleLayers.includes(String(trace.layerId)) : true) : true;
         };
 
         const applyLabelVisibilityStrategy = () => {
@@ -1340,6 +1349,10 @@ export default function PcbCanvas({
             if (!line) continue;
             line.visible = visibleLayers.length ? visibleLayers.includes(String(trace.layerId)) : true;
           }
+          keepoutLayer.visible = detailVisibilityRef.value.keepouts;
+          padLayer.visible = detailVisibilityRef.value.pads;
+          silkLayer.visible = detailVisibilityRef.value.silkscreen;
+          drillLayer.visible = detailVisibilityRef.value.drills;
           for (const id of traceMap.keys()) updateTraceStyle(id);
           for (const id of compMap.keys()) updateCompStyle(id);
           applyLabelVisibilityStrategy();
@@ -1567,6 +1580,10 @@ export default function PcbCanvas({
               components: initialUrlState.vd.includes("components"),
               labels: initialUrlState.vd.includes("labels"),
               measures: initialUrlState.vd.includes("measures"),
+              pads: initialUrlState.vd.includes("pads"),
+              keepouts: initialUrlState.vd.includes("keepouts"),
+              silkscreen: initialUrlState.vd.includes("silkscreen"),
+              drills: initialUrlState.vd.includes("drills"),
             };
             if (detailVisibilityRef.value.labels) detailVisibilityRef.value.components = true;
           }
