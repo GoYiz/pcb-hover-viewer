@@ -5,6 +5,7 @@ const prisma = new PrismaClient();
 async function main() {
   await prisma.relationEdge.deleteMany();
   await prisma.pin.deleteMany();
+  await prisma.overlayGeometry.deleteMany();
   await prisma.trace.deleteMany();
   await prisma.net.deleteMany();
   await prisma.component.deleteMany();
@@ -117,6 +118,77 @@ async function main() {
           [28, 30],
         ]),
         width: 0.18,
+      },
+    ],
+  });
+
+  await prisma.overlayGeometry.createMany({
+    data: [
+      {
+        id: "Z001",
+        boardId,
+        netId: "PP_VDD_MAIN",
+        layerId: "TOP",
+        kind: "zone",
+        pathJson: JSON.stringify([
+          [18, 16], [40, 16], [40, 24], [18, 24], [18, 16],
+        ]),
+        width: 0.1,
+      },
+      {
+        id: "V001",
+        boardId,
+        netId: "PP_VDD_MAIN",
+        layerId: "TOP",
+        kind: "via",
+        pathJson: JSON.stringify([
+          [28.3, 20], [28.2494, 20.2121], [28.1, 20.3674], [27.8879, 20.418], [27.6757, 20.3674], [27.5206, 20.2121], [27.47, 20], [27.5206, 19.7879], [27.6757, 19.6326], [27.8879, 19.582], [28.1, 19.6326], [28.2494, 19.7879], [28.3, 20],
+        ]),
+        width: 0.6,
+      },
+      {
+        id: "P001",
+        boardId,
+        netId: "PP_VDD_MAIN",
+        layerId: "TOP",
+        kind: "pad",
+        pathJson: JSON.stringify([
+          [27.2, 19.2], [28.8, 19.2], [28.8, 20.8], [27.2, 20.8], [27.2, 19.2],
+        ]),
+        width: 0.8,
+      },
+      {
+        id: "K001",
+        boardId,
+        netId: null,
+        layerId: "TOP",
+        kind: "keepout",
+        pathJson: JSON.stringify([
+          [44, 12], [52, 12], [52, 22], [44, 22], [44, 12],
+        ]),
+        width: 0.1,
+      },
+      {
+        id: "S001",
+        boardId,
+        netId: null,
+        layerId: "TOP",
+        kind: "silkscreen",
+        pathJson: JSON.stringify([
+          [16, 14], [42, 14],
+        ]),
+        width: 0.12,
+      },
+      {
+        id: "D001",
+        boardId,
+        netId: null,
+        layerId: "TOP",
+        kind: "drill",
+        pathJson: JSON.stringify([
+          [36.35, 20], [36.2899, 20.2475], [36.1232, 20.438], [35.888, 20.4987], [35.6527, 20.438], [35.4861, 20.2475], [35.426, 20], [35.4861, 19.7525], [35.6527, 19.562], [35.888, 19.5013], [36.1232, 19.562], [36.2899, 19.7525], [36.35, 20],
+        ]),
+        width: 0.7,
       },
     ],
   });

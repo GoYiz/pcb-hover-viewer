@@ -18,6 +18,7 @@ model Board {
   components Component[]
   nets       Net[]
   traces     Trace[]
+  overlays   OverlayGeometry[]
   relations  RelationEdge[]
 }
 
@@ -29,6 +30,7 @@ model Layer {
   board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   pins      Pin[]
   traces    Trace[]
+  overlays  OverlayGeometry[]
 
   @@index([boardId, name])
 }
@@ -55,6 +57,7 @@ model Net {
   board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   pins      Pin[]
   traces    Trace[]
+  overlays  OverlayGeometry[]
 
   @@index([boardId, netName])
 }
@@ -86,6 +89,23 @@ model Trace {
   layer     Layer    @relation(fields: [layerId], references: [id], onDelete: Cascade)
 
   @@index([boardId, netId])
+}
+
+model OverlayGeometry {
+  id        String   @id
+  boardId   String
+  netId     String?
+  layerId   String
+  kind      String
+  pathJson  String
+  width     Float
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  net       Net?     @relation(fields: [netId], references: [id], onDelete: Cascade)
+  layer     Layer    @relation(fields: [layerId], references: [id], onDelete: Cascade)
+
+  @@index([boardId, kind])
+  @@index([boardId, layerId, kind])
+  @@index([netId])
 }
 
 model RelationEdge {
