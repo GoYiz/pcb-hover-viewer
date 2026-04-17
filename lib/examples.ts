@@ -37,6 +37,69 @@ export type ExampleBoardData = {
     width: number;
     path: [number, number][];
   }>;
+  vias?: Array<{
+    id: string;
+    netId: string;
+    layerId: string;
+    width: number;
+    path: [number, number][];
+  }>;
+  pads?: Array<{
+    id: string;
+    netId: string;
+    layerId: string;
+    width: number;
+    path: [number, number][];
+  }>;
+  zones?: Array<{
+    id: string;
+    netId: string;
+    layerId: string;
+    width: number;
+    path: [number, number][];
+  }>;
+  keepouts?: Array<{
+    id: string;
+    netId: string;
+    layerId: string;
+    width: number;
+    path: [number, number][];
+  }>;
+  graphics?: Array<{
+    id: string;
+    netId: string;
+    layerId: string;
+    width: number;
+    path: [number, number][];
+  }>;
+  silkscreen?: Array<{
+    id: string;
+    netId: string;
+    layerId: string;
+    width: number;
+    path: [number, number][];
+  }>;
+  documentation?: Array<{
+    id: string;
+    netId: string;
+    layerId: string;
+    width: number;
+    path: [number, number][];
+  }>;
+  mechanical?: Array<{
+    id: string;
+    netId: string;
+    layerId: string;
+    width: number;
+    path: [number, number][];
+  }>;
+  drills?: Array<{
+    id: string;
+    netId: string;
+    layerId: string;
+    width: number;
+    path: [number, number][];
+  }>;
   nets: Array<{ id: string; name: string }>;
   importMetadata?: {
     sourceFormat: string;
@@ -48,6 +111,8 @@ export type ExampleBoardData = {
       netCount?: number;
       traceCountByLayer?: Record<string, number>;
       traceCountBySemantic?: Record<string, number>;
+      objectCountBySemantic?: Record<string, number>;
+      geometryArrayCounts?: Record<string, number>;
     };
     layerCategories?: Record<string, string>;
     warnings?: string[];

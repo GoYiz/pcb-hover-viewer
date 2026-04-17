@@ -29,6 +29,7 @@ export default function ExamplesClient({
   const layerCategoryEntries = Object.entries(metadata?.layerCategories || {});
   const topLayerStats = Object.entries(metadata?.stats?.traceCountByLayer || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const semanticStats = Object.entries(metadata?.stats?.traceCountBySemantic || {}).sort((a, b) => b[1] - a[1]);
+  const geometryBuckets = Object.entries(metadata?.stats?.geometryArrayCounts || {}).sort((a, b) => b[1] - a[1]);
 
   const relation = useMemo(() => {
     if (!active || !hoveredId || !hoveredType) {
@@ -59,7 +60,9 @@ export default function ExamplesClient({
 
   const sourceHref = activeIndexItem?.source;
   const catalogComponents = index.reduce((acc, item) => acc + item.components, 0);
-  const activeDensity = active ? (active.components.length + active.traces.length) / Math.max(active.board.widthMm * active.board.heightMm, 1) : 0;
+  const geometryBuckets = Object.entries(metadata?.stats?.geometryArrayCounts || {}).sort((a, b) => b[1] - a[1]);
+  const totalGeometry = geometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0);
+  const activeDensity = active ? (active.components.length + totalGeometry) / Math.max(active.board.widthMm * active.board.heightMm, 1) : 0;
 
   return (
     <div className="console-shell examples-shell">
@@ -118,8 +121,8 @@ export default function ExamplesClient({
         </div>
         <div className="summary-cell">
           <span className="summary-label">Routing</span>
-          <strong className="summary-value">{active?.traces.length || 0}</strong>
-          <span className="summary-meta">trace segments</span>
+          <strong className="summary-value">{totalGeometry || 0}</strong>
+          <span className="summary-meta">total imported geometry</span>
         </div>
         <div className="summary-cell">
           <span className="summary-label">Import status</span>
@@ -160,7 +163,8 @@ export default function ExamplesClient({
               </div>
               <div className="canvas-stage-badges">
                 <span className="stage-badge">{active.components.length} comps</span>
-                <span className="stage-badge">{active.traces.length} traces</span>
+                <span className="stage-badge">{active.traces.length} copper traces</span>
+                <span className="stage-badge">{totalGeometry} total geom</span>
                 <span className="stage-badge">{relation.netIds.length} active nets</span>
               </div>
             </div>
@@ -197,7 +201,8 @@ export default function ExamplesClient({
                 <div className="inspector-kv"><span>Name</span><strong>{active.board.name}</strong></div>
                 <div className="inspector-kv"><span>Board size</span><strong>{active.board.widthMm} × {active.board.heightMm}</strong></div>
                 <div className="inspector-kv"><span>Components</span><strong>{active.components.length}</strong></div>
-                <div className="inspector-kv"><span>Trace segments</span><strong>{active.traces.length}</strong></div>
+                <div className="inspector-kv"><span>Copper traces</span><strong>{active.traces.length}</strong></div>
+                <div className="inspector-kv"><span>Total geometry</span><strong>{totalGeometry}</strong></div>
                 <div className="inspector-kv"><span>Warnings</span><strong>{warningCount}</strong></div>
                 <div className="inspector-kv"><span>Layer classes</span><strong>{new Set(layerCategoryEntries.map(([, v]) => v)).size}</strong></div>
               </div>
@@ -240,6 +245,13 @@ export default function ExamplesClient({
                       <div className="focus-meta">Warnings</div>
                       {metadata.warnings.map((w) => (
                         <div key={w} className="focus-meta">• {w}</div>
+                      ))}
+                    </div>
+                  )}
+                  {geometryBuckets.length > 0 && (
+                    <div className="inspector-grid" style={{ marginTop: 14 }}>
+                      {geometryBuckets.map(([name, count]) => (
+                        <div key={name} className="inspector-kv"><span>{name}</span><strong>{count}</strong></div>
                       ))}
                     </div>
                   )}

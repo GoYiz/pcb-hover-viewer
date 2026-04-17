@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-ROOT = Path('/var/minis/workspace/pcb-hover-viewer')
+ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / 'data' / 'raw'
 OUT = ROOT / 'public' / 'examples'
 SCRIPT = ROOT / 'scripts' / 'import_ipc2581.py'
@@ -15,7 +15,8 @@ CASES = [
         'name': 'LED Power Board IPC',
         'out': OUT / 'led_power_board_ipc.json',
         'min_components': 8,
-        'min_traces': 20,
+        'min_copper_traces': 20,
+        'min_total_geometry': 30,
         'must_layers': {'TOP_COPPER', 'BOARD_EDGE'},
     },
     {
@@ -24,7 +25,8 @@ CASES = [
         'name': 'Switch Board IPC',
         'out': OUT / 'switch_board_ipc.json',
         'min_components': 20,
-        'min_traces': 500,
+        'min_copper_traces': 80,
+        'min_total_geometry': 800,
         'must_layers': {'Top Layer', 'Bottom Layer', 'DRILL', 'BOARD_CUTOUT'},
     },
 ]
@@ -37,7 +39,9 @@ for case in CASES:
         raise SystemExit(code.stderr or code.stdout)
     data = json.loads(case['out'].read_text('utf-8'))
     assert len(data['components']) >= case['min_components'], (case['id'], 'components too low')
-    assert len(data['traces']) >= case['min_traces'], (case['id'], 'traces too low')
+    total_geometry = sum(len(data.get(k, [])) for k in ['traces', 'vias', 'pads', 'zones', 'keepouts', 'silkscreen', 'documentation', 'mechanical', 'graphics', 'drills'])
+    assert len(data['traces']) >= case['min_copper_traces'], (case['id'], 'copper traces too low')
+    assert total_geometry >= case['min_total_geometry'], (case['id'], 'total geometry too low')
     layers = {x['id'] for x in data['layers']}
     missing = case['must_layers'] - layers
     assert not missing, (case['id'], 'missing layers', missing)
@@ -49,5 +53,5 @@ for case in CASES:
     assert isinstance(meta.get('layerCategories'), dict), (case['id'], 'layerCategories missing')
     stats = meta.get('stats') or {}
     assert stats.get('traceCount') == len(data['traces']), (case['id'], 'traceCount mismatch')
-    print(case['id'], 'OK', len(data['components']), len(data['traces']), len(data['nets']), 'warnings', len(meta.get('warnings', [])))
+    print(case['id'], 'OK', len(data['components']), len(data['traces']), len(data['nets']), 'warnings', len(meta.get('warnings', [])), 'geometry', total_geometry)
 print('validate_ipc_import: OK')

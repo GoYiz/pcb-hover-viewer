@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Iterable
 
-ROOT = Path('/var/minis/workspace/pcb-hover-viewer')
+ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT / 'data' / 'raw'
 OUT_DIR = ROOT / 'public' / 'examples'
 
@@ -177,16 +177,18 @@ def element_width(el: ET.Element, scale: float, default: float = 0.15) -> float:
 def append_trace(traces, coords, trace_index, net_id, layer_id, width, path, semantic_counts=None, semantic: str | None = None):
     if len(path) < 2:
         return trace_index
+    resolved_semantic = semantic or classify_trace_semantic(str(layer_id), str(net_id))
     traces.append({
         'id': f'T{trace_index}',
         'netId': normalize_net_id(net_id),
         'layerId': str(layer_id),
         'width': round(width or 0.15, 4),
         'path': path,
+        '_semantic': resolved_semantic,
     })
     coords.extend((px, py) for px, py in path)
-    if semantic_counts is not None and semantic:
-        semantic_counts[semantic] += 1
+    if semantic_counts is not None and resolved_semantic:
+        semantic_counts[resolved_semantic] += 1
     return trace_index + 1
 
 
@@ -288,7 +290,7 @@ def iter_padstack_geometries(root: ET.Element, standard_defs: dict, scale: float
                 dims = standard_defs.get(str(rid))
                 if not dims:
                     continue
-                yield {'layer_id': layer_id, 'net_id': net_id, 'width': max(dims['w'], dims['h']), 'path': flash_path(x, y, dims['w'], dims['h']), 'semantic_hint': 'via' if via_like else classify_trace_semantic(layer_id, net_id), 'count_object': False}
+                yield {'layer_id': layer_id, 'net_id': net_id, 'width': max(dims['w'], dims['h']), 'path': flash_path(x, y, dims['w'], dims['h']), 'semantic_hint': 'via' if via_like else 'pad', 'count_object': False}
 
 
 def classify_trace_semantic(layer_id: str, net_id: str) -> str:
@@ -298,12 +300,14 @@ def classify_trace_semantic(layer_id: str, net_id: str) -> str:
         return 'drill'
     if 'edge' in layer or 'cutout' in layer or 'outline' in layer:
         return 'board_outline'
-    if 'overlay' in layer or 'silk' in layer or 'designator' in layer:
-        return 'graphics'
-    if 'mechanical' in layer or 'document' in layer or 'drawing' in layer:
-        return 'graphics'
     if 'keep-out' in layer or 'keepout' in layer:
-        return 'zone'
+        return 'keepout'
+    if 'overlay' in layer or 'silk' in layer or 'designator' in layer:
+        return 'silkscreen'
+    if 'mechanical' in layer:
+        return 'mechanical'
+    if 'document' in layer or 'drawing' in layer:
+        return 'documentation'
     if 'paste' in layer or 'solder' in layer or 'mask' in layer or 'tenting' in layer:
         return 'graphics'
     if net in {'$VIA$'}:
@@ -523,14 +527,27 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
                 elif tag == 'Polygon':
                     path = parse_poly_steps(geom, scale)
                     if path and path[0] != path[-1]: path.append(path[0])
-                    semantic = classify_trace_semantic(layer_id, net_id)
+                    layer_sem = classify_layer(layer_id)
+                    if layer_sem == 'copper':
+                        semantic = 'zone'
+                    elif layer_sem == 'keepout':
+                        semantic = 'keepout'
+                    else:
+                        semantic = 'graphics'
                     trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, 0.1, path, semantic_counts, semantic)
                 elif tag == 'Pad':
                     x = to_float(pick_attr(geom, 'x', 'X')) * scale
                     y = to_float(pick_attr(geom, 'y', 'Y')) * scale
                     pref = pick_attr(geom, 'padstackDefRef', 'PadstackDefRef')
+                    std = standard_defs.get(str(pref), {})
                     w, h = pad_defs.get(str(pref), (0.8, 0.8))
-                    semantic = classify_trace_semantic(layer_id, net_id)
+                    layer_sem = classify_layer(layer_id)
+                    if layer_sem == 'copper' and std.get('drill'):
+                        semantic = 'via'
+                    elif layer_sem == 'copper':
+                        semantic = 'pad'
+                    else:
+                        semantic = classify_trace_semantic(layer_id, net_id)
                     trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, max(w, h), flash_path(x, y, w, h), semantic_counts, semantic)
                 elif tag == 'Hole':
                     x = to_float(pick_attr(geom, 'x', 'X')) * scale
@@ -567,7 +584,59 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
     for nid in sorted(used_nets - known):
         nets.append({'id': nid, 'name': nid})
 
-    layer_trace_counts = Counter(t['layerId'] for t in traces)
+    copper_traces = []
+    vias = []
+    pads = []
+    zones = []
+    keepouts = []
+    silkscreen = []
+    documentation = []
+    mechanical = []
+    graphics = []
+    drills = []
+    for t in traces:
+        semantic = t.pop('_semantic', classify_trace_semantic(t['layerId'], t['netId']))
+        if semantic == 'copper':
+            copper_traces.append(t)
+        elif semantic == 'via':
+            vias.append(t)
+        elif semantic == 'pad':
+            pads.append(t)
+        elif semantic == 'zone':
+            zones.append(t)
+        elif semantic == 'keepout':
+            keepouts.append(t)
+        elif semantic == 'silkscreen':
+            silkscreen.append(t)
+        elif semantic == 'documentation':
+            documentation.append(t)
+        elif semantic == 'mechanical':
+            mechanical.append(t)
+        elif semantic == 'drill':
+            drills.append(t)
+        else:
+            graphics.append(t)
+
+    def _center(item):
+        path = item.get('path') or []
+        if not path:
+            return (0.0, 0.0)
+        xs = [p[0] for p in path]
+        ys = [p[1] for p in path]
+        return (round((min(xs) + max(xs)) / 2, 4), round((min(ys) + max(ys)) / 2, 4))
+
+    drill_via_centers = {_center(d) for d in drills if d.get('netId') == '$VIA$'}
+    vias = [v for v in vias if not (v.get('layerId') == 'DRILL' and _center(v) in drill_via_centers)]
+
+    via_groups = {}
+    for v in vias:
+        key = (v['netId'],) + _center(v)
+        cur = via_groups.get(key)
+        if cur is None or v['width'] > cur['width']:
+            via_groups[key] = dict(v)
+    vias = list(via_groups.values())
+
+    layer_trace_counts = Counter(t['layerId'] for t in copper_traces)
     layer_categories = {layer['id']: classify_layer(layer['id']) for layer in layers}
 
     # Object-level semantic counts: closer to external bucket semantics than path-level counts
@@ -627,17 +696,29 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
         'stats': {
             'layerCount': len(layers),
             'componentCount': len(components),
-            'traceCount': len(traces),
+            'traceCount': len(copper_traces),
             'netCount': len(nets),
             'traceCountByLayer': dict(sorted(layer_trace_counts.items())),
             'traceCountBySemantic': dict(sorted(semantic_counts.items())),
             'objectCountBySemantic': dict(sorted(object_semantic_counts.items())),
+            'geometryArrayCounts': {
+                'traces': len(copper_traces),
+                'vias': len(vias),
+                'pads': len(pads),
+                'zones': len(zones),
+                'keepouts': len(keepouts),
+                'silkscreen': len(silkscreen),
+                'documentation': len(documentation),
+                'mechanical': len(mechanical),
+                'graphics': len(graphics),
+                'drills': len(drills),
+            },
         },
         'layerCategories': layer_categories,
         'warnings': warnings,
     }
 
-    return {'board': {'id': board_id, 'name': board_name, 'version': 'imported-ipc2581', 'widthMm': round(width_mm, 2), 'heightMm': round(height_mm, 2)}, 'layers': layers, 'components': components, 'traces': traces, 'nets': nets, 'importMetadata': import_metadata}
+    return {'board': {'id': board_id, 'name': board_name, 'version': 'imported-ipc2581', 'widthMm': round(width_mm, 2), 'heightMm': round(height_mm, 2)}, 'layers': layers, 'components': components, 'traces': copper_traces, 'vias': vias, 'pads': pads, 'zones': zones, 'keepouts': keepouts, 'silkscreen': silkscreen, 'documentation': documentation, 'mechanical': mechanical, 'graphics': graphics, 'drills': drills, 'nets': nets, 'importMetadata': import_metadata}
 
 
 def fetch(url: str) -> bytes:
