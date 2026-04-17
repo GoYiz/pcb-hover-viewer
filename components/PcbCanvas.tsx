@@ -13,6 +13,7 @@ type Props = {
   pads?: TraceItem[];
   keepouts?: TraceItem[];
   silkscreen?: TraceItem[];
+  drills?: TraceItem[];
   visibleLayers?: string[];
   focusComponentId?: string;
   hoveredId?: string;
@@ -44,6 +45,7 @@ export default function PcbCanvas({
   pads = [],
   keepouts = [],
   silkscreen = [],
+  drills = [],
   visibleLayers = ["F.Cu", "B.Cu"],
   focusComponentId,
   hoveredId,
@@ -87,6 +89,7 @@ export default function PcbCanvas({
         const keepoutLayer = new Group();
         const traceLayer = new Group();
         const padLayer = new Group();
+        const drillLayer = new Group();
         const silkLayer = new Group();
         const compLayer = new Group();
         const overlayLayer = new Group();
@@ -95,6 +98,7 @@ export default function PcbCanvas({
         leafer.add(keepoutLayer);
         leafer.add(traceLayer);
         leafer.add(padLayer);
+        leafer.add(drillLayer);
         leafer.add(silkLayer);
         leafer.add(compLayer);
         leafer.add(overlayLayer);
@@ -380,7 +384,7 @@ export default function PcbCanvas({
         };
 
         const applyCamera = () => {
-          for (const layer of [gridLayer, boardLayer, keepoutLayer, traceLayer, padLayer, silkLayer, compLayer]) {
+          for (const layer of [gridLayer, boardLayer, keepoutLayer, traceLayer, padLayer, drillLayer, silkLayer, compLayer]) {
             layer.scaleX = scaleRef.value;
             layer.scaleY = scaleRef.value;
             layer.x = offsetRef.x;
@@ -1484,6 +1488,10 @@ export default function PcbCanvas({
           renderOverlayPath(padLayer, pad, { stroke: 'rgba(251,191,36,0.95)', fill: 'rgba(250,204,21,0.18)', opacity: 0.9, strokeWidth: 1.1 });
         }
 
+        for (const drill of drills) {
+          renderOverlayPath(drillLayer, drill, { stroke: 'rgba(148,163,184,0.95)', fill: 'rgba(15,23,42,0.42)', opacity: 0.88, strokeWidth: 1.0 });
+        }
+
         for (const silk of silkscreen) {
           renderOverlayPath(silkLayer, silk, { stroke: 'rgba(226,232,240,0.92)', opacity: 0.82, strokeWidth: 0.9 });
         }
@@ -1835,7 +1843,7 @@ export default function PcbCanvas({
       } catch {}
       runtimeRef.current = null;
     };
-  }, [width, height, boardWidthMm, boardHeightMm, components, traces, pads, keepouts, silkscreen, onHoverFeature]);
+  }, [width, height, boardWidthMm, boardHeightMm, components, traces, pads, keepouts, silkscreen, drills, onHoverFeature]);
 
   useEffect(() => {
     const rt = runtimeRef.current;

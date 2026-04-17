@@ -178,6 +178,7 @@ export default function ExamplesClient({
                 pads={active.pads || []}
                 keepouts={active.keepouts || []}
                 silkscreen={active.silkscreen || []}
+                drills={active.drills || []}
                 hoveredId={hoveredId}
                 hoveredType={hoveredType}
                 directIds={relation.directIds}
