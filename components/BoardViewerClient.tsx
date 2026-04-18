@@ -664,8 +664,9 @@ export default function BoardViewerClient({
                 <div className="focus-meta">points: {hoveredOverlay.path.length}</div>
               </div>
             )}
-            <div className="focus-card" data-testid="overlay-inspect-targets" aria-label="Overlay inspect targets" style={{ marginTop: 14 }}>
-              <div className="focus-meta">Overlay test targets</div>
+            <div className="focus-card qa-debug-card" data-testid="overlay-inspect-targets" aria-label="Overlay inspect targets" style={{ marginTop: 14 }}>
+              <div className="focus-meta">QA / Debug panel</div>
+              <div className="focus-meta">Stable automation hooks for overlay inspection and family preset verification.</div>
               <div className="overlay-target-grid">
                 {overlayInspectTargets.map((target) => (
                   <button

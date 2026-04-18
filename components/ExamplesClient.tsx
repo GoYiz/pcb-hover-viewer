@@ -105,6 +105,21 @@ export default function ExamplesClient({
     { key: "documentation", label: "Docs", names: OVERLAY_FAMILY_PRESETS.documentation, tone: '#22c55e', count: overlayFamilyCounts.documentation },
   ] as const;
   const activeOverlayFamily = overlayFamilyButtons.find(({ names }) => names.length === requestedEnabledOverlays.length && names.every((name) => requestedEnabledOverlays.includes(name)))?.key || null;
+  const overlayInspectTargets = useMemo(() => {
+    if (!active) return [] as Array<{ family: string; kind: Exclude<HoverFeatureType, "component" | "trace">; sample: any }>;
+    const buckets: Array<{ family: string; kind: Exclude<HoverFeatureType, "component" | "trace">; items: any[] }> = [
+      { family: "copper", kind: "zones", items: active.zones || [] },
+      { family: "copper", kind: "vias", items: active.vias || [] },
+      { family: "copper", kind: "pads", items: active.pads || [] },
+      { family: "fabrication", kind: "keepouts", items: active.keepouts || [] },
+      { family: "fabrication", kind: "silkscreen", items: active.silkscreen || [] },
+      { family: "fabrication", kind: "drills", items: active.drills || [] },
+      { family: "documentation", kind: "documentation", items: active.documentation || [] },
+      { family: "documentation", kind: "mechanical", items: active.mechanical || [] },
+      { family: "documentation", kind: "graphics", items: active.graphics || [] },
+    ];
+    return buckets.map((bucket) => ({ ...bucket, sample: bucket.items[0] })).filter((bucket): bucket is typeof bucket & { sample: any } => Boolean(bucket.sample));
+  }, [active]);
 
   useEffect(() => {
     const readBridge = () => {
@@ -304,7 +319,7 @@ export default function ExamplesClient({
             <div className="inspector-card inspector-card-dense">
               <div className="inspector-title">Live relation summary</div>
               {!hoveredId ? (
-                <p className="inspector-meta">Hover a component or trace to inspect nets, direct neighbours, and related routed geometry.</p>
+                <p className="inspector-meta">Hover a component, trace, or overlay target to inspect nets, direct neighbours, and related routed geometry.</p>
               ) : (
                 <div className="inspector-grid">
                   <div className="inspector-kv"><span>Target type</span><strong>{hoveredType}</strong></div>
@@ -314,6 +329,40 @@ export default function ExamplesClient({
                   <div className="inspector-kv"><span>Related components</span><strong>{relation.directIds.length}</strong></div>
                 </div>
               )}
+              <div className="focus-card qa-debug-card" data-testid="examples-overlay-inspect-targets" aria-label="Examples overlay inspect targets" style={{ marginTop: 14 }}>
+                <div className="focus-meta">QA / Debug panel</div>
+                <div className="focus-meta">Deterministic overlay targets for automation across imported example boards.</div>
+                <div className="overlay-target-grid">
+                  {overlayInspectTargets.map((target) => (
+                    <button
+                      key={`${target.kind}-${target.sample.id}`}
+                      data-testid={`examples-overlay-target-${target.kind}`}
+                      aria-label={`Examples inspect overlay ${target.kind} ${target.sample.id}`}
+                      className="overlay-target-pill"
+                      onClick={() => {
+                        setVisibleDetail([...BASE_VISIBLE_DETAIL_NAMES, ...OVERLAY_FAMILY_PRESETS[target.family as keyof typeof OVERLAY_FAMILY_PRESETS]]);
+                        setHoveredType(target.kind);
+                        setHoveredId(target.sample.id);
+                      }}
+                    >
+                      <span>{target.kind}</span>
+                      <strong>{target.sample.id}</strong>
+                    </button>
+                  ))}
+                  <button
+                    data-testid="examples-overlay-target-clear"
+                    aria-label="Clear examples overlay inspect target"
+                    className="overlay-target-pill overlay-target-pill-muted"
+                    onClick={() => {
+                      setHoveredType(undefined);
+                      setHoveredId(undefined);
+                    }}
+                  >
+                    <span>clear</span>
+                    <strong>—</strong>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="inspector-card inspector-card-dense">
@@ -343,6 +392,12 @@ export default function ExamplesClient({
                       ))}
                     </div>
                   )}
+                  <div className="focus-card" style={{ marginTop: 14 }}>
+                    <div className="focus-meta">Family buckets</div>
+                    <div className="focus-meta">Copper: zones · vias · pads</div>
+                    <div className="focus-meta">Fab: keepouts · silkscreen · drills</div>
+                    <div className="focus-meta">Docs: documentation · mechanical · graphics</div>
+                  </div>
                   {semanticStats.length > 0 && (
                     <div className="focus-card" style={{ marginTop: 14 }}>
                       <div className="focus-meta">Semantic summary</div>
