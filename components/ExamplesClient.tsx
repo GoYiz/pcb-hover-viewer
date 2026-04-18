@@ -199,11 +199,11 @@ export default function ExamplesClient({
         </div>
         <div className="overlay-legend-bar" style={{ marginBottom: 16 }}>
           {overlayFamilyButtons.map((item) => (
-            <div key={item.key} className={`overlay-legend-pill ${activeOverlayFamily === item.key ? "overlay-legend-pill-active" : ""}`}>
+            <button key={item.key} className={`overlay-legend-pill ${activeOverlayFamily === item.key ? "overlay-legend-pill-active" : ""}`} onClick={() => setVisibleDetail([...BASE_VISIBLE_DETAIL_NAMES, ...item.names])}>
               <span className="overlay-legend-dot" style={{ background: item.tone }} />
               <span>{item.label}</span>
               <strong>{item.count}</strong>
-            </div>
+            </button>
           ))}
         </div>
         <div className="tool-cluster tool-cluster-wide">

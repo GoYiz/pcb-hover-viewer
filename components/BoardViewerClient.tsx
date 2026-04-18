@@ -495,11 +495,11 @@ export default function BoardViewerClient({
 
         <div className="overlay-legend-bar" style={{ marginTop: 16 }}>
           {overlayFamilyButtons.map((item) => (
-            <div key={item.key} className={`overlay-legend-pill ${activeOverlayFamily === item.key ? "overlay-legend-pill-active" : ""}`}>
+            <button key={item.key} className={`overlay-legend-pill ${activeOverlayFamily === item.key ? "overlay-legend-pill-active" : ""}`} onClick={() => applyOverlayFamily(item.names)}>
               <span className="overlay-legend-dot" style={{ background: item.tone }} />
               <span>{item.label}</span>
               <strong>{item.count}</strong>
-            </div>
+            </button>
           ))}
         </div>
 

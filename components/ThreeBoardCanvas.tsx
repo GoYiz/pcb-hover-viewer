@@ -144,7 +144,7 @@ function buildPadMesh(item: TraceItem, bw: number, bh: number, color: string, z:
   const bounds = pathBounds(item);
   if (!bounds) return null;
   const geo = new THREE.BoxGeometry(bounds.width, bounds.height, 0.45);
-  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.18, roughness: 0.45, metalness: 0.12, transparent: true, opacity: 0.82 });
+  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.32, roughness: 0.28, metalness: 0.38, transparent: true, opacity: 0.9 });
   const mesh = new THREE.Mesh(geo, mat);
   const p = xy(bounds.cx, bounds.cy, bw, bh);
   mesh.position.set(p.x, p.y, z);
@@ -156,7 +156,7 @@ function buildCylinderMarker(item: TraceItem, bw: number, bh: number, color: str
   if (!bounds) return null;
   const radius = Math.max(bounds.width, bounds.height) / 2;
   const geo = new THREE.CylinderGeometry(Math.max(0.2, radius), Math.max(0.2, radius), depth, 20);
-  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.12, roughness: 0.5, metalness: 0.08, transparent: true, opacity });
+  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.22, roughness: 0.36, metalness: 0.18, transparent: true, opacity });
   const mesh = new THREE.Mesh(geo, mat);
   const p = xy(bounds.cx, bounds.cy, bw, bh);
   mesh.rotation.x = Math.PI / 2;
@@ -400,7 +400,7 @@ export default function ThreeBoardCanvas({
       const pts = (t.path || []).map(([x, y]) => xy(x, y, boardWidthMm, boardHeightMm));
       if (pts.length < 2) continue;
       const geo = new THREE.BufferGeometry().setFromPoints(pts);
-      const mat = new THREE.LineBasicMaterial({ color: "#3b82f6", transparent: true, opacity: 0.42 });
+      const mat = new THREE.LineBasicMaterial({ color: "#38bdf8", transparent: true, opacity: 0.52 });
       const line = new THREE.Line(geo, mat);
       line.position.z = 0.25;
       line.userData = { kind: "trace", id: t.id };
@@ -410,12 +410,12 @@ export default function ThreeBoardCanvas({
     }
 
     const overlayLineBuckets = [
-      { key: "zones", items: zones, color: "#60a5fa", opacity: 0.34, z: 0.18 },
-      { key: "keepouts", items: keepouts, color: "#ef4444", opacity: 0.62, z: 0.48 },
-      { key: "silkscreen", items: silkscreen, color: "#e5e7eb", opacity: 0.78, z: 0.58 },
-      { key: "documentation", items: documentation, color: "#22c55e", opacity: 0.62, z: 0.72 },
-      { key: "mechanical", items: mechanical, color: "#f472b6", opacity: 0.62, z: 0.82 },
-      { key: "graphics", items: graphics, color: "#94a3b8", opacity: 0.56, z: 0.92 },
+      { key: "zones", items: zones, color: "#60a5fa", opacity: 0.42, z: 0.22 },
+      { key: "keepouts", items: keepouts, color: "#ef4444", opacity: 0.88, z: 0.56 },
+      { key: "silkscreen", items: silkscreen, color: "#f8fafc", opacity: 0.92, z: 0.7 },
+      { key: "documentation", items: documentation, color: "#4ade80", opacity: 0.52, z: 0.96 },
+      { key: "mechanical", items: mechanical, color: "#fb7185", opacity: 0.72, z: 1.08 },
+      { key: "graphics", items: graphics, color: "#cbd5e1", opacity: 0.48, z: 1.18 },
     ] as const;
 
     for (const bucket of overlayLineBuckets) {
@@ -432,7 +432,7 @@ export default function ThreeBoardCanvas({
     if (detailSet.has("pads")) {
       for (const item of pads) {
         if (!layerMatchesVisible(item.layerId, visibleLayers)) continue;
-        const mesh = buildPadMesh(item, boardWidthMm, boardHeightMm, "#fbbf24", 0.44);
+        const mesh = buildPadMesh(item, boardWidthMm, boardHeightMm, "#fbbf24", 0.5);
         if (!mesh) continue;
         r.scene.add(mesh);
         r.overlayObjects.push(mesh);
@@ -442,7 +442,7 @@ export default function ThreeBoardCanvas({
     if (detailSet.has("vias")) {
       for (const item of vias) {
         if (!layerMatchesVisible(item.layerId, visibleLayers)) continue;
-        const mesh = buildCylinderMarker(item, boardWidthMm, boardHeightMm, "#22d3ee", 0.68, 0.9, 0.82);
+        const mesh = buildCylinderMarker(item, boardWidthMm, boardHeightMm, "#22d3ee", 0.84, 1.0, 0.9);
         if (!mesh) continue;
         r.scene.add(mesh);
         r.overlayObjects.push(mesh);
@@ -451,7 +451,7 @@ export default function ThreeBoardCanvas({
 
     if (detailSet.has("drills")) {
       for (const item of drills) {
-        const mesh = buildCylinderMarker(item, boardWidthMm, boardHeightMm, "#64748b", 0.12, 0.7, 0.78);
+        const mesh = buildCylinderMarker(item, boardWidthMm, boardHeightMm, "#94a3b8", 0.16, 0.8, 0.84);
         if (!mesh) continue;
         r.scene.add(mesh);
         r.overlayObjects.push(mesh);
