@@ -23,11 +23,13 @@ type ExampleMap = Record<string, ExampleBoardData>;
 export default function ExamplesClient({
   index,
   examples,
+  initialExampleId,
 }: {
   index: ExampleIndexItem[];
   examples: ExampleMap;
+  initialExampleId?: string;
 }) {
-  const [activeId, setActiveId] = useState(index[0]?.id || "");
+  const [activeId, setActiveId] = useState(initialExampleId || index[0]?.id || "");
   const [hoveredType, setHoveredType] = useState<HoverFeatureType | undefined>(undefined);
   const [hoveredId, setHoveredId] = useState<string | undefined>(undefined);
   const [visibleDetail, setVisibleDetail] = useState<string[]>([...BASE_VISIBLE_DETAIL_NAMES, ...OVERLAY_DETAIL_NAMES]);

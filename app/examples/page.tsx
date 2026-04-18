@@ -4,7 +4,9 @@ import ExamplesClient from "@/components/ExamplesClient";
 
 export const dynamic = "force-dynamic";
 
-export default function ExamplesPage() {
+export default async function ExamplesPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = searchParams ? await searchParams : {};
+  const requestedExample = typeof params?.example === "string" ? params.example : undefined;
   const index = getExamplesIndex();
   const examples: Record<string, ExampleBoardData> = {};
 
@@ -13,5 +15,6 @@ export default function ExamplesPage() {
     if (data) examples[item.id] = data;
   }
 
-  return <ExamplesClient index={index} examples={examples} />;
+  const initialExampleId = requestedExample && examples[requestedExample] ? requestedExample : undefined;
+  return <ExamplesClient index={index} examples={examples} initialExampleId={initialExampleId} />;
 }
