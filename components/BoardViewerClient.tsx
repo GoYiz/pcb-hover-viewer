@@ -121,7 +121,11 @@ export default function BoardViewerClient({
   }, [importMetadata, traces, zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills]);
   const totalImportedGeometry = useMemo(() => importGeometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0), [importGeometryBuckets]);
   const [visibleDetail, setVisibleDetail] = useState<string[]>([...BASE_VISIBLE_DETAIL_NAMES, ...OVERLAY_DETAIL_NAMES]);
-  const liveEnabledOverlays = useMemo(() => (canvasBridge.visibleDetail || '').split(',').map((s) => s.trim()).filter((name) => OVERLAY_DETAIL_NAMES.includes(name)), [canvasBridge.visibleDetail]);
+  const requestedEnabledOverlays = useMemo(() => visibleDetail.filter((name) => OVERLAY_DETAIL_NAMES.includes(name)), [visibleDetail]);
+  const liveEnabledOverlays = useMemo(() => {
+    const parsed = (canvasBridge.visibleDetail || '').split(',').map((s) => s.trim()).filter((name) => OVERLAY_DETAIL_NAMES.includes(name));
+    return parsed.length ? parsed : requestedEnabledOverlays;
+  }, [canvasBridge.visibleDetail, requestedEnabledOverlays]);
   const overlayFamilyCounts = useMemo(() => ({
     copper: zones.length + vias.length + pads.length,
     fabrication: keepouts.length + silkscreen.length + drills.length,
@@ -350,12 +354,12 @@ export default function BoardViewerClient({
   const stageStatus = loading ? "Loading board" : error ? "Data fault" : boardName || "Live workbench";
   const sourceHint = importMetadata?.sourceFormat ? `${importMetadata.sourceFormat} import` : "API-backed board";
   const overlayFamilyButtons = [
-    { key: "all", label: "All", names: OVERLAY_FAMILY_PRESETS.all },
-    { key: "copper", label: "Copper", names: OVERLAY_FAMILY_PRESETS.copper },
-    { key: "fabrication", label: "Fab", names: OVERLAY_FAMILY_PRESETS.fabrication },
-    { key: "documentation", label: "Docs", names: OVERLAY_FAMILY_PRESETS.documentation },
+    { key: "all", label: "All", names: OVERLAY_FAMILY_PRESETS.all, tone: "var(--cyan)", count: overlayFamilyCounts.copper + overlayFamilyCounts.fabrication + overlayFamilyCounts.documentation },
+    { key: "copper", label: "Copper", names: OVERLAY_FAMILY_PRESETS.copper, tone: "#38bdf8", count: overlayFamilyCounts.copper },
+    { key: "fabrication", label: "Fab", names: OVERLAY_FAMILY_PRESETS.fabrication, tone: "#f59e0b", count: overlayFamilyCounts.fabrication },
+    { key: "documentation", label: "Docs", names: OVERLAY_FAMILY_PRESETS.documentation, tone: "#22c55e", count: overlayFamilyCounts.documentation },
   ] as const;
-  const activeOverlayFamily = overlayFamilyButtons.find(({ names }) => names.length === liveEnabledOverlays.length && names.every((name) => liveEnabledOverlays.includes(name)))?.key || null;
+  const activeOverlayFamily = overlayFamilyButtons.find(({ names }) => names.length === requestedEnabledOverlays.length && names.every((name) => requestedEnabledOverlays.includes(name)))?.key || null;
   const applyOverlayFamily = (names: readonly string[]) => {
     setVisibleDetail([...BASE_VISIBLE_DETAIL_NAMES, ...names]);
   };
@@ -489,6 +493,16 @@ export default function BoardViewerClient({
           </div>
         </div>
 
+        <div className="overlay-legend-bar" style={{ marginTop: 16 }}>
+          {overlayFamilyButtons.map((item) => (
+            <div key={item.key} className={`overlay-legend-pill ${activeOverlayFamily === item.key ? "overlay-legend-pill-active" : ""}`}>
+              <span className="overlay-legend-dot" style={{ background: item.tone }} />
+              <span>{item.label}</span>
+              <strong>{item.count}</strong>
+            </div>
+          ))}
+        </div>
+
         {searchMatches.length > 0 && (
           <div className="search-results">
             {searchMatches.map((c) => (
@@ -600,7 +614,7 @@ export default function BoardViewerClient({
             <div className="inspector-grid">
               <div className="inspector-kv"><span>Warnings</span><strong>{importWarnings.length}</strong></div>
               <div className="inspector-kv"><span>Imported geometry</span><strong>{totalImportedGeometry}</strong></div>
-              <div className="inspector-kv"><span>Enabled overlays</span><strong>{liveEnabledOverlays.join(", ") || "—"}</strong></div>
+              <div className="inspector-kv"><span>Enabled overlays</span><strong>{requestedEnabledOverlays.join(", ") || "—"}</strong></div>
               <div className="inspector-kv"><span>Overlay families</span><strong>Copper {overlayFamilyCounts.copper} · Fab {overlayFamilyCounts.fabrication} · Docs {overlayFamilyCounts.documentation}</strong></div>
               <div className="inspector-kv"><span>Active family preset</span><strong>{activeOverlayFamily || "custom"}</strong></div>
               <div className="inspector-kv"><span>Source format</span><strong>{importMetadata?.sourceFormat || "native"}</strong></div>

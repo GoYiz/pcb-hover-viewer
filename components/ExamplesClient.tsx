@@ -89,7 +89,8 @@ export default function ExamplesClient({
   const catalogComponents = index.reduce((acc, item) => acc + item.components, 0);
   const totalGeometry = geometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0);
   const importedOverlayNames = geometryBuckets.map(([name]) => name).filter((name) => OVERLAY_DETAIL_NAMES.includes(name));
-  const enabledOverlayNames = (liveVisibleDetail.length ? liveVisibleDetail : importedOverlayNames).filter((name) => OVERLAY_DETAIL_NAMES.includes(name));
+  const requestedEnabledOverlays = useMemo(() => visibleDetail.filter((name) => OVERLAY_DETAIL_NAMES.includes(name)), [visibleDetail]);
+  const enabledOverlayNames = (liveVisibleDetail.length ? liveVisibleDetail : requestedEnabledOverlays.length ? requestedEnabledOverlays : importedOverlayNames).filter((name) => OVERLAY_DETAIL_NAMES.includes(name));
   const overlayFamilyCounts = useMemo(() => ({
     copper: geometryBuckets.filter(([name]) => ['zones', 'vias', 'pads'].includes(name)).reduce((acc, [, count]) => acc + Number(count), 0),
     fabrication: geometryBuckets.filter(([name]) => ['keepouts', 'silkscreen', 'drills'].includes(name)).reduce((acc, [, count]) => acc + Number(count), 0),
@@ -97,12 +98,12 @@ export default function ExamplesClient({
   }), [geometryBuckets]);
   const activeDensity = active ? (active.components.length + totalGeometry) / Math.max(active.board.widthMm * active.board.heightMm, 1) : 0;
   const overlayFamilyButtons = [
-    { key: "all", label: "All", names: OVERLAY_FAMILY_PRESETS.all },
-    { key: "copper", label: "Copper", names: OVERLAY_FAMILY_PRESETS.copper },
-    { key: "fabrication", label: "Fab", names: OVERLAY_FAMILY_PRESETS.fabrication },
-    { key: "documentation", label: "Docs", names: OVERLAY_FAMILY_PRESETS.documentation },
+    { key: "all", label: "All", names: OVERLAY_FAMILY_PRESETS.all, tone: 'var(--cyan)', count: overlayFamilyCounts.copper + overlayFamilyCounts.fabrication + overlayFamilyCounts.documentation },
+    { key: "copper", label: "Copper", names: OVERLAY_FAMILY_PRESETS.copper, tone: '#38bdf8', count: overlayFamilyCounts.copper },
+    { key: "fabrication", label: "Fab", names: OVERLAY_FAMILY_PRESETS.fabrication, tone: '#f59e0b', count: overlayFamilyCounts.fabrication },
+    { key: "documentation", label: "Docs", names: OVERLAY_FAMILY_PRESETS.documentation, tone: '#22c55e', count: overlayFamilyCounts.documentation },
   ] as const;
-  const activeOverlayFamily = overlayFamilyButtons.find(({ names }) => names.length === enabledOverlayNames.length && names.every((name) => enabledOverlayNames.includes(name)))?.key || null;
+  const activeOverlayFamily = overlayFamilyButtons.find(({ names }) => names.length === requestedEnabledOverlays.length && names.every((name) => requestedEnabledOverlays.includes(name)))?.key || null;
 
   useEffect(() => {
     const readBridge = () => {
@@ -196,6 +197,15 @@ export default function ExamplesClient({
             </div>
           </div>
         </div>
+        <div className="overlay-legend-bar" style={{ marginBottom: 16 }}>
+          {overlayFamilyButtons.map((item) => (
+            <div key={item.key} className={`overlay-legend-pill ${activeOverlayFamily === item.key ? "overlay-legend-pill-active" : ""}`}>
+              <span className="overlay-legend-dot" style={{ background: item.tone }} />
+              <span>{item.label}</span>
+              <strong>{item.count}</strong>
+            </div>
+          ))}
+        </div>
         <div className="tool-cluster tool-cluster-wide">
           <div className="tool-cluster-label">Board selection</div>
           <div className="example-pill-grid example-pill-grid-polished">
@@ -279,7 +289,7 @@ export default function ExamplesClient({
                 <div className="inspector-kv"><span>Total geometry</span><strong>{totalGeometry}</strong></div>
                 <div className="inspector-kv"><span>Warnings</span><strong>{warningCount}</strong></div>
                 <div className="inspector-kv"><span>Layer classes</span><strong>{new Set(layerCategoryEntries.map(([, v]) => v)).size}</strong></div>
-                <div className="inspector-kv"><span>Enabled overlays</span><strong>{enabledOverlayNames.join(', ') || '—'}</strong></div>
+                <div className="inspector-kv"><span>Enabled overlays</span><strong>{requestedEnabledOverlays.join(', ') || '—'}</strong></div>
                 <div className="inspector-kv"><span>Overlay families</span><strong>Copper {overlayFamilyCounts.copper} · Fab {overlayFamilyCounts.fabrication} · Docs {overlayFamilyCounts.documentation}</strong></div>
                 <div className="inspector-kv"><span>Active family preset</span><strong>{activeOverlayFamily || 'custom'}</strong></div>
               </div>
