@@ -575,6 +575,16 @@ export default function BoardViewerClient({
                 boardHeightMm={boardHeightMm}
                 components={components}
                 traces={traces}
+                zones={zones}
+                vias={vias}
+                pads={pads}
+                keepouts={keepouts}
+                silkscreen={silkscreen}
+                documentation={documentation}
+                mechanical={mechanical}
+                graphics={graphics}
+                drills={drills}
+                visibleDetail={visibleDetail}
                 visibleLayers={visibleLayers}
                 focusComponentId={focusComponentId}
                 hoveredId={highlight.targetId}

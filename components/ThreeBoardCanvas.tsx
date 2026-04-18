@@ -11,6 +11,16 @@ type Props = {
   boardHeightMm: number;
   components: ComponentItem[];
   traces: TraceItem[];
+  zones?: TraceItem[];
+  vias?: TraceItem[];
+  pads?: TraceItem[];
+  keepouts?: TraceItem[];
+  silkscreen?: TraceItem[];
+  documentation?: TraceItem[];
+  mechanical?: TraceItem[];
+  graphics?: TraceItem[];
+  drills?: TraceItem[];
+  visibleDetail?: string[];
   visibleLayers?: string[];
   focusComponentId?: string;
   hoveredId?: string;
@@ -31,6 +41,7 @@ type SceneRefs = {
   hoverables: THREE.Object3D[];
   compMap: Map<string, THREE.Mesh>;
   traceMap: Map<string, THREE.Line>;
+  overlayObjects: THREE.Object3D[];
   rafId?: number;
 };
 
@@ -65,6 +76,23 @@ function setTraceColor(line: THREE.Line, mode: "normal" | "related" | "selected"
   mat.transparent = true;
 }
 
+function layerMatchesVisible(layerId: unknown, visibleLayers: string[]) {
+  const value = String(layerId || '');
+  if (!value) return true;
+  if (value === 'F.Cu' || value === 'B.Cu') return visibleLayers.length ? visibleLayers.includes(value) : true;
+  return true;
+}
+
+function buildOverlayLine(item: TraceItem, bw: number, bh: number, color: string, opacity: number, z: number) {
+  const pts = (item.path || []).map(([x, y]) => xy(x, y, bw, bh));
+  if (pts.length < 2) return null;
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity });
+  const line = new THREE.Line(geo, mat);
+  line.position.z = z;
+  return line;
+}
+
 export default function ThreeBoardCanvas({
   width,
   height,
@@ -72,6 +100,16 @@ export default function ThreeBoardCanvas({
   boardHeightMm,
   components,
   traces,
+  zones = [],
+  vias = [],
+  pads = [],
+  keepouts = [],
+  silkscreen = [],
+  documentation = [],
+  mechanical = [],
+  graphics = [],
+  drills = [],
+  visibleDetail,
   visibleLayers = ["F.Cu", "B.Cu"],
   focusComponentId,
   hoveredId,
@@ -129,6 +167,7 @@ export default function ThreeBoardCanvas({
       hoverables: [],
       compMap: new Map(),
       traceMap: new Map(),
+      overlayObjects: [],
     };
     refs.current = refsObj;
 
@@ -247,12 +286,19 @@ export default function ThreeBoardCanvas({
     for (const l of r.traceMap.values()) {
       r.scene.remove(l);
     }
+    for (const obj of r.overlayObjects) {
+      r.scene.remove(obj);
+    }
     r.compMap.clear();
     r.traceMap.clear();
+    r.overlayObjects = [];
     r.hoverables = [];
 
+    const detailSet = new Set(visibleDetail || ["grid", "components", "labels", "measures", "zones", "vias", "pads", "keepouts", "silkscreen", "documentation", "mechanical", "graphics", "drills"]);
+
     for (const t of traces) {
-      if (visibleLayers.length && !visibleLayers.includes(String(t.layerId))) continue;
+      if (!detailSet.has("zones") && !detailSet.has("vias") && !detailSet.has("pads")) continue;
+      if (!layerMatchesVisible(t.layerId, visibleLayers)) continue;
       const pts = t.path.map(([x, y]) => xy(x, y, boardWidthMm, boardHeightMm));
       if (pts.length < 2) continue;
       const geo = new THREE.BufferGeometry().setFromPoints(pts);
@@ -265,6 +311,30 @@ export default function ThreeBoardCanvas({
       r.hoverables.push(line);
     }
 
+    const overlayBuckets = [
+      { key: "zones", items: zones, color: "#60a5fa", opacity: 0.35, z: 0.18 },
+      { key: "vias", items: vias, color: "#22d3ee", opacity: 0.8, z: 0.32 },
+      { key: "pads", items: pads, color: "#fbbf24", opacity: 0.72, z: 0.28 },
+      { key: "keepouts", items: keepouts, color: "#ef4444", opacity: 0.6, z: 0.4 },
+      { key: "silkscreen", items: silkscreen, color: "#e5e7eb", opacity: 0.75, z: 0.5 },
+      { key: "documentation", items: documentation, color: "#22c55e", opacity: 0.6, z: 0.58 },
+      { key: "mechanical", items: mechanical, color: "#f472b6", opacity: 0.6, z: 0.64 },
+      { key: "graphics", items: graphics, color: "#94a3b8", opacity: 0.55, z: 0.7 },
+      { key: "drills", items: drills, color: "#64748b", opacity: 0.8, z: 0.1 },
+    ] as const;
+
+    for (const bucket of overlayBuckets) {
+      if (!detailSet.has(bucket.key)) continue;
+      for (const item of bucket.items) {
+        if (!layerMatchesVisible(item.layerId, visibleLayers) && (bucket.key === "zones" || bucket.key === "vias" || bucket.key === "pads")) continue;
+        const line = buildOverlayLine(item, boardWidthMm, boardHeightMm, bucket.color, bucket.opacity, bucket.z);
+        if (!line) continue;
+        r.scene.add(line);
+        r.overlayObjects.push(line);
+      }
+    }
+
+    const showComponents = !visibleDetail || visibleDetail.includes("components");
     for (const c of components) {
       const [bx, by, bw, bh] = c.bbox;
       const cx = bx + bw / 2;
@@ -275,11 +345,12 @@ export default function ThreeBoardCanvas({
       const p = xy(cx, cy, boardWidthMm, boardHeightMm);
       mesh.position.set(p.x, p.y, 0.8);
       mesh.userData = { kind: "component", id: c.id };
+      mesh.visible = showComponents;
       r.scene.add(mesh);
       r.compMap.set(c.id, mesh);
       r.hoverables.push(mesh);
     }
-  }, [components, traces, visibleLayers, boardWidthMm, boardHeightMm]);
+  }, [components, traces, zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills, visibleDetail, visibleLayers, boardWidthMm, boardHeightMm]);
 
   useEffect(() => {
     const r = refs.current;
