@@ -428,13 +428,13 @@ export default function PcbCanvas({
 
         const updateHud = () => {
           const label = visibleLayers.length === 0 || visibleLayers.length === 2 ? "All" : visibleLayers.join(" + ");
-          const count = selectedCompIds.size + selectedTraceIds.size;
+          const count = selectedCompIds.size + selectedTraceIds.size + (selectedOverlayRef.kind && selectedOverlayRef.id ? 1 : 0);
           const currentMeasureText = measureRef.distanceMm == null ? "—" : `ΔX ${Math.abs(measureRef.dxMm || 0).toFixed(2)} · ΔY ${Math.abs(measureRef.dyMm || 0).toFixed(2)} · D ${measureRef.distanceMm.toFixed(2)} mm`;
           hud.text = `Layer: ${label} · Zoom ${scaleRef.value.toFixed(2)}x · Tool ${toolModeRef.value} · Selected ${count} · Measures ${measureHistory.length} · Current ${currentMeasureText}`;
           hud.x = width - 18 - Math.max(320, String(hud.text).length * 6.7);
           const modeText = boxRef.active ? (boxRef.mode === "zoom" ? " · Box Zoom" : boxRef.mode === "subtract" ? " · Box Subtract" : boxRef.append ? " · Box Append" : " · Box Replace") : "";
           const filterLabel = selectionFilterRef.value === "all" ? "All" : selectionFilterRef.value === "component" ? "Comp" : "Trace";
-          selectionBar.text = `Selection · Filter ${filterLabel} · ${selectedCompIds.size} components · ${selectedTraceIds.size} traces · Total ${count}${modeText}`;
+          selectionBar.text = `Selection · Filter ${filterLabel} · ${selectedCompIds.size} components · ${selectedTraceIds.size} traces · ${(selectedOverlayRef.kind && selectedOverlayRef.id) ? 1 : 0} overlays · Total ${count}${modeText}`;
           const visibleDetail = Object.entries(detailVisibilityRef.value)
             .filter(([, enabled]) => enabled)
             .map(([key]) => key)
@@ -1393,10 +1393,13 @@ export default function PcbCanvas({
           const isRelated = overlayHighlightKeys.includes(`${kind}:${id}`);
           for (const node of nodes) {
             if (!node) continue;
-            node.opacity = isTarget ? 1 : isSelected ? Math.min((node.opacity || 1) + 0.18, 1) : isRelated ? Math.min((node.opacity || 0.72) + 0.12, 0.96) : (node.opacity ?? 1);
-            node.strokeWidth = isTarget ? 1.8 : isSelected ? 1.5 : isRelated ? 1.35 : (node.strokeWidth || 1.2);
-            if (node.stroke) {
-              node.stroke = isTarget ? '#f43f5e' : isSelected ? '#f59e0b' : isRelated ? '#22d3ee' : node.stroke;
+            const baseOpacity = Number(node.__baseOpacity ?? node.opacity ?? 1);
+            const baseStrokeWidth = Number(node.__baseStrokeWidth ?? node.strokeWidth ?? 1.2);
+            const baseStroke = node.__baseStroke ?? node.stroke;
+            node.opacity = isTarget ? 1 : isSelected ? Math.min(baseOpacity + 0.18, 1) : isRelated ? Math.min(baseOpacity + 0.12, 0.96) : baseOpacity;
+            node.strokeWidth = isTarget ? 1.8 : isSelected ? 1.5 : isRelated ? 1.35 : baseStrokeWidth;
+            if (baseStroke) {
+              node.stroke = isTarget ? '#f43f5e' : isSelected ? '#f59e0b' : isRelated ? '#22d3ee' : baseStroke;
             }
           }
         };
@@ -1608,6 +1611,9 @@ export default function PcbCanvas({
             fillRect.on('pointer.tap', (e: any) => ((e?.metaKey || e?.ctrlKey) ? toggleSelection(kind, feature.id) : selectOnly(kind, feature.id)));
             targetLayer.add(fillRect);
             if (!overlayMap.has(`${kind}:${feature.id}`)) overlayMap.set(`${kind}:${feature.id}`, []);
+            (fillRect as any).__baseOpacity = Math.min(style.opacity ?? 1, 0.22);
+            (fillRect as any).__baseStrokeWidth = 0;
+            (fillRect as any).__baseStroke = 'rgba(0,0,0,0)';
             overlayMap.get(`${kind}:${feature.id}`)?.push(fillRect);
           }
           const line = new Line({ points, stroke: style.stroke, strokeWidth: style.strokeWidth ?? 1.2, opacity: style.opacity ?? 1, hitRadius: 8, hitFill: '#ffffff' });
@@ -1616,6 +1622,9 @@ export default function PcbCanvas({
           line.on('pointer.tap', (e: any) => ((e?.metaKey || e?.ctrlKey) ? toggleSelection(kind, feature.id) : selectOnly(kind, feature.id)));
           targetLayer.add(line);
           if (!overlayMap.has(`${kind}:${feature.id}`)) overlayMap.set(`${kind}:${feature.id}`, []);
+          (line as any).__baseOpacity = style.opacity ?? 1;
+          (line as any).__baseStrokeWidth = style.strokeWidth ?? 1.2;
+          (line as any).__baseStroke = style.stroke;
           overlayMap.get(`${kind}:${feature.id}`)?.push(line);
         };
 

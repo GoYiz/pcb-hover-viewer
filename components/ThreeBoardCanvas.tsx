@@ -214,6 +214,7 @@ export default function ThreeBoardCanvas({
     oy: 0,
     sc: [] as string[],
     st: [] as string[],
+    so: [] as string[],
     sf: "all",
     vd: visibleDetailKey,
     lm: "three-orbit",
@@ -436,6 +437,7 @@ export default function ThreeBoardCanvas({
         const line = buildOverlayLine(item, boardWidthMm, boardHeightMm, bucket.color, bucket.opacity, bucket.z);
         if (!line) continue;
         line.userData = { kind: bucket.key as HoverFeatureType, id: item.id };
+        (line as any).__baseOpacity = bucket.opacity;
         r.scene.add(line);
         r.overlayObjects.push(line);
         r.hoverables.push(line);
@@ -448,6 +450,9 @@ export default function ThreeBoardCanvas({
         const mesh = buildPadMesh(item, boardWidthMm, boardHeightMm, "#fbbf24", 0.5);
         if (!mesh) continue;
         mesh.userData = { kind: "pads" as HoverFeatureType, id: item.id };
+        (mesh as any).__baseOpacity = 0.5;
+        (mesh as any).__baseOpacity = 0.84;
+        (mesh as any).__baseOpacity = 0.16;
         r.scene.add(mesh);
         r.overlayObjects.push(mesh);
         r.hoverables.push(mesh);
@@ -524,7 +529,10 @@ export default function ThreeBoardCanvas({
       const isSelected = selectedOverlayKind === kind && selectedOverlayId === id;
       const isRelated = overlayHighlightKeys.includes(`${kind}:${id}`);
       const material = (obj as any).material as any;
-      if (material?.opacity != null) material.opacity = isTarget ? 1 : isSelected ? Math.min((material.opacity || 0.6) + 0.22, 1) : isRelated ? Math.min((material.opacity || 0.48) + 0.12, 0.92) : material.opacity;
+      if (material?.opacity != null) {
+        const baseOpacity = Number((obj as any).__baseOpacity ?? material.opacity ?? 0.6);
+        material.opacity = isTarget ? 1 : isSelected ? Math.min(baseOpacity + 0.22, 1) : isRelated ? Math.min(baseOpacity + 0.12, 0.92) : baseOpacity;
+      }
       if (material?.color?.set) {
         if (isTarget) material.color.set('#f43f5e');
         else if (isSelected) material.color.set('#f59e0b');
@@ -539,6 +547,7 @@ export default function ThreeBoardCanvas({
       tool: "orbit",
       sc: selectedComponentIds,
       st: selectedTraceIds,
+      so: selectedOverlayKind && selectedOverlayId ? [`${selectedOverlayKind}:${selectedOverlayId}`] : [],
       sf: "all",
       vd: visibleDetailKey,
       lm: "three-orbit",
