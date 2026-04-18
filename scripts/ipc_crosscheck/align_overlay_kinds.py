@@ -37,8 +37,18 @@ def run_case(raw: Path, key: str):
 def summarize_ours(d: dict) -> dict:
     meta = (d.get('importMetadata') or {}).get('stats') or {}
     obj = meta.get('objectCountBySemantic') or {}
+    projection = meta.get('externalBucketProjection') or {}
     return {
         'object_semantics': {k: obj.get(k, 0) for k in ['board_outline', 'copper', 'via', 'zone', 'graphics', 'drill']},
+        'external_bucket_projection': {
+            'board_outline': projection.get('board_outline', 0),
+            'copper': projection.get('copper', 0),
+            'via': projection.get('via', 0),
+            'zone': projection.get('zone', 0),
+            'graphics': projection.get('graphics', 0),
+            'graphicsByLayer': projection.get('graphicsByLayer', {}),
+            'graphicsBySource': projection.get('graphicsBySource', {}),
+        },
         'expanded_arrays': {k: len(d.get(k, [])) for k in ['boardOutlines', 'zones', 'vias', 'pads', 'keepouts', 'silkscreen', 'documentation', 'mechanical', 'graphics', 'drills']},
         'components': len(d.get('components', [])),
         'nets': len(d.get('nets', [])),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getHostedBoardComponentsById } from "@/lib/hosted-board";
+import { unscopeId } from "@/lib/db-scope";
 
 function parseBBox(input: string): [number, number, number, number] {
   try {
@@ -55,14 +56,14 @@ export async function GET(
   return NextResponse.json({
     boardId: id,
     components: components.map((c) => ({
-      id: c.id,
+      id: unscopeId(id, c.id),
       refdes: c.refdes,
       footprint: c.footprint,
       x: c.x,
       y: c.y,
       rotation: c.rotation,
       bbox: parseBBox(c.bboxJson),
-      netIds: [...new Set(c.pins.map((p) => p.netId))],
+      netIds: [...new Set(c.pins.map((p) => unscopeId(id, p.netId)))],
     })),
   });
 }

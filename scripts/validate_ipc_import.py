@@ -53,5 +53,8 @@ for case in CASES:
     assert isinstance(meta.get('layerCategories'), dict), (case['id'], 'layerCategories missing')
     stats = meta.get('stats') or {}
     assert stats.get('traceCount') == len(data['traces']), (case['id'], 'traceCount mismatch')
-    print(case['id'], 'OK', len(data['components']), len(data['traces']), len(data['nets']), 'warnings', len(meta.get('warnings', [])), 'geometry', total_geometry)
+    projection = stats.get('externalBucketProjection') or {}
+    for key in ['board_outline', 'copper', 'via', 'zone', 'graphics']:
+        assert key in projection, (case['id'], 'missing externalBucketProjection key', key)
+    print(case['id'], 'OK', len(data['components']), len(data['traces']), len(data['nets']), 'warnings', len(meta.get('warnings', [])), 'geometry', total_geometry, 'projection', projection)
 print('validate_ipc_import: OK')

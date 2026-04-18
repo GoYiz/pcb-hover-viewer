@@ -342,6 +342,115 @@ def classify_layer(layer_id: str) -> str:
     return 'other'
 
 
+def map_external_graphics_layer(layer_id: str) -> str | None:
+    s = (layer_id or '').strip()
+    u = s.upper()
+    if not s:
+        return 'Cmts.User'
+    if 'BOARD_EDGE' in u or 'BOARD_CUTOUT' in u:
+        return 'Edge.Cuts'
+    if 'KEEP' in u and 'OUT' in u:
+        return 'Edge.Cuts'
+    if 'TOP OVERLAY' in u or 'TOP DESIGNATOR' in u or u == 'TOP_SILKSCREEN':
+        return 'F.SilkS'
+    if 'BOTTOM OVERLAY' in u or 'BOTTOM DESIGNATOR' in u or u == 'BOTTOM_SILKSCREEN':
+        return 'B.SilkS'
+    if 'ASSEMBLY' in u:
+        return 'B.Fab' if 'BOTTOM' in u else 'F.Fab'
+    if 'MECHANICAL' in u:
+        return 'Dwgs.User'
+    if 'COURTYARD' in u:
+        return 'B.CrtYd' if 'BOTTOM' in u else 'F.CrtYd'
+    if '3D' in u or 'TENTING' in u:
+        return None
+    if 'DRILL' in u and 'DRAWING' in u:
+        return 'Dwgs.User'
+    if 'TOP PASTE' in u:
+        return 'F.Paste'
+    if 'BOTTOM PASTE' in u:
+        return 'B.Paste'
+    if 'TOP SOLDER' in u:
+        return 'F.Mask'
+    if 'BOTTOM SOLDER' in u:
+        return 'B.Mask'
+    if classify_layer(s) == 'silkscreen':
+        return 'B.SilkS' if 'BOTTOM' in u else 'F.SilkS'
+    if classify_layer(s) == 'mechanical':
+        return 'Dwgs.User'
+    if classify_layer(s) == 'board_outline':
+        return 'Edge.Cuts'
+    if classify_layer(s) == 'copper':
+        return 'B.Cu' if 'BOTTOM' in u else 'F.Cu'
+    return 'Cmts.User'
+
+
+def _item_points(item: dict) -> list[list[float]]:
+    return item.get('path') or []
+
+
+def item_centroid(item: dict) -> tuple[float, float]:
+    pts = _item_points(item)
+    if not pts:
+        return (0.0, 0.0)
+    return (sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
+
+
+def item_span(item: dict) -> float:
+    pts = _item_points(item)
+    if len(pts) < 2:
+        return 0.0
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    return max(max(xs) - min(xs), max(ys) - min(ys))
+
+
+def project_external_bucket_counts(components: list[dict], board_outlines: list[dict], copper_traces: list[dict], vias: list[dict], zones: list[dict], silkscreen: list[dict], documentation: list[dict], mechanical: list[dict], graphics: list[dict]) -> dict:
+    MAX_ATTACH_SPAN = 5.0
+    THRESHOLD = 10.0
+
+    board_level_graphics = 0
+    graphics_by_layer = {}
+    graphics_by_source = {}
+    candidates = [
+        ('silkscreen', silkscreen),
+        ('documentation', documentation),
+        ('mechanical', mechanical),
+        ('graphics', graphics),
+    ]
+    for source, items in candidates:
+        for item in items:
+            mapped = map_external_graphics_layer(str(item.get('layerId') or ''))
+            if not mapped or '.Cu' in mapped or mapped == 'Edge.Cuts':
+                continue
+            if item_span(item) > MAX_ATTACH_SPAN:
+                board_level_graphics += 1
+                graphics_by_layer[mapped] = graphics_by_layer.get(mapped, 0) + 1
+                graphics_by_source[source] = graphics_by_source.get(source, 0) + 1
+                continue
+            cx, cy = item_centroid(item)
+            min_dist = 1e18
+            for comp in components:
+                dx = float(comp.get('x', 0.0)) - cx
+                dy = float(comp.get('y', 0.0)) - cy
+                dist = (dx * dx + dy * dy) ** 0.5
+                if dist < min_dist:
+                    min_dist = dist
+            if min_dist >= THRESHOLD:
+                board_level_graphics += 1
+                graphics_by_layer[mapped] = graphics_by_layer.get(mapped, 0) + 1
+                graphics_by_source[source] = graphics_by_source.get(source, 0) + 1
+
+    return {
+        'board_outline': len(board_outlines),
+        'copper': len(copper_traces),
+        'via': len(vias),
+        'zone': len(zones),
+        'graphics': board_level_graphics,
+        'graphicsByLayer': dict(sorted(graphics_by_layer.items())),
+        'graphicsBySource': dict(sorted(graphics_by_source.items())),
+    }
+
+
 def parse_ipc2581(path: Path, board_id: str, board_name: str):
     tree = ET.parse(path)
     root = tree.getroot()
@@ -693,6 +802,18 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
         warnings.append('No copper-classified layers were detected.')
     if not any(layer_categories.get(layer['id']) == 'drill' for layer in layers):
         warnings.append('No drill-classified layers were detected.')
+    external_bucket_projection = project_external_bucket_counts(
+        components=components,
+        board_outlines=board_outlines,
+        copper_traces=copper_traces,
+        vias=vias,
+        zones=zones,
+        silkscreen=silkscreen,
+        documentation=documentation,
+        mechanical=mechanical,
+        graphics=graphics,
+    )
+
     import_metadata = {
         'sourceFormat': 'ipc2581',
         'sourcePath': str(path),
@@ -704,6 +825,7 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
             'traceCountByLayer': dict(sorted(layer_trace_counts.items())),
             'traceCountBySemantic': dict(sorted(semantic_counts.items())),
             'objectCountBySemantic': dict(sorted(object_semantic_counts.items())),
+            'externalBucketProjection': external_bucket_projection,
             'geometryArrayCounts': {
                 'traces': len(copper_traces),
                 'vias': len(vias),

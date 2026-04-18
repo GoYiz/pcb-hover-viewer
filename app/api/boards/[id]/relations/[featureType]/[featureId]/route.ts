@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getHostedBoardRelationsById } from "@/lib/hosted-board";
+import { scopeId, unscopeId } from "@/lib/db-scope";
 
 export async function GET(
   _req: Request,
@@ -15,11 +16,15 @@ export async function GET(
   const hosted = getHostedBoardRelationsById(id, featureType, featureId);
   if (hosted) return NextResponse.json(hosted);
 
+  const scopedFeatureId = (featureType === "component" || featureType === "trace")
+    ? scopeId(id, featureId)
+    : featureId;
+
   const direct = await prisma.relationEdge.findMany({
     where: {
       boardId: id,
       sourceType: featureType,
-      sourceId: featureId,
+      sourceId: scopedFeatureId,
     },
     select: {
       targetType: true,
@@ -33,13 +38,13 @@ export async function GET(
 
   if (featureType === "component") {
     const nets = await prisma.pin.findMany({
-      where: { componentId: featureId },
+      where: { componentId: scopedFeatureId },
       select: { netId: true },
     });
     uniqueNetIds = [...new Set(nets.map((n) => n.netId))];
   } else if (featureType === "trace") {
     const trace = await prisma.trace.findFirst({
-      where: { boardId: id, id: featureId },
+      where: { boardId: id, id: scopedFeatureId },
       select: { netId: true },
     });
     if (trace?.netId) uniqueNetIds = [trace.netId];
@@ -71,14 +76,19 @@ export async function GET(
     : [];
 
   const uniqueComponentIds = [...new Set(relatedComponents.map((r) => r.componentId))].filter(
-    (cid) => !(featureType === "component" && cid === featureId),
+    (cid) => !(featureType === "component" && cid === scopedFeatureId),
   );
 
   const mergedDirect = [
-    ...direct,
+    ...direct.map((item) => ({
+      ...item,
+      targetId: item.targetType === "component" || item.targetType === "trace"
+        ? unscopeId(id, item.targetId)
+        : item.targetId,
+    })),
     ...uniqueComponentIds.map((cid) => ({
       targetType: "component",
-      targetId: cid,
+      targetId: unscopeId(id, cid),
       relationType: "electrical",
       weight: 1,
     })),
@@ -90,7 +100,10 @@ export async function GET(
       id: featureId,
     },
     direct: mergedDirect,
-    nets: uniqueNetIds,
-    traces,
+    nets: uniqueNetIds.map((netId) => unscopeId(id, netId)),
+    traces: traces.map((trace) => ({
+      id: unscopeId(id, trace.id),
+      netId: unscopeId(id, trace.netId),
+    })),
   });
 }

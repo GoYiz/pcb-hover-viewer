@@ -2,21 +2,34 @@
 ## led
 - ours rendered arrays: boardOutlines=1, traces=27, vias=4, zones=1, silkscreen=1, documentation=2, graphics=0, drills=0
 - ours object-level: board_outline=5, copper=31, graphics=3, zone=1
+- ours external bucket projection: board_outline=1, copper=27, via=4, zone=1, graphics=3
 - ext bucket-level : board_outline=5, copper=27, graphics=3, via=4, zone=1
-- object-level delta (ours - ext): board_outline=0, copper=4, graphics=0, via=-4, zone=0
-  - `board_outline` semantics are now aligned with the external C++ baseline.
-  - The viewer model now exposes `boardOutlines` as a first-class array, but it intentionally keeps outline paths aggregated for rendering, so rendered-array count (`1`) is not expected to equal external primitive count (`5`).
+- conclusions:
+  - `board_outline` semantics are aligned, but viewer/API intentionally keep `boardOutlines` aggregated as renderable paths, so rendered-array count (`1`) is not expected to equal external primitive count (`5`).
+  - `externalBucketProjection.graphics` now matches the C++ baseline exactly (`3`).
+  - `externalBucketProjection.copper/via/zone` also matches the C++ baseline exactly (`27 / 4 / 1`).
 
 ## switch
 - ours rendered arrays: boardOutlines=5, traces=120, vias=12, pads=239, zones=71, keepouts=41, silkscreen=100, documentation=184, mechanical=101, graphics=511, drills=14
 - ours object-level: board_outline=213, copper=120, drill=198, graphics=753, via=12, zone=71
+- ours external bucket projection: board_outline=5, copper=120, via=12, zone=71, graphics=559
 - ext bucket-level : board_outline=213, copper=120, graphics=729, via=12, zone=71
-- object-level delta (ours - ext): board_outline=0, copper=0, drill=198, graphics=24, via=0, zone=0
+- conclusions:
   - Object-level buckets align strongly with the external baseline for `board_outline`, `copper`, `via`, and `zone`.
-  - Remaining delta is mainly in `graphics` and `drill`, because our importer intentionally preserves finer viewer-facing buckets (`pads/keepouts/silkscreen/documentation/mechanical/graphics/drills`) instead of collapsing them into the C++ tool's single broad `graphics` family.
+  - `externalBucketProjection` now gives an apples-to-apples C++-style summary without collapsing viewer-facing arrays.
+  - Remaining `graphics` gap (`559` vs `729`) is now isolated as a representation-gap issue, not a missing semantic bucket: the C++ tool exports many board-level `Dwgs.User` primitives individually, while our viewer-oriented importer keeps more geometry aggregated as higher-level paths.
+  - We intentionally keep the finer viewer model (`pads / keepouts / silkscreen / documentation / mechanical / graphics / drills`) instead of forcing exact primitive-for-primitive parity with the C++ `graphics` bucket.
+
+## DB import chain
+- Added a real DB import path from normalized board JSON into Prisma/SQLite via `scripts/import_board_json_to_db.ts`.
+- Added scoped IDs (`boardId::rawId`) internally so imported boards can coexist in the database without component/net/layer collisions.
+- Updated DB-backed API routes (`meta / components / geometry / relations`) to un-scope IDs on output and to support top/bottom-like layer aliases when querying geometry.
+- Updated `/board/[id]` so DB-imported boards can load the live page even when they are not present in the hosted/example catalog.
+- Validation `scripts/validate_db_import_chain.py` now confirms the full chain on a real imported board: import JSON -> start production Next server -> verify boards list / meta / components / geometry / relations / page load.
 
 ## Current conclusion
 - Component placement and component-net extraction remain aligned with the external implementations.
-- Semantic classification is now aligned at the model/API level for the main IPC buckets we care about: `board_outline`, `copper`, `via`, and `zone`.
-- The project no longer folds all non-copper geometry into generic traces: viewer/API now expose first-class arrays for `boardOutlines`, `vias`, `pads`, `zones`, `keepouts`, `silkscreen`, `documentation`, `mechanical`, `graphics`, and `drills`.
-- Remaining work is optional refinement, not missing structure: if needed later, we can further tighten `graphics/drill` object counting against the C++ baseline without changing the current long-term viewer model.
+- Semantic classification is aligned at the model/API level for the main IPC buckets we care about: `board_outline`, `copper`, `via`, and `zone`.
+- The project no longer folds all non-copper geometry into generic traces: viewer/API expose first-class arrays for `boardOutlines`, `vias`, `pads`, `zones`, `keepouts`, `silkscreen`, `documentation`, `mechanical`, `graphics`, and `drills`.
+- We now also have a DB import chain that can persist normalized board JSON into Prisma and serve it through the same board/meta/components/geometry/relations APIs and `/board/[id]` page.
+- Remaining work on `graphics/drill` is optional refinement, not missing structure: future improvements would tighten primitive-level parity with the C++ baseline, but the current long-term viewer model is already stable and explicit.

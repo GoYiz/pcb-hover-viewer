@@ -1398,7 +1398,7 @@
   ],
   "importMetadata": {
     "sourceFormat": "ipc2581",
-    "sourcePath": "data/raw/led_power_board_ipc.xml",
+    "sourcePath": "/home/ubuntu/pcb-hover-viewer/data/raw/led_power_board_ipc.xml",
     "stats": {
       "layerCount": 13,
       "componentCount": 10,
@@ -1421,6 +1421,21 @@
         "copper": 31,
         "graphics": 3,
         "zone": 1
+      },
+      "externalBucketProjection": {
+        "board_outline": 1,
+        "copper": 27,
+        "via": 4,
+        "zone": 1,
+        "graphics": 3,
+        "graphicsByLayer": {
+          "Dwgs.User": 2,
+          "F.SilkS": 1
+        },
+        "graphicsBySource": {
+          "documentation": 2,
+          "silkscreen": 1
+        }
       },
       "geometryArrayCounts": {
         "traces": 27,

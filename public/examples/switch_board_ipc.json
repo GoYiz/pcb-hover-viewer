@@ -267650,7 +267650,7 @@
   ],
   "importMetadata": {
     "sourceFormat": "ipc2581",
-    "sourcePath": "data/raw/switch_board_ipc.xml",
+    "sourcePath": "/home/ubuntu/pcb-hover-viewer/data/raw/switch_board_ipc.xml",
     "stats": {
       "layerCount": 25,
       "componentCount": 27,
@@ -267680,6 +267680,23 @@
         "graphics": 753,
         "via": 12,
         "zone": 71
+      },
+      "externalBucketProjection": {
+        "board_outline": 5,
+        "copper": 120,
+        "via": 12,
+        "zone": 71,
+        "graphics": 559,
+        "graphicsByLayer": {
+          "Dwgs.User": 558,
+          "F.SilkS": 1
+        },
+        "graphicsBySource": {
+          "documentation": 87,
+          "graphics": 449,
+          "mechanical": 22,
+          "silkscreen": 1
+        }
       },
       "geometryArrayCounts": {
         "traces": 120,

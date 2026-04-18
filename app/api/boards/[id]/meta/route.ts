@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getHostedBoardMetaById } from "@/lib/hosted-board";
+import { unscopeId } from "@/lib/db-scope";
 
 export async function GET(
   _req: Request,
@@ -36,5 +37,12 @@ export async function GET(
     },
   });
 
-  return NextResponse.json({ board, layers });
+  return NextResponse.json({
+    board,
+    layers: layers.map((layer) => ({
+      id: unscopeId(id, layer.id),
+      name: layer.name,
+      zIndex: layer.zIndex,
+    })),
+  });
 }
