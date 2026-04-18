@@ -18,6 +18,7 @@
   - `externalBucketProjection` is now very close to the C++ baseline on `switch`; the remaining delta is only `graphics: 735 vs 729`.
   - The residual difference is now clearly a tiny representation-edge issue rather than a model-shape problem.
   - We intentionally keep the finer viewer model (`pads / keepouts / silkscreen / documentation / mechanical / graphics / drills`) instead of forcing exact primitive-for-primitive parity with the C++ `graphics` bucket.
+  - Additional heuristic tuning is intentionally stopped here: the remaining 6-item gap is too small to justify adding brittle importer special-cases.
 
 ## DB import chain
 - Added a real DB import path from normalized board JSON into Prisma/SQLite via `scripts/import_board_json_to_db.ts`.
@@ -35,4 +36,4 @@
 - Semantic classification is aligned at the model/API level for the main IPC buckets we care about: `board_outline`, `copper`, `via`, and `zone`.
 - The project no longer folds all non-copper geometry into generic traces: viewer/API expose first-class arrays for `boardOutlines`, `vias`, `pads`, `zones`, `keepouts`, `silkscreen`, `documentation`, `mechanical`, `graphics`, and `drills`.
 - We now also have a DB import chain that can persist normalized board JSON into Prisma and serve it through the same board/meta/components/geometry/relations APIs and `/board/[id]` page.
-- Remaining work on `graphics/drill` is now genuinely small-scale refinement: LED is fully aligned on the main buckets, and switch only retains a 6-item `graphics` delta at the external projection level.
+- Remaining work on `graphics/drill` is now explicitly considered optional: LED is fully aligned on the main buckets, and switch only retains a 6-item `graphics` delta at the external projection level, which is not worth further high-risk importer special-casing.
