@@ -438,12 +438,8 @@ export default function ThreeBoardCanvas({
         const mesh = buildPadMesh(item, boardWidthMm, boardHeightMm, "#fbbf24", 0.5);
         if (!mesh) continue;
         mesh.userData = { kind: "pads" as HoverFeatureType, id: item.id };
-        mesh.userData = { kind: "vias" as HoverFeatureType, id: item.id };
-        mesh.userData = { kind: "drills" as HoverFeatureType, id: item.id };
         r.scene.add(mesh);
         r.overlayObjects.push(mesh);
-        r.hoverables.push(mesh);
-        r.hoverables.push(mesh);
         r.hoverables.push(mesh);
       }
     }
@@ -453,8 +449,10 @@ export default function ThreeBoardCanvas({
         if (!layerMatchesVisible(item.layerId, visibleLayers)) continue;
         const mesh = buildCylinderMarker(item, boardWidthMm, boardHeightMm, "#22d3ee", 0.84, 1.0, 0.9);
         if (!mesh) continue;
+        mesh.userData = { kind: "vias" as HoverFeatureType, id: item.id };
         r.scene.add(mesh);
         r.overlayObjects.push(mesh);
+        r.hoverables.push(mesh);
       }
     }
 
@@ -462,8 +460,10 @@ export default function ThreeBoardCanvas({
       for (const item of drills) {
         const mesh = buildCylinderMarker(item, boardWidthMm, boardHeightMm, "#94a3b8", 0.16, 0.8, 0.84);
         if (!mesh) continue;
+        mesh.userData = { kind: "drills" as HoverFeatureType, id: item.id };
         r.scene.add(mesh);
         r.overlayObjects.push(mesh);
+        r.hoverables.push(mesh);
       }
     }
 
