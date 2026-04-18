@@ -10,6 +10,7 @@ type Props = {
   boardHeightMm: number;
   components: ComponentItem[];
   traces: TraceItem[];
+  visibleDetail?: string[];
   pads?: TraceItem[];
   keepouts?: TraceItem[];
   silkscreen?: TraceItem[];
@@ -47,6 +48,7 @@ export default function PcbCanvas({
   boardHeightMm,
   components,
   traces,
+  visibleDetail,
   pads = [],
   keepouts = [],
   silkscreen = [],
@@ -1893,6 +1895,7 @@ export default function PcbCanvas({
         runtimeRef.current = {
           leafer,
           traceMap,
+          renderVisibility,
           traceMetaMap,
           compMap,
           labelMap,
@@ -1932,6 +1935,31 @@ export default function PcbCanvas({
       runtimeRef.current = null;
     };
   }, [width, height, boardWidthMm, boardHeightMm, components, traces, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills, zones, vias, onHoverFeature]);
+
+  useEffect(() => {
+    const rt = runtimeRef.current;
+    if (!rt || !Array.isArray(visibleDetail) || visibleDetail.length === 0) return;
+    const next = {
+      grid: visibleDetail.includes("grid"),
+      components: visibleDetail.includes("components") || visibleDetail.includes("labels"),
+      labels: visibleDetail.includes("labels"),
+      measures: visibleDetail.includes("measures"),
+      zones: visibleDetail.includes("zones"),
+      vias: visibleDetail.includes("vias"),
+      pads: visibleDetail.includes("pads"),
+      keepouts: visibleDetail.includes("keepouts"),
+      silkscreen: visibleDetail.includes("silkscreen"),
+      documentation: visibleDetail.includes("documentation"),
+      mechanical: visibleDetail.includes("mechanical"),
+      graphics: visibleDetail.includes("graphics"),
+      drills: visibleDetail.includes("drills"),
+    };
+    const current = rt.detailVisibilityRef?.value as typeof next | undefined;
+    const same = current && (Object.keys(next) as Array<keyof typeof next>).every((key) => current[key] === next[key]);
+    if (same) return;
+    rt.detailVisibilityRef.value = next;
+    rt.renderVisibility?.();
+  }, [visibleDetail]);
 
   useEffect(() => {
     const rt = runtimeRef.current;

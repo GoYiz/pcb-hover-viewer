@@ -19,6 +19,13 @@ const TOOL_SECTIONS = [
 ];
 
 const OVERLAY_DETAIL_NAMES = ["zones", "vias", "pads", "keepouts", "silkscreen", "documentation", "mechanical", "graphics", "drills"];
+const BASE_VISIBLE_DETAIL_NAMES = ["grid", "components", "labels", "measures"];
+const OVERLAY_FAMILY_PRESETS = {
+  all: [...OVERLAY_DETAIL_NAMES],
+  copper: ["zones", "vias", "pads"],
+  fabrication: ["keepouts", "silkscreen", "drills"],
+  documentation: ["documentation", "mechanical", "graphics"],
+} as const;
 
 type Props = {
   boardId: string;
@@ -113,6 +120,7 @@ export default function BoardViewerClient({
     return Object.entries(fallbackCounts).filter(([, count]) => Number(count) > 0).sort((a, b) => Number(b[1]) - Number(a[1]));
   }, [importMetadata, traces, zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills]);
   const totalImportedGeometry = useMemo(() => importGeometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0), [importGeometryBuckets]);
+  const [visibleDetail, setVisibleDetail] = useState<string[]>([...BASE_VISIBLE_DETAIL_NAMES, ...OVERLAY_DETAIL_NAMES]);
   const liveEnabledOverlays = useMemo(() => (canvasBridge.visibleDetail || '').split(',').map((s) => s.trim()).filter((name) => OVERLAY_DETAIL_NAMES.includes(name)), [canvasBridge.visibleDetail]);
   const overlayFamilyCounts = useMemo(() => ({
     copper: zones.length + vias.length + pads.length,
@@ -131,8 +139,10 @@ export default function BoardViewerClient({
     const params = new URLSearchParams(window.location.search);
     const layer = params.get("layer");
     const view = params.get("view");
+    const vd = (params.get("vd") || "").split(",").map((s) => s.trim()).filter(Boolean);
     if (layer === "fcu" || layer === "bcu" || layer === "all") setLayerMode(layer);
     if (view === "leafer" || view === "three") setViewMode(view);
+    if (vd.length) setVisibleDetail(vd);
     setUrlReady(true);
   }, []);
 
@@ -143,8 +153,12 @@ export default function BoardViewerClient({
     else url.searchParams.set("layer", layerMode);
     if (viewMode === "leafer") url.searchParams.delete("view");
     else url.searchParams.set("view", viewMode);
+    const isDefaultVisibleDetail = visibleDetail.length === BASE_VISIBLE_DETAIL_NAMES.length + OVERLAY_DETAIL_NAMES.length
+      && [...BASE_VISIBLE_DETAIL_NAMES, ...OVERLAY_DETAIL_NAMES].every((name) => visibleDetail.includes(name));
+    if (isDefaultVisibleDetail) url.searchParams.delete("vd");
+    else url.searchParams.set("vd", visibleDetail.join(","));
     window.history.replaceState({}, "", url.toString());
-  }, [layerMode, viewMode, urlReady]);
+  }, [layerMode, viewMode, visibleDetail, urlReady]);
 
   useEffect(() => {
     if (initialComponents?.length && initialTraces?.length) {
@@ -335,6 +349,16 @@ export default function BoardViewerClient({
 
   const stageStatus = loading ? "Loading board" : error ? "Data fault" : boardName || "Live workbench";
   const sourceHint = importMetadata?.sourceFormat ? `${importMetadata.sourceFormat} import` : "API-backed board";
+  const overlayFamilyButtons = [
+    { key: "all", label: "All", names: OVERLAY_FAMILY_PRESETS.all },
+    { key: "copper", label: "Copper", names: OVERLAY_FAMILY_PRESETS.copper },
+    { key: "fabrication", label: "Fab", names: OVERLAY_FAMILY_PRESETS.fabrication },
+    { key: "documentation", label: "Docs", names: OVERLAY_FAMILY_PRESETS.documentation },
+  ] as const;
+  const activeOverlayFamily = overlayFamilyButtons.find(({ names }) => names.length === liveEnabledOverlays.length && names.every((name) => liveEnabledOverlays.includes(name)))?.key || null;
+  const applyOverlayFamily = (names: readonly string[]) => {
+    setVisibleDetail([...BASE_VISIBLE_DETAIL_NAMES, ...names]);
+  };
 
   return (
     <div className="console-shell">
@@ -436,6 +460,15 @@ export default function BoardViewerClient({
             </div>
           </div>
 
+          <div className="control-stack">
+            <span className="control-label">Overlay family</span>
+            <div className="segmented-control segmented-control-wrap">
+              {overlayFamilyButtons.map((item) => (
+                <button key={item.key} className={activeOverlayFamily === item.key ? "segmented-active" : ""} onClick={() => applyOverlayFamily(item.names)}>{item.label}</button>
+              ))}
+            </div>
+          </div>
+
           <div className="control-stack control-stack-search">
             <span className="control-label">Command locate</span>
             <input
@@ -511,6 +544,7 @@ export default function BoardViewerClient({
                 mechanical={mechanical}
                 graphics={graphics}
                 drills={drills}
+                visibleDetail={visibleDetail}
                 visibleLayers={visibleLayers}
                 focusComponentId={focusComponentId}
                 hoveredId={highlight.targetId}
@@ -567,7 +601,8 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Warnings</span><strong>{importWarnings.length}</strong></div>
               <div className="inspector-kv"><span>Imported geometry</span><strong>{totalImportedGeometry}</strong></div>
               <div className="inspector-kv"><span>Enabled overlays</span><strong>{liveEnabledOverlays.join(", ") || "—"}</strong></div>
-              <div className="inspector-kv"><span>Overlay families</span><strong>{overlayFamilyCounts.copper} / {overlayFamilyCounts.fabrication} / {overlayFamilyCounts.documentation}</strong></div>
+              <div className="inspector-kv"><span>Overlay families</span><strong>Copper {overlayFamilyCounts.copper} · Fab {overlayFamilyCounts.fabrication} · Docs {overlayFamilyCounts.documentation}</strong></div>
+              <div className="inspector-kv"><span>Active family preset</span><strong>{activeOverlayFamily || "custom"}</strong></div>
               <div className="inspector-kv"><span>Source format</span><strong>{importMetadata?.sourceFormat || "native"}</strong></div>
             </div>
             {importGeometryBuckets.length > 0 && (

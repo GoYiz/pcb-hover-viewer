@@ -9,6 +9,13 @@ const PcbCanvas = dynamic(() => import("@/components/PcbCanvas"), { ssr: false }
 const CANVAS_W = 980;
 const CANVAS_H = 620;
 const OVERLAY_DETAIL_NAMES = ["zones", "vias", "pads", "keepouts", "silkscreen", "documentation", "mechanical", "graphics", "drills"];
+const BASE_VISIBLE_DETAIL_NAMES = ["grid", "components", "labels", "measures"];
+const OVERLAY_FAMILY_PRESETS = {
+  all: [...OVERLAY_DETAIL_NAMES],
+  copper: ["zones", "vias", "pads"],
+  fabrication: ["keepouts", "silkscreen", "drills"],
+  documentation: ["documentation", "mechanical", "graphics"],
+} as const;
 
 type ExampleMap = Record<string, ExampleBoardData>;
 
@@ -22,6 +29,7 @@ export default function ExamplesClient({
   const [activeId, setActiveId] = useState(index[0]?.id || "");
   const [hoveredType, setHoveredType] = useState<"component" | "trace" | undefined>(undefined);
   const [hoveredId, setHoveredId] = useState<string | undefined>(undefined);
+  const [visibleDetail, setVisibleDetail] = useState<string[]>([...BASE_VISIBLE_DETAIL_NAMES, ...OVERLAY_DETAIL_NAMES]);
   const [liveVisibleDetail, setLiveVisibleDetail] = useState<string[]>([]);
 
   const active = examples[activeId];
@@ -88,6 +96,13 @@ export default function ExamplesClient({
     documentation: geometryBuckets.filter(([name]) => ['documentation', 'mechanical', 'graphics'].includes(name)).reduce((acc, [, count]) => acc + Number(count), 0),
   }), [geometryBuckets]);
   const activeDensity = active ? (active.components.length + totalGeometry) / Math.max(active.board.widthMm * active.board.heightMm, 1) : 0;
+  const overlayFamilyButtons = [
+    { key: "all", label: "All", names: OVERLAY_FAMILY_PRESETS.all },
+    { key: "copper", label: "Copper", names: OVERLAY_FAMILY_PRESETS.copper },
+    { key: "fabrication", label: "Fab", names: OVERLAY_FAMILY_PRESETS.fabrication },
+    { key: "documentation", label: "Docs", names: OVERLAY_FAMILY_PRESETS.documentation },
+  ] as const;
+  const activeOverlayFamily = overlayFamilyButtons.find(({ names }) => names.length === enabledOverlayNames.length && names.every((name) => enabledOverlayNames.includes(name)))?.key || null;
 
   useEffect(() => {
     const readBridge = () => {
@@ -171,6 +186,16 @@ export default function ExamplesClient({
       </section>
 
       <section className="console-commandbar examples-picker-bar examples-picker-polished">
+        <div className="tool-rack" style={{ marginBottom: 16 }}>
+          <div className="tool-cluster">
+            <div className="tool-cluster-label">Overlay family</div>
+            <div className="segmented-control segmented-control-wrap">
+              {overlayFamilyButtons.map((item) => (
+                <button key={item.key} className={activeOverlayFamily === item.key ? "segmented-active" : ""} onClick={() => setVisibleDetail([...BASE_VISIBLE_DETAIL_NAMES, ...item.names])}>{item.label}</button>
+              ))}
+            </div>
+          </div>
+        </div>
         <div className="tool-cluster tool-cluster-wide">
           <div className="tool-cluster-label">Board selection</div>
           <div className="example-pill-grid example-pill-grid-polished">
@@ -224,6 +249,7 @@ export default function ExamplesClient({
                 drills={active.drills || []}
                 zones={active.zones || []}
                 vias={active.vias || []}
+                visibleDetail={visibleDetail}
                 hoveredId={hoveredId}
                 hoveredType={hoveredType}
                 directIds={relation.directIds}
@@ -254,7 +280,8 @@ export default function ExamplesClient({
                 <div className="inspector-kv"><span>Warnings</span><strong>{warningCount}</strong></div>
                 <div className="inspector-kv"><span>Layer classes</span><strong>{new Set(layerCategoryEntries.map(([, v]) => v)).size}</strong></div>
                 <div className="inspector-kv"><span>Enabled overlays</span><strong>{enabledOverlayNames.join(', ') || '—'}</strong></div>
-                <div className="inspector-kv"><span>Overlay families</span><strong>{overlayFamilyCounts.copper} / {overlayFamilyCounts.fabrication} / {overlayFamilyCounts.documentation}</strong></div>
+                <div className="inspector-kv"><span>Overlay families</span><strong>Copper {overlayFamilyCounts.copper} · Fab {overlayFamilyCounts.fabrication} · Docs {overlayFamilyCounts.documentation}</strong></div>
+                <div className="inspector-kv"><span>Active family preset</span><strong>{activeOverlayFamily || 'custom'}</strong></div>
               </div>
               {sourceHref && (
                 <a className="source-link" href={sourceHref} target="_blank">
