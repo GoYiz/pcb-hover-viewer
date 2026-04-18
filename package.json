@@ -10,6 +10,9 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:import-board": "tsx scripts/import_board_json_to_db.ts",
+    "db:import-examples": "tsx scripts/import_examples_to_db.ts",
+    "test:db-import-chain": "python3 scripts/validate_db_import_chain.py",
     "test:hosted-fallback": "python3 scripts/validate_hosted_api_fallback.py",
     "test:viewer-debug": "python3 scripts/validate_viewer_debug_hooks.py",
     "test:smoke": "python3 scripts/validate_hosted_api_fallback.py && python3 scripts/validate_viewer_debug_hooks.py"

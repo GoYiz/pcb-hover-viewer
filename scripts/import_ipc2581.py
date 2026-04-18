@@ -404,44 +404,39 @@ def item_span(item: dict) -> float:
     return max(max(xs) - min(xs), max(ys) - min(ys))
 
 
-def project_external_bucket_counts(components: list[dict], board_outlines: list[dict], copper_traces: list[dict], vias: list[dict], zones: list[dict], silkscreen: list[dict], documentation: list[dict], mechanical: list[dict], graphics: list[dict]) -> dict:
+def project_external_bucket_counts(components: list[dict], object_semantic_counts: Counter, external_graphics_candidates: list[dict], copper_traces: list[dict], vias: list[dict], zones: list[dict]) -> dict:
     MAX_ATTACH_SPAN = 5.0
     THRESHOLD = 10.0
 
     board_level_graphics = 0
     graphics_by_layer = {}
     graphics_by_source = {}
-    candidates = [
-        ('silkscreen', silkscreen),
-        ('documentation', documentation),
-        ('mechanical', mechanical),
-        ('graphics', graphics),
-    ]
-    for source, items in candidates:
-        for item in items:
-            mapped = map_external_graphics_layer(str(item.get('layerId') or ''))
-            if not mapped or '.Cu' in mapped or mapped == 'Edge.Cuts':
-                continue
-            if item_span(item) > MAX_ATTACH_SPAN:
-                board_level_graphics += 1
-                graphics_by_layer[mapped] = graphics_by_layer.get(mapped, 0) + 1
-                graphics_by_source[source] = graphics_by_source.get(source, 0) + 1
-                continue
-            cx, cy = item_centroid(item)
-            min_dist = 1e18
-            for comp in components:
-                dx = float(comp.get('x', 0.0)) - cx
-                dy = float(comp.get('y', 0.0)) - cy
-                dist = (dx * dx + dy * dy) ** 0.5
-                if dist < min_dist:
-                    min_dist = dist
-            if min_dist >= THRESHOLD:
-                board_level_graphics += 1
-                graphics_by_layer[mapped] = graphics_by_layer.get(mapped, 0) + 1
-                graphics_by_source[source] = graphics_by_source.get(source, 0) + 1
+    for item in external_graphics_candidates:
+        mapped = map_external_graphics_layer(str(item.get('layerId') or ''))
+        if not mapped or '.Cu' in mapped or mapped == 'Edge.Cuts':
+            continue
+        if item_span(item) > MAX_ATTACH_SPAN:
+            board_level_graphics += 1
+            graphics_by_layer[mapped] = graphics_by_layer.get(mapped, 0) + 1
+            source = str(item.get('source') or 'unknown')
+            graphics_by_source[source] = graphics_by_source.get(source, 0) + 1
+            continue
+        cx, cy = item_centroid(item)
+        min_dist = 1e18
+        for comp in components:
+            dx = float(comp.get('x', 0.0)) - cx
+            dy = float(comp.get('y', 0.0)) - cy
+            dist = (dx * dx + dy * dy) ** 0.5
+            if dist < min_dist:
+                min_dist = dist
+        if min_dist >= THRESHOLD:
+            board_level_graphics += 1
+            graphics_by_layer[mapped] = graphics_by_layer.get(mapped, 0) + 1
+            source = str(item.get('source') or 'unknown')
+            graphics_by_source[source] = graphics_by_source.get(source, 0) + 1
 
     return {
-        'board_outline': len(board_outlines),
+        'board_outline': int(object_semantic_counts.get('board_outline', 0)),
         'copper': len(copper_traces),
         'via': len(vias),
         'zone': len(zones),
@@ -576,6 +571,7 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
     trace_index = 1
     semantic_counts = Counter()
     object_semantic_counts = Counter()
+    external_graphics_candidates = []
     ensure_layer(layers, layer_seen, 'BOARD_EDGE')
     ensure_layer(layers, layer_seen, 'BOARD_CUTOUT')
     ensure_layer(layers, layer_seen, 'DRILL')
@@ -616,8 +612,11 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
                     y1 = to_float(pick_attr(geom, 'y1', 'Y1', 'startY', 'StartY')) * scale
                     x2 = to_float(pick_attr(geom, 'x2', 'X2', 'endX', 'EndX')) * scale
                     y2 = to_float(pick_attr(geom, 'y2', 'Y2', 'endY', 'EndY')) * scale
+                    path = [[round(x1, 4), round(y1, 4)], [round(x2, 4), round(y2, 4)]]
                     semantic = classify_trace_semantic(layer_id, net_id)
-                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, [[round(x1, 4), round(y1, 4)], [round(x2, 4), round(y2, 4)]], semantic_counts, semantic)
+                    if semantic not in {'copper', 'zone', 'via', 'board_outline'}:
+                        external_graphics_candidates.append({'layerId': layer_id, 'source': semantic, 'path': path})
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, path, semantic_counts, semantic)
                 elif tag == 'Arc':
                     width = element_width(geom, scale, 0.15)
                     x1 = to_float(pick_attr(geom, 'x1', 'X1', 'startX', 'StartX')) * scale
@@ -627,12 +626,18 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
                     cx = to_float(pick_attr(geom, 'cx', 'CX', 'centerX', 'CenterX')) * scale
                     cy = to_float(pick_attr(geom, 'cy', 'CY', 'centerY', 'CenterY')) * scale
                     cw = str(pick_attr(geom, 'clockwise', 'Clockwise', 'cw', 'CW') or '').lower() in {'1', 'true', 'yes'}
+                    path = arc_to_polyline(x1, y1, x2, y2, cx, cy, cw)
                     semantic = classify_trace_semantic(layer_id, net_id)
-                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, arc_to_polyline(x1, y1, x2, y2, cx, cy, cw), semantic_counts, semantic)
+                    if semantic not in {'copper', 'zone', 'via', 'board_outline'}:
+                        external_graphics_candidates.append({'layerId': layer_id, 'source': semantic, 'path': path})
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, path, semantic_counts, semantic)
                 elif tag in {'Polyline', 'Path'}:
                     width = element_width(geom, scale, 0.15)
+                    path = parse_polyline_points(geom, scale)
                     semantic = classify_trace_semantic(layer_id, net_id)
-                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, parse_polyline_points(geom, scale), semantic_counts, semantic)
+                    if semantic not in {'copper', 'zone', 'via', 'board_outline'}:
+                        external_graphics_candidates.append({'layerId': layer_id, 'source': semantic, 'path': path})
+                    trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, width, path, semantic_counts, semantic)
                 elif tag == 'Polygon':
                     path = parse_poly_steps(geom, scale)
                     if path and path[0] != path[-1]: path.append(path[0])
@@ -643,6 +648,8 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
                         semantic = 'keepout'
                     else:
                         semantic = 'graphics'
+                    if semantic not in {'copper', 'zone', 'via', 'board_outline'}:
+                        external_graphics_candidates.append({'layerId': layer_id, 'source': semantic, 'path': path})
                     trace_index = append_trace(traces, coords, trace_index, net_id, layer_id, 0.1, path, semantic_counts, semantic)
                 elif tag == 'Pad':
                     x = to_float(pick_attr(geom, 'x', 'X')) * scale
@@ -686,6 +693,8 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
         c['bbox'][1] = round(c['bbox'][1] - min_y + pad, 4)
     for t in traces:
         t['path'] = [shift_point(pt) for pt in t['path']]
+    for item in external_graphics_candidates:
+        item['path'] = [shift_point(pt) for pt in item['path']]
 
     nets = [{'id': nid, 'name': name} for nid, name in sorted(net_map.items())]
     used_nets = {t['netId'] for t in traces}
@@ -804,14 +813,11 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
         warnings.append('No drill-classified layers were detected.')
     external_bucket_projection = project_external_bucket_counts(
         components=components,
-        board_outlines=board_outlines,
+        object_semantic_counts=object_semantic_counts,
+        external_graphics_candidates=external_graphics_candidates,
         copper_traces=copper_traces,
         vias=vias,
         zones=zones,
-        silkscreen=silkscreen,
-        documentation=documentation,
-        mechanical=mechanical,
-        graphics=graphics,
     )
 
     import_metadata = {

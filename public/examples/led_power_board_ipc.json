@@ -1423,7 +1423,7 @@
         "zone": 1
       },
       "externalBucketProjection": {
-        "board_outline": 1,
+        "board_outline": 5,
         "copper": 27,
         "via": 4,
         "zone": 1,
