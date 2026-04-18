@@ -8,6 +8,7 @@ type HighlightSet = {
   directComponentIds: string[];
   traceIds: string[];
   netIds: string[];
+  overlayKeys: string[];
 };
 
 type ViewerState = {
@@ -27,6 +28,7 @@ export const useViewerStore = create<ViewerState>((set) => ({
     directComponentIds: [],
     traceIds: [],
     netIds: [],
+    overlayKeys: [],
   },
   setHoveredFeature: (type, id) => set({ hoveredFeatureType: type, hoveredFeatureId: id }),
   setHighlight: (payload) => set({ highlight: payload }),

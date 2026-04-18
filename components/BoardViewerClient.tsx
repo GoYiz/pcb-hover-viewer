@@ -97,7 +97,7 @@ export default function BoardViewerClient({
   const [viewMode, setViewMode] = useState<"leafer" | "three">(initialViewMode || "leafer");
   const [search, setSearch] = useState("");
   const [focusComponentId, setFocusComponentId] = useState<string | undefined>();
-  const [canvasBridge, setCanvasBridge] = useState({ tool: "select", selectionFilter: "all", visibleDetail: "-", zoom: "1.000", selectedComponents: 0, selectedTraces: 0 });
+  const [canvasBridge, setCanvasBridge] = useState({ tool: "select", selectionFilter: "all", visibleDetail: "-", zoom: "1.000", selectedComponents: 0, selectedTraces: 0, selectedOverlays: 0 });
   const [urlSelection, setUrlSelection] = useState({ sc: [] as string[], st: [] as string[] });
   const [overlaySelection, setOverlaySelection] = useState<{ kind?: Exclude<HoverFeatureType, "component" | "trace">; id?: string }>({});
   const [relationOverlayCount, setRelationOverlayCount] = useState(0);
@@ -261,7 +261,7 @@ export default function BoardViewerClient({
     }
 
     if (!targetId || !targetType) {
-      setHighlight({ targetId: undefined, targetType: undefined, directComponentIds: [], traceIds: [], netIds: [] });
+      setHighlight({ targetId: undefined, targetType: undefined, directComponentIds: [], traceIds: [], netIds: [], overlayKeys: [] });
       setRelationOverlayCount(0);
       return;
     }
@@ -277,7 +277,7 @@ export default function BoardViewerClient({
         );
         const traceIds = [...new Set(netIds.flatMap((n) => [...(netToTraces.get(n) || new Set())]))];
         if (!cancelled) {
-          setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds });
+          setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds, overlayKeys: [] });
           setRelationOverlayCount(0);
         }
         return;
@@ -289,7 +289,7 @@ export default function BoardViewerClient({
         const directComponentIds = [...new Set(netIds.flatMap((n) => [...(netToComponents.get(n) || new Set())]))];
         const traceIds = [...new Set(netIds.flatMap((n) => [...(netToTraces.get(n) || new Set())]))];
         if (!cancelled) {
-          setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds });
+          setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds, overlayKeys: [] });
           setRelationOverlayCount(0);
         }
         return;
@@ -301,11 +301,12 @@ export default function BoardViewerClient({
         const directComponentIds = [...new Set((rel.direct || []).filter((item) => item.targetType === 'component').map((item) => item.targetId))];
         const traceIds = [...new Set((rel.traces || []).map((item) => item.id))];
         const netIds = rel.nets || [];
-        setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds });
+        const overlayKeys = [...new Set((rel.overlays || []).map((item) => `${item.kind}:${item.id}`))];
+        setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds, overlayKeys });
         setRelationOverlayCount((rel.overlays || []).length);
       } catch {
         if (!cancelled) {
-          setHighlight({ targetId, targetType, directComponentIds: [], traceIds: [], netIds: [] });
+          setHighlight({ targetId, targetType, directComponentIds: [], traceIds: [], netIds: [], overlayKeys: [] });
           setRelationOverlayCount(0);
         }
       }
@@ -399,6 +400,7 @@ export default function BoardViewerClient({
         zoom,
         selectedComponents: !sc || sc === "-" ? 0 : sc.split(",").filter(Boolean).length,
         selectedTraces: !st || st === "-" ? 0 : st.split(",").filter(Boolean).length,
+        selectedOverlays: Number(pick("selected_overlays_count") || 0),
       });
     };
     parseBridge();
@@ -680,6 +682,7 @@ export default function BoardViewerClient({
                 hoveredType={effectiveTargetType}
                 directIds={highlight.directComponentIds}
                 traceHighlightIds={highlight.traceIds}
+                overlayHighlightKeys={highlight.overlayKeys}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
                 onSelectFeature={(type, id) => applySharedSelection(type, id)}
               />
@@ -734,6 +737,7 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Highlighted traces</span><strong>{highlight.traceIds.length}</strong></div>
               <div className="inspector-kv"><span>Context nets</span><strong>{highlight.netIds.length}</strong></div>
               <div className="inspector-kv"><span>Related overlays</span><strong>{relationOverlayCount}</strong></div>
+              <div className="inspector-kv"><span>Selected overlays</span><strong>{canvasBridge.selectedOverlays}</strong></div>
               <div className="inspector-kv"><span>Layer visibility</span><strong>{visibleLayers.join(", ")}</strong></div>
             </div>
             {hoveredOverlay && (

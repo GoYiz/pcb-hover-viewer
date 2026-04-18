@@ -33,6 +33,7 @@ type Props = {
   selectedTraceIds?: string[];
   selectedOverlayKind?: Exclude<HoverFeatureType, 'component' | 'trace'>;
   selectedOverlayId?: string;
+  overlayHighlightKeys?: string[];
   onHoverFeature: (type?: HoverFeatureType, id?: string) => void;
   onSelectFeature?: (type?: HoverFeatureType, id?: string) => void;
 };
@@ -197,6 +198,7 @@ export default function ThreeBoardCanvas({
   selectedTraceIds = [],
   selectedOverlayKind,
   selectedOverlayId,
+  overlayHighlightKeys = [],
   onHoverFeature,
   onSelectFeature,
 }: Props) {
@@ -520,14 +522,16 @@ export default function ThreeBoardCanvas({
       if (!kind || !id) continue;
       const isTarget = hoveredType === kind && hoveredId === id;
       const isSelected = selectedOverlayKind === kind && selectedOverlayId === id;
+      const isRelated = overlayHighlightKeys.includes(`${kind}:${id}`);
       const material = (obj as any).material as any;
-      if (material?.opacity != null) material.opacity = isTarget ? 1 : isSelected ? Math.min((material.opacity || 0.6) + 0.22, 1) : material.opacity;
+      if (material?.opacity != null) material.opacity = isTarget ? 1 : isSelected ? Math.min((material.opacity || 0.6) + 0.22, 1) : isRelated ? Math.min((material.opacity || 0.48) + 0.12, 0.92) : material.opacity;
       if (material?.color?.set) {
         if (isTarget) material.color.set('#f43f5e');
         else if (isSelected) material.color.set('#f59e0b');
+        else if (isRelated) material.color.set('#22d3ee');
       }
     }
-  }, [hoveredId, hoveredType, directIds, traceHighlightIds, selectedComponentIds, selectedTraceIds, selectedOverlayKind, selectedOverlayId]);
+  }, [hoveredId, hoveredType, directIds, traceHighlightIds, selectedComponentIds, selectedTraceIds, selectedOverlayKind, selectedOverlayId, overlayHighlightKeys]);
 
   useEffect(() => {
     setBridgeState((prev) => ({

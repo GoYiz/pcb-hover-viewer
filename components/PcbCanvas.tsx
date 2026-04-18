@@ -28,6 +28,7 @@ type Props = {
   hoveredType?: HoverFeatureType;
   directIds: string[];
   traceHighlightIds: string[];
+  overlayHighlightKeys?: string[];
   onHoverFeature: (type?: HoverFeatureType, id?: string) => void;
   onSelectFeature?: (type?: HoverFeatureType, id?: string) => void;
 };
@@ -68,6 +69,7 @@ export default function PcbCanvas({
   hoveredType,
   directIds,
   traceHighlightIds,
+  overlayHighlightKeys = [],
   onHoverFeature,
   onSelectFeature,
 }: Props) {
@@ -82,6 +84,7 @@ export default function PcbCanvas({
     oy: 0,
     sc: [] as string[],
     st: [] as string[],
+    so: [] as string[],
     sf: "all" as "all" | "component" | "trace",
     vd: "grid,components,labels,measures",
     lm: "adaptive",
@@ -443,6 +446,7 @@ export default function PcbCanvas({
             oy: offsetRef.y,
             sc: Array.from(selectedCompIds),
             st: Array.from(selectedTraceIds),
+            so: selectedOverlayRef.kind && selectedOverlayRef.id ? [`${selectedOverlayRef.kind}:${selectedOverlayRef.id}`] : [],
             sf: selectionFilterRef.value,
             vd: visibleDetail,
             lm: "adaptive",
@@ -1008,6 +1012,7 @@ export default function PcbCanvas({
               path: trace.path,
             };
           });
+          const selectedOverlays = selectedOverlayRef.kind && selectedOverlayRef.id ? [{ kind: selectedOverlayRef.kind, id: selectedOverlayRef.id }] : [];
           return JSON.stringify({
             board: getExportSlug(),
             tool: toolModeRef.value,
@@ -1015,6 +1020,7 @@ export default function PcbCanvas({
             offset: { x: Number(offsetRef.x.toFixed(1)), y: Number(offsetRef.y.toFixed(1)) },
             selectedComponents,
             selectedTraces,
+            selectedOverlays,
           }, null, 2);
         };
 
@@ -1031,6 +1037,7 @@ export default function PcbCanvas({
         const buildWorkbenchSessionJson = () => {
           const selectedComponents = Array.from(selectedCompIds).map((id) => components.find((c) => c.id === id)).filter(Boolean);
           const selectedTraces = Array.from(selectedTraceIds).map((id) => traces.find((tr) => tr.id === id)).filter(Boolean);
+          const selectedOverlays = selectedOverlayRef.kind && selectedOverlayRef.id ? [{ kind: selectedOverlayRef.kind, id: selectedOverlayRef.id }] : [];
           const visibleDetail = Object.entries(detailVisibilityRef.value).filter(([, enabled]) => enabled).map(([key]) => key);
           return JSON.stringify({
             board: getExportSlug(),
@@ -1048,6 +1055,7 @@ export default function PcbCanvas({
             trace_hit: "adaptive-v1",
             selected_components: selectedComponents,
             selected_traces: selectedTraces,
+            selected_overlays: selectedOverlays,
             measurements: measureHistory,
           }, null, 2);
         };
@@ -1382,10 +1390,14 @@ export default function PcbCanvas({
           const nodes = overlayMap.get(`${kind}:${id}`) || [];
           const isTarget = hoveredType === kind && hoveredId === id;
           const isSelected = selectedOverlayRef.kind === kind && selectedOverlayRef.id === id;
+          const isRelated = overlayHighlightKeys.includes(`${kind}:${id}`);
           for (const node of nodes) {
             if (!node) continue;
-            node.opacity = isTarget ? 1 : isSelected ? Math.min((node.opacity || 1) + 0.18, 1) : (node.opacity ?? 1);
-            node.strokeWidth = isTarget ? 1.8 : isSelected ? 1.5 : (node.strokeWidth || 1.2);
+            node.opacity = isTarget ? 1 : isSelected ? Math.min((node.opacity || 1) + 0.18, 1) : isRelated ? Math.min((node.opacity || 0.72) + 0.12, 0.96) : (node.opacity ?? 1);
+            node.strokeWidth = isTarget ? 1.8 : isSelected ? 1.5 : isRelated ? 1.35 : (node.strokeWidth || 1.2);
+            if (node.stroke) {
+              node.stroke = isTarget ? '#f43f5e' : isSelected ? '#f59e0b' : isRelated ? '#22d3ee' : node.stroke;
+            }
           }
         };
 
@@ -2156,6 +2168,7 @@ export default function PcbCanvas({
         {`State tool=${bridgeState.tool} zoom=${bridgeState.zoom.toFixed(3)} ox=${bridgeState.ox.toFixed(1)} oy=${bridgeState.oy.toFixed(1)}
 selected_components=${bridgeState.sc.join(",") || "-"}
 selected_traces=${bridgeState.st.join(",") || "-"}
+selected_overlays_count=${bridgeState.so.length || 0}
 selection_filter=${bridgeState.sf || "all"}
 visible_detail=${bridgeState.vd || "-"}
 label_mode=${bridgeState.lm || "adaptive"}
