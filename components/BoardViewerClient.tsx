@@ -382,6 +382,22 @@ export default function BoardViewerClient({
   const applyOverlayFamily = (names: readonly string[]) => {
     setVisibleDetail([...BASE_VISIBLE_DETAIL_NAMES, ...names]);
   };
+  const overlayInspectTargets = useMemo(() => {
+    const buckets: Array<{ family: string; kind: Exclude<HoverFeatureType, "component" | "trace">; items: TraceItem[] }> = [
+      { family: "copper", kind: "zones", items: zones },
+      { family: "copper", kind: "vias", items: vias },
+      { family: "copper", kind: "pads", items: pads },
+      { family: "fabrication", kind: "keepouts", items: keepouts },
+      { family: "fabrication", kind: "silkscreen", items: silkscreen },
+      { family: "fabrication", kind: "drills", items: drills },
+      { family: "documentation", kind: "documentation", items: documentation },
+      { family: "documentation", kind: "mechanical", items: mechanical },
+      { family: "documentation", kind: "graphics", items: graphics },
+    ];
+    return buckets
+      .map((bucket) => ({ ...bucket, sample: bucket.items[0] }))
+      .filter((bucket): bucket is typeof bucket & { sample: TraceItem } => Boolean(bucket.sample));
+  }, [zones, vias, pads, keepouts, silkscreen, drills, documentation, mechanical, graphics]);
 
   return (
     <div className="console-shell">
@@ -487,7 +503,7 @@ export default function BoardViewerClient({
             <span className="control-label">Overlay family</span>
             <div className="segmented-control segmented-control-wrap">
               {overlayFamilyButtons.map((item) => (
-                <button key={item.key} className={activeOverlayFamily === item.key ? "segmented-active" : ""} onClick={() => applyOverlayFamily(item.names)}>{item.label}</button>
+                <button key={item.key} data-testid={`overlay-family-${item.key}`} aria-label={`Overlay family ${item.label}`} className={activeOverlayFamily === item.key ? "segmented-active" : ""} onClick={() => applyOverlayFamily(item.names)}>{item.label}</button>
               ))}
             </div>
           </div>
@@ -514,7 +530,7 @@ export default function BoardViewerClient({
 
         <div className="overlay-legend-bar" style={{ marginTop: 16 }}>
           {overlayFamilyButtons.map((item) => (
-            <button key={item.key} className={`overlay-legend-pill ${activeOverlayFamily === item.key ? "overlay-legend-pill-active" : ""}`} onClick={() => applyOverlayFamily(item.names)}>
+            <button key={item.key} data-testid={`overlay-legend-${item.key}`} aria-label={`Overlay legend ${item.label}`} className={`overlay-legend-pill ${activeOverlayFamily === item.key ? "overlay-legend-pill-active" : ""}`} onClick={() => applyOverlayFamily(item.names)}>
               <span className="overlay-legend-dot" style={{ background: item.tone }} />
               <span>{item.label}</span>
               <strong>{item.count}</strong>
@@ -638,7 +654,7 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Layer visibility</span><strong>{visibleLayers.join(", ")}</strong></div>
             </div>
             {hoveredOverlay && (
-              <div className="focus-card" style={{ marginTop: 14 }}>
+              <div className="focus-card" data-testid="overlay-inspect-card" aria-label="Overlay inspect details" style={{ marginTop: 14 }}>
                 <div className="focus-meta">Overlay inspect</div>
                 <div className="focus-meta">kind: {highlight.targetType}</div>
                 <div className="focus-meta">id: {hoveredOverlay.id}</div>
@@ -648,6 +664,36 @@ export default function BoardViewerClient({
                 <div className="focus-meta">points: {hoveredOverlay.path.length}</div>
               </div>
             )}
+            <div className="focus-card" data-testid="overlay-inspect-targets" aria-label="Overlay inspect targets" style={{ marginTop: 14 }}>
+              <div className="focus-meta">Overlay test targets</div>
+              <div className="overlay-target-grid">
+                {overlayInspectTargets.map((target) => (
+                  <button
+                    key={`${target.kind}-${target.sample.id}`}
+                    data-testid={`overlay-target-${target.kind}`}
+                    aria-label={`Inspect overlay ${target.kind} ${target.sample.id}`}
+                    className="overlay-target-pill"
+                    onClick={() => {
+                      applyOverlayFamily(OVERLAY_FAMILY_PRESETS[target.family as keyof typeof OVERLAY_FAMILY_PRESETS]);
+                      setViewMode("three");
+                      setHoveredFeature(target.kind, target.sample.id);
+                    }}
+                  >
+                    <span>{target.kind}</span>
+                    <strong>{target.sample.id}</strong>
+                  </button>
+                ))}
+                <button
+                  data-testid="overlay-target-clear"
+                  aria-label="Clear overlay inspect target"
+                  className="overlay-target-pill overlay-target-pill-muted"
+                  onClick={() => setHoveredFeature(undefined, undefined)}
+                >
+                  <span>clear</span>
+                  <strong>—</strong>
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="inspector-card inspector-card-dense">
