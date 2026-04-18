@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ComponentItem, TraceItem } from "@/types/pcb";
+import type { HoverFeatureType } from "@/store/viewerStore";
 
 type Props = {
   width: number;
@@ -23,10 +24,10 @@ type Props = {
   visibleLayers?: string[];
   focusComponentId?: string;
   hoveredId?: string;
-  hoveredType?: "component" | "trace";
+  hoveredType?: HoverFeatureType;
   directIds: string[];
   traceHighlightIds: string[];
-  onHoverFeature: (type?: "component" | "trace", id?: string) => void;
+  onHoverFeature: (type?: HoverFeatureType, id?: string) => void;
 };
 
 const PAD = 20;

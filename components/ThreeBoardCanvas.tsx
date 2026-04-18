@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import type { ComponentItem, TraceItem } from "@/types/pcb";
+import type { HoverFeatureType } from "@/store/viewerStore";
 
 type Props = {
   width: number;
@@ -24,13 +25,13 @@ type Props = {
   visibleLayers?: string[];
   focusComponentId?: string;
   hoveredId?: string;
-  hoveredType?: "component" | "trace";
+  hoveredType?: HoverFeatureType;
   directIds: string[];
   traceHighlightIds: string[];
   selectedComponentIds?: string[];
   selectedTraceIds?: string[];
-  onHoverFeature: (type?: "component" | "trace", id?: string) => void;
-  onSelectFeature?: (type?: "component" | "trace", id?: string) => void;
+  onHoverFeature: (type?: HoverFeatureType, id?: string) => void;
+  onSelectFeature?: (type?: HoverFeatureType, id?: string) => void;
 };
 
 type SceneRefs = {
@@ -317,7 +318,7 @@ export default function ThreeBoardCanvas({
         onHoverRef.current(undefined, undefined);
         return;
       }
-      const obj = hit.object as THREE.Object3D & { userData: { kind?: "component" | "trace"; id?: string } };
+      const obj = hit.object as THREE.Object3D & { userData: { kind?: HoverFeatureType; id?: string } };
       const kind = obj.userData.kind;
       const id = obj.userData.id;
       if (kind && id) onHoverRef.current(kind, id);
@@ -342,7 +343,7 @@ export default function ThreeBoardCanvas({
       mouse.y = -(py / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
       const hit = raycaster.intersectObjects(refsObj.hoverables, false)[0];
-      const obj = hit?.object as THREE.Object3D & { userData?: { kind?: "component" | "trace"; id?: string } };
+      const obj = hit?.object as THREE.Object3D & { userData?: { kind?: HoverFeatureType; id?: string } };
       if (obj?.userData?.kind && obj?.userData?.id) onSelectFeature?.(obj.userData.kind, obj.userData.id);
       else onSelectFeature?.(undefined, undefined);
     };
@@ -424,8 +425,10 @@ export default function ThreeBoardCanvas({
         if ((bucket.key === "zones") && !layerMatchesVisible(item.layerId, visibleLayers)) continue;
         const line = buildOverlayLine(item, boardWidthMm, boardHeightMm, bucket.color, bucket.opacity, bucket.z);
         if (!line) continue;
+        line.userData = { kind: bucket.key as HoverFeatureType, id: item.id };
         r.scene.add(line);
         r.overlayObjects.push(line);
+        r.hoverables.push(line);
       }
     }
 
@@ -434,8 +437,14 @@ export default function ThreeBoardCanvas({
         if (!layerMatchesVisible(item.layerId, visibleLayers)) continue;
         const mesh = buildPadMesh(item, boardWidthMm, boardHeightMm, "#fbbf24", 0.5);
         if (!mesh) continue;
+        mesh.userData = { kind: "pads" as HoverFeatureType, id: item.id };
+        mesh.userData = { kind: "vias" as HoverFeatureType, id: item.id };
+        mesh.userData = { kind: "drills" as HoverFeatureType, id: item.id };
         r.scene.add(mesh);
         r.overlayObjects.push(mesh);
+        r.hoverables.push(mesh);
+        r.hoverables.push(mesh);
+        r.hoverables.push(mesh);
       }
     }
 

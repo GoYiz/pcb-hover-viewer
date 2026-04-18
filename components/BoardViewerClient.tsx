@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { fetchBoardComponents, fetchBoardGeometry, fetchBoardMeta } from "@/lib/api";
 import { useViewerStore } from "@/store/viewerStore";
+import type { HoverFeatureType } from "@/store/viewerStore";
 import type { ComponentItem, TraceItem, ImportMetadata } from "@/types/pcb";
 
 const PcbCanvas = dynamic(() => import("@/components/PcbCanvas"), { ssr: false });
@@ -226,7 +227,7 @@ export default function BoardViewerClient({
       netToTraces.get(t.netId)?.add(t.id);
     }
 
-    let targetType: "component" | "trace" | undefined = hoveredFeatureType;
+    let targetType: HoverFeatureType | undefined = hoveredFeatureType;
     let targetId: string | undefined = hoveredFeatureId;
 
     if (!targetType || !targetId) {
@@ -277,6 +278,24 @@ export default function BoardViewerClient({
     () => (highlight.targetType === "trace" ? traces.find((t) => t.id === highlight.targetId) : undefined),
     [traces, highlight.targetId, highlight.targetType],
   );
+
+  const overlayBucketMap = useMemo(() => ({
+    zones,
+    vias,
+    pads,
+    keepouts,
+    silkscreen,
+    documentation,
+    mechanical,
+    graphics,
+    drills,
+  }), [zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills]);
+
+  const hoveredOverlay = useMemo(() => {
+    const type = highlight.targetType;
+    if (!type || type === "component" || type === "trace") return undefined;
+    return (overlayBucketMap[type] || []).find((item) => item.id === highlight.targetId);
+  }, [highlight.targetType, highlight.targetId, overlayBucketMap]);
 
   useEffect(() => {
     if (!focusComponentId) return;
@@ -594,7 +613,7 @@ export default function BoardViewerClient({
                 selectedComponentIds={urlSelection.sc}
                 selectedTraceIds={urlSelection.st}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
-                onSelectFeature={(type, id) => applySharedSelection(type, id)}
+                onSelectFeature={(type, id) => { if (type === "component" || type === "trace" || !type) applySharedSelection(type, id); }}
               />
             )}
           </div>
@@ -612,11 +631,23 @@ export default function BoardViewerClient({
             <div className="inspector-grid">
               <div className="inspector-kv"><span>Hovered component</span><strong>{hoveredComponent?.refdes || "—"}</strong></div>
               <div className="inspector-kv"><span>Hovered trace</span><strong>{hoveredTrace?.id || "—"}</strong></div>
+              <div className="inspector-kv"><span>Hovered overlay</span><strong>{hoveredOverlay ? `${highlight.targetType}:${hoveredOverlay.id}` : "—"}</strong></div>
               <div className="inspector-kv"><span>Direct components</span><strong>{highlight.directComponentIds.length}</strong></div>
               <div className="inspector-kv"><span>Highlighted traces</span><strong>{highlight.traceIds.length}</strong></div>
               <div className="inspector-kv"><span>Context nets</span><strong>{highlight.netIds.length}</strong></div>
               <div className="inspector-kv"><span>Layer visibility</span><strong>{visibleLayers.join(", ")}</strong></div>
             </div>
+            {hoveredOverlay && (
+              <div className="focus-card" style={{ marginTop: 14 }}>
+                <div className="focus-meta">Overlay inspect</div>
+                <div className="focus-meta">kind: {highlight.targetType}</div>
+                <div className="focus-meta">id: {hoveredOverlay.id}</div>
+                <div className="focus-meta">layer: {hoveredOverlay.layerId || "—"}</div>
+                <div className="focus-meta">net: {hoveredOverlay.netId || "—"}</div>
+                <div className="focus-meta">width: {hoveredOverlay.width}</div>
+                <div className="focus-meta">points: {hoveredOverlay.path.length}</div>
+              </div>
+            )}
           </div>
 
           <div className="inspector-card inspector-card-dense">
@@ -636,6 +667,12 @@ export default function BoardViewerClient({
                 ))}
               </div>
             )}
+            <div className="focus-card" style={{ marginTop: 14 }}>
+              <div className="focus-meta">Family buckets</div>
+              <div className="focus-meta">Copper: zones · vias · pads</div>
+              <div className="focus-meta">Fab: keepouts · silkscreen · drills</div>
+              <div className="focus-meta">Docs: documentation · mechanical · graphics</div>
+            </div>
             {importSemantics.length > 0 && (
               <div className="focus-card" style={{ marginTop: 14 }}>
                 <div className="focus-meta">Semantic summary</div>

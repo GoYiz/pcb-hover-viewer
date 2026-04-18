@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { ExampleBoardData, ExampleIndexItem } from "@/lib/examples";
+import type { HoverFeatureType } from "@/store/viewerStore";
 
 const PcbCanvas = dynamic(() => import("@/components/PcbCanvas"), { ssr: false });
 
@@ -27,7 +28,7 @@ export default function ExamplesClient({
   examples: ExampleMap;
 }) {
   const [activeId, setActiveId] = useState(index[0]?.id || "");
-  const [hoveredType, setHoveredType] = useState<"component" | "trace" | undefined>(undefined);
+  const [hoveredType, setHoveredType] = useState<HoverFeatureType | undefined>(undefined);
   const [hoveredId, setHoveredId] = useState<string | undefined>(undefined);
   const [visibleDetail, setVisibleDetail] = useState<string[]>([...BASE_VISIBLE_DETAIL_NAMES, ...OVERLAY_DETAIL_NAMES]);
   const [liveVisibleDetail, setLiveVisibleDetail] = useState<string[]>([]);

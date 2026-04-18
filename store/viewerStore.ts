@@ -1,8 +1,10 @@
 import { create } from "zustand";
 
+export type HoverFeatureType = "component" | "trace" | "zones" | "vias" | "pads" | "keepouts" | "silkscreen" | "documentation" | "mechanical" | "graphics" | "drills";
+
 type HighlightSet = {
   targetId?: string;
-  targetType?: "component" | "trace";
+  targetType?: HoverFeatureType;
   directComponentIds: string[];
   traceIds: string[];
   netIds: string[];
@@ -10,9 +12,9 @@ type HighlightSet = {
 
 type ViewerState = {
   hoveredFeatureId?: string;
-  hoveredFeatureType?: "component" | "trace";
+  hoveredFeatureType?: HoverFeatureType;
   highlight: HighlightSet;
-  setHoveredFeature: (type?: "component" | "trace", id?: string) => void;
+  setHoveredFeature: (type?: HoverFeatureType, id?: string) => void;
   setHighlight: (payload: HighlightSet) => void;
 };
 
