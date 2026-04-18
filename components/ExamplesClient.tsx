@@ -9,13 +9,14 @@ const PcbCanvas = dynamic(() => import("@/components/PcbCanvas"), { ssr: false }
 
 const CANVAS_W = 980;
 const CANVAS_H = 620;
-const OVERLAY_DETAIL_NAMES = ["zones", "vias", "pads", "keepouts", "silkscreen", "documentation", "mechanical", "graphics", "drills"];
+const OVERLAY_DETAIL_NAMES = ["zones", "vias", "pads", "keepouts", "silkscreen", "documentation", "mechanical", "graphics", "drills", "boardOutlines"];
 const BASE_VISIBLE_DETAIL_NAMES = ["grid", "components", "labels", "measures"];
 const OVERLAY_FAMILY_PRESETS = {
   all: [...OVERLAY_DETAIL_NAMES],
   copper: ["zones", "vias", "pads"],
   fabrication: ["keepouts", "silkscreen", "drills"],
   documentation: ["documentation", "mechanical", "graphics"],
+  structure: ["boardOutlines"],
 } as const;
 
 type ExampleMap = Record<string, ExampleBoardData>;
@@ -63,6 +64,7 @@ export default function ExamplesClient({
       mechanical: active.mechanical?.length || 0,
       graphics: active.graphics?.length || 0,
       drills: active.drills?.length || 0,
+      boardOutlines: active.boardOutlines?.length || 0,
     };
     return Object.entries(fallbackCounts).filter(([, count]) => Number(count) > 0).sort((a, b) => Number(b[1]) - Number(a[1]));
   }, [metadata, active]);
@@ -104,13 +106,15 @@ export default function ExamplesClient({
     copper: geometryBuckets.filter(([name]) => ['zones', 'vias', 'pads'].includes(name)).reduce((acc, [, count]) => acc + Number(count), 0),
     fabrication: geometryBuckets.filter(([name]) => ['keepouts', 'silkscreen', 'drills'].includes(name)).reduce((acc, [, count]) => acc + Number(count), 0),
     documentation: geometryBuckets.filter(([name]) => ['documentation', 'mechanical', 'graphics'].includes(name)).reduce((acc, [, count]) => acc + Number(count), 0),
+    structure: geometryBuckets.filter(([name]) => ['boardOutlines'].includes(name)).reduce((acc, [, count]) => acc + Number(count), 0),
   }), [geometryBuckets]);
   const activeDensity = active ? (active.components.length + totalGeometry) / Math.max(active.board.widthMm * active.board.heightMm, 1) : 0;
   const overlayFamilyButtons = [
-    { key: "all", label: "All", names: OVERLAY_FAMILY_PRESETS.all, tone: 'var(--cyan)', count: overlayFamilyCounts.copper + overlayFamilyCounts.fabrication + overlayFamilyCounts.documentation },
+    { key: "all", label: "All", names: OVERLAY_FAMILY_PRESETS.all, tone: 'var(--cyan)', count: overlayFamilyCounts.copper + overlayFamilyCounts.fabrication + overlayFamilyCounts.documentation + overlayFamilyCounts.structure },
     { key: "copper", label: "Copper", names: OVERLAY_FAMILY_PRESETS.copper, tone: '#38bdf8', count: overlayFamilyCounts.copper },
     { key: "fabrication", label: "Fab", names: OVERLAY_FAMILY_PRESETS.fabrication, tone: '#f59e0b', count: overlayFamilyCounts.fabrication },
     { key: "documentation", label: "Docs", names: OVERLAY_FAMILY_PRESETS.documentation, tone: '#22c55e', count: overlayFamilyCounts.documentation },
+    { key: "structure", label: "Outline", names: OVERLAY_FAMILY_PRESETS.structure, tone: '#a78bfa', count: overlayFamilyCounts.structure },
   ] as const;
   const activeOverlayFamily = overlayFamilyButtons.find(({ names }) => names.length === requestedEnabledOverlays.length && names.every((name) => requestedEnabledOverlays.includes(name)))?.key || null;
   const overlayInspectTargets = useMemo(() => {
@@ -122,6 +126,7 @@ export default function ExamplesClient({
       { family: "fabrication", kind: "keepouts", items: active.keepouts || [] },
       { family: "fabrication", kind: "silkscreen", items: active.silkscreen || [] },
       { family: "fabrication", kind: "drills", items: active.drills || [] },
+      { family: "structure", kind: "boardOutlines", items: active.boardOutlines || [] },
       { family: "documentation", kind: "documentation", items: active.documentation || [] },
       { family: "documentation", kind: "mechanical", items: active.mechanical || [] },
       { family: "documentation", kind: "graphics", items: active.graphics || [] },
@@ -281,6 +286,7 @@ export default function ExamplesClient({
                 mechanical={active.mechanical || []}
                 graphics={active.graphics || []}
                 drills={active.drills || []}
+                boardOutlines={active.boardOutlines || []}
                 zones={active.zones || []}
                 vias={active.vias || []}
                 visibleDetail={visibleDetail}
@@ -314,7 +320,7 @@ export default function ExamplesClient({
                 <div className="inspector-kv"><span>Warnings</span><strong>{warningCount}</strong></div>
                 <div className="inspector-kv"><span>Layer classes</span><strong>{new Set(layerCategoryEntries.map(([, v]) => v)).size}</strong></div>
                 <div className="inspector-kv"><span>Enabled overlays</span><strong>{requestedEnabledOverlays.join(', ') || '—'}</strong></div>
-                <div className="inspector-kv"><span>Overlay families</span><strong>Copper {overlayFamilyCounts.copper} · Fab {overlayFamilyCounts.fabrication} · Docs {overlayFamilyCounts.documentation}</strong></div>
+                <div className="inspector-kv"><span>Overlay families</span><strong>Copper {overlayFamilyCounts.copper} · Fab {overlayFamilyCounts.fabrication} · Docs {overlayFamilyCounts.documentation} · Outline {overlayFamilyCounts.structure}</strong></div>
                 <div className="inspector-kv"><span>Active family preset</span><strong>{activeOverlayFamily || 'custom'}</strong></div>
               </div>
               {sourceHref && (
@@ -405,6 +411,7 @@ export default function ExamplesClient({
                     <div className="focus-meta">Copper: zones · vias · pads</div>
                     <div className="focus-meta">Fab: keepouts · silkscreen · drills</div>
                     <div className="focus-meta">Docs: documentation · mechanical · graphics</div>
+                    <div className="focus-meta">Outline: boardOutlines</div>
                   </div>
                   {semanticStats.length > 0 && (
                     <div className="focus-card" style={{ marginTop: 14 }}>

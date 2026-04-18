@@ -1219,42 +1219,7 @@
       ]
     }
   ],
-  "documentation": [
-    {
-      "id": "T35",
-      "netId": "$NONE$",
-      "layerId": "DOCUMENT",
-      "width": 0.1,
-      "path": [
-        [
-          7.0,
-          5.0
-        ],
-        [
-          47.0,
-          5.0
-        ]
-      ]
-    },
-    {
-      "id": "T36",
-      "netId": "$NONE$",
-      "layerId": "DOCUMENT",
-      "width": 0.1,
-      "path": [
-        [
-          5.0,
-          7.0
-        ],
-        [
-          5.0,
-          32.0
-        ]
-      ]
-    }
-  ],
-  "mechanical": [],
-  "graphics": [
+  "boardOutlines": [
     {
       "id": "T1",
       "netId": "$BOARD$",
@@ -1364,6 +1329,42 @@
       ]
     }
   ],
+  "documentation": [
+    {
+      "id": "T35",
+      "netId": "$NONE$",
+      "layerId": "DOCUMENT",
+      "width": 0.1,
+      "path": [
+        [
+          7.0,
+          5.0
+        ],
+        [
+          47.0,
+          5.0
+        ]
+      ]
+    },
+    {
+      "id": "T36",
+      "netId": "$NONE$",
+      "layerId": "DOCUMENT",
+      "width": 0.1,
+      "path": [
+        [
+          5.0,
+          7.0
+        ],
+        [
+          5.0,
+          32.0
+        ]
+      ]
+    }
+  ],
+  "mechanical": [],
+  "graphics": [],
   "drills": [],
   "nets": [
     {
@@ -1397,7 +1398,7 @@
   ],
   "importMetadata": {
     "sourceFormat": "ipc2581",
-    "sourcePath": "/home/ubuntu/pcb-hover-viewer/data/raw/led_power_board_ipc.xml",
+    "sourcePath": "data/raw/led_power_board_ipc.xml",
     "stats": {
       "layerCount": 13,
       "componentCount": 10,
@@ -1428,9 +1429,10 @@
         "zones": 1,
         "keepouts": 0,
         "silkscreen": 1,
+        "boardOutlines": 1,
         "documentation": 2,
         "mechanical": 0,
-        "graphics": 1,
+        "graphics": 0,
         "drills": 0
       }
     },

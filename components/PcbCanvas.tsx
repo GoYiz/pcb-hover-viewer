@@ -19,6 +19,7 @@ type Props = {
   mechanical?: TraceItem[];
   graphics?: TraceItem[];
   drills?: TraceItem[];
+  boardOutlines?: TraceItem[];
   zones?: TraceItem[];
   vias?: TraceItem[];
   visibleLayers?: string[];
@@ -57,6 +58,7 @@ export default function PcbCanvas({
   mechanical = [],
   graphics = [],
   drills = [],
+  boardOutlines = [],
   zones = [],
   vias = [],
   visibleLayers = ["F.Cu", "B.Cu"],
@@ -109,6 +111,7 @@ export default function PcbCanvas({
         const docLayer = new Group();
         const mechLayer = new Group();
         const graphicsLayer = new Group();
+        const boardOutlineLayer = new Group();
         const compLayer = new Group();
         const overlayLayer = new Group();
         leafer.add(gridLayer);
@@ -123,6 +126,7 @@ export default function PcbCanvas({
         leafer.add(docLayer);
         leafer.add(mechLayer);
         leafer.add(graphicsLayer);
+        leafer.add(boardOutlineLayer);
         leafer.add(compLayer);
         leafer.add(overlayLayer);
 
@@ -347,7 +351,7 @@ export default function PcbCanvas({
         const SNAP_RADIUS = 12;
         const toolModeRef = { value: "select" as "select" | "measure" | "pan" };
         const selectionFilterRef = { value: "all" as "all" | "component" | "trace" };
-        const detailVisibilityRef = { value: { grid: true, components: true, labels: true, measures: true, pads: true, keepouts: true, silkscreen: true, documentation: true, mechanical: true, graphics: true, drills: true, zones: true, vias: true } };
+        const detailVisibilityRef = { value: { grid: true, components: true, labels: true, measures: true, pads: true, keepouts: true, silkscreen: true, documentation: true, mechanical: true, graphics: true, drills: true, zones: true, vias: true, boardOutlines: true } };
         const helpRef = { visible: false };
         const exportStateRef = { last: "-" };
 
@@ -395,7 +399,7 @@ export default function PcbCanvas({
           else params.set("tool", toolModeRef.value);
           if (selectionFilterRef.value === "all") params.delete("sf");
           else params.set("sf", selectionFilterRef.value);
-          if (visibleDetailList.length === 12) params.delete("vd");
+          if (visibleDetailList.length === 14) params.delete("vd");
           else params.set("vd", visibleDetailList.join(","));
           window.history.replaceState({}, "", url.toString());
         };
@@ -407,7 +411,7 @@ export default function PcbCanvas({
         };
 
         const applyCamera = () => {
-          for (const layer of [gridLayer, boardLayer, zoneLayer, keepoutLayer, traceLayer, viaLayer, padLayer, drillLayer, silkLayer, docLayer, mechLayer, graphicsLayer, compLayer]) {
+          for (const layer of [gridLayer, boardLayer, zoneLayer, keepoutLayer, traceLayer, viaLayer, padLayer, drillLayer, silkLayer, docLayer, mechLayer, graphicsLayer, boardOutlineLayer, compLayer]) {
             layer.scaleX = scaleRef.value;
             layer.scaleY = scaleRef.value;
             layer.x = offsetRef.x;
@@ -571,9 +575,9 @@ export default function PcbCanvas({
           toolbarLayer.clear();
           const overlayLegend = new Text({ x: 734, y: 73, text: "Overlays", fill: "#94a3b8", fontSize: 10.5 });
           toolbarLayer.add(overlayLegend);
-          const isAllPreset = detailVisibilityRef.value.zones && detailVisibilityRef.value.vias && detailVisibilityRef.value.pads && detailVisibilityRef.value.keepouts && detailVisibilityRef.value.silkscreen && detailVisibilityRef.value.documentation && detailVisibilityRef.value.mechanical && detailVisibilityRef.value.graphics && detailVisibilityRef.value.drills;
-          const isCopperPreset = detailVisibilityRef.value.zones && detailVisibilityRef.value.vias && detailVisibilityRef.value.pads && !detailVisibilityRef.value.keepouts && !detailVisibilityRef.value.silkscreen && !detailVisibilityRef.value.documentation && !detailVisibilityRef.value.mechanical && !detailVisibilityRef.value.graphics && !detailVisibilityRef.value.drills;
-          const isFabPreset = !detailVisibilityRef.value.zones && !detailVisibilityRef.value.vias && !detailVisibilityRef.value.pads && detailVisibilityRef.value.keepouts && detailVisibilityRef.value.silkscreen && detailVisibilityRef.value.documentation && detailVisibilityRef.value.mechanical && detailVisibilityRef.value.graphics && detailVisibilityRef.value.drills;
+          const isAllPreset = detailVisibilityRef.value.zones && detailVisibilityRef.value.vias && detailVisibilityRef.value.pads && detailVisibilityRef.value.keepouts && detailVisibilityRef.value.silkscreen && detailVisibilityRef.value.documentation && detailVisibilityRef.value.mechanical && detailVisibilityRef.value.graphics && detailVisibilityRef.value.drills && detailVisibilityRef.value.boardOutlines;
+          const isCopperPreset = detailVisibilityRef.value.zones && detailVisibilityRef.value.vias && detailVisibilityRef.value.pads && !detailVisibilityRef.value.keepouts && !detailVisibilityRef.value.silkscreen && !detailVisibilityRef.value.documentation && !detailVisibilityRef.value.mechanical && !detailVisibilityRef.value.graphics && !detailVisibilityRef.value.drills && !detailVisibilityRef.value.boardOutlines;
+          const isFabPreset = !detailVisibilityRef.value.zones && !detailVisibilityRef.value.vias && !detailVisibilityRef.value.pads && detailVisibilityRef.value.keepouts && detailVisibilityRef.value.silkscreen && detailVisibilityRef.value.documentation && detailVisibilityRef.value.mechanical && detailVisibilityRef.value.graphics && detailVisibilityRef.value.drills && detailVisibilityRef.value.boardOutlines;
           const selectBtn = createToolbarButton(32, 112, 42, 28, "Sel", toolModeRef.value === "select", "rgba(245,158,11,0.82)");
           const measureBtn = createToolbarButton(32, 146, 42, 28, "Mea", toolModeRef.value === "measure", "rgba(167,139,250,0.82)");
           const panBtn = createToolbarButton(32, 180, 42, 28, "Pan", toolModeRef.value === "pan", "rgba(34,211,238,0.82)");
@@ -624,9 +628,9 @@ export default function PcbCanvas({
           for (const node of [filterCompBtn.bg, filterCompBtn.text]) node.on("pointer.tap", () => { selectionFilterRef.value = "component"; renderVisibility(); });
           for (const node of [filterTraceBtn.bg, filterTraceBtn.text]) node.on("pointer.tap", () => { selectionFilterRef.value = "trace"; renderVisibility(); });
           for (const node of [helpBtn.bg, helpBtn.text]) node.on("pointer.tap", () => { toggleHelp(); renderToolbars(); });
-          for (const node of [presetAllBtn.bg, presetAllBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.zones = true; detailVisibilityRef.value.vias = true; detailVisibilityRef.value.pads = true; detailVisibilityRef.value.keepouts = true; detailVisibilityRef.value.silkscreen = true; detailVisibilityRef.value.documentation = true; detailVisibilityRef.value.mechanical = true; detailVisibilityRef.value.graphics = true; detailVisibilityRef.value.drills = true; renderVisibility(); });
-          for (const node of [presetCopperBtn.bg, presetCopperBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.zones = true; detailVisibilityRef.value.vias = true; detailVisibilityRef.value.pads = true; detailVisibilityRef.value.keepouts = false; detailVisibilityRef.value.silkscreen = false; detailVisibilityRef.value.documentation = false; detailVisibilityRef.value.mechanical = false; detailVisibilityRef.value.graphics = false; detailVisibilityRef.value.drills = false; renderVisibility(); });
-          for (const node of [presetFabBtn.bg, presetFabBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.zones = false; detailVisibilityRef.value.vias = false; detailVisibilityRef.value.pads = false; detailVisibilityRef.value.keepouts = true; detailVisibilityRef.value.silkscreen = true; detailVisibilityRef.value.documentation = true; detailVisibilityRef.value.mechanical = true; detailVisibilityRef.value.graphics = true; detailVisibilityRef.value.drills = true; renderVisibility(); });
+          for (const node of [presetAllBtn.bg, presetAllBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.zones = true; detailVisibilityRef.value.vias = true; detailVisibilityRef.value.pads = true; detailVisibilityRef.value.keepouts = true; detailVisibilityRef.value.silkscreen = true; detailVisibilityRef.value.documentation = true; detailVisibilityRef.value.mechanical = true; detailVisibilityRef.value.graphics = true; detailVisibilityRef.value.drills = true; detailVisibilityRef.value.boardOutlines = true; renderVisibility(); });
+          for (const node of [presetCopperBtn.bg, presetCopperBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.zones = true; detailVisibilityRef.value.vias = true; detailVisibilityRef.value.pads = true; detailVisibilityRef.value.keepouts = false; detailVisibilityRef.value.silkscreen = false; detailVisibilityRef.value.documentation = false; detailVisibilityRef.value.mechanical = false; detailVisibilityRef.value.graphics = false; detailVisibilityRef.value.drills = false; detailVisibilityRef.value.boardOutlines = false; renderVisibility(); });
+          for (const node of [presetFabBtn.bg, presetFabBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.zones = false; detailVisibilityRef.value.vias = false; detailVisibilityRef.value.pads = false; detailVisibilityRef.value.keepouts = true; detailVisibilityRef.value.silkscreen = true; detailVisibilityRef.value.documentation = true; detailVisibilityRef.value.mechanical = true; detailVisibilityRef.value.graphics = true; detailVisibilityRef.value.drills = true; detailVisibilityRef.value.boardOutlines = true; renderVisibility(); });
           for (const node of [gridBtn.bg, gridBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.grid = !detailVisibilityRef.value.grid; renderVisibility(); });
           for (const node of [compBtn.bg, compBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.components = !detailVisibilityRef.value.components; renderVisibility(); });
           for (const node of [labelBtn.bg, labelBtn.text]) node.on("pointer.tap", () => { detailVisibilityRef.value.labels = !detailVisibilityRef.value.labels; renderVisibility(); });
@@ -1401,6 +1405,7 @@ export default function PcbCanvas({
           docLayer.visible = detailVisibilityRef.value.documentation;
           mechLayer.visible = detailVisibilityRef.value.mechanical;
           graphicsLayer.visible = detailVisibilityRef.value.graphics;
+          boardOutlineLayer.visible = detailVisibilityRef.value.boardOutlines;
           drillLayer.visible = detailVisibilityRef.value.drills;
           for (const id of traceMap.keys()) updateTraceStyle(id);
           for (const id of compMap.keys()) updateCompStyle(id);
@@ -1566,6 +1571,10 @@ export default function PcbCanvas({
           renderOverlayPath(silkLayer, silk, { stroke: 'rgba(226,232,240,0.92)', opacity: 0.82, strokeWidth: 0.9 });
         }
 
+        for (const outline of boardOutlines) {
+          renderOverlayPath(boardOutlineLayer, outline, { stroke: 'rgba(167,139,250,0.96)', opacity: 0.9, strokeWidth: 1.2 });
+        }
+
         for (const doc of documentation) {
           renderOverlayPath(docLayer, doc, { stroke: 'rgba(34,197,94,0.82)', opacity: 0.72, strokeWidth: 0.85 });
         }
@@ -1658,6 +1667,7 @@ export default function PcbCanvas({
               mechanical: initialUrlState.vd.includes("mechanical"),
               graphics: initialUrlState.vd.includes("graphics"),
               drills: initialUrlState.vd.includes("drills"),
+              boardOutlines: initialUrlState.vd.includes("boardOutlines"),
             };
             if (detailVisibilityRef.value.labels) detailVisibilityRef.value.components = true;
           }
@@ -1935,7 +1945,7 @@ export default function PcbCanvas({
       } catch {}
       runtimeRef.current = null;
     };
-  }, [width, height, boardWidthMm, boardHeightMm, components, traces, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills, zones, vias, onHoverFeature]);
+  }, [width, height, boardWidthMm, boardHeightMm, components, traces, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills, boardOutlines, zones, vias, onHoverFeature]);
 
   useEffect(() => {
     const rt = runtimeRef.current;
@@ -1954,6 +1964,7 @@ export default function PcbCanvas({
       mechanical: visibleDetail.includes("mechanical"),
       graphics: visibleDetail.includes("graphics"),
       drills: visibleDetail.includes("drills"),
+      boardOutlines: visibleDetail.includes("boardOutlines"),
     };
     const current = rt.detailVisibilityRef?.value as typeof next | undefined;
     const same = current && (Object.keys(next) as Array<keyof typeof next>).every((key) => current[key] === next[key]);

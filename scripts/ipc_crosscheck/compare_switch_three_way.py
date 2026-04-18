@@ -1,10 +1,11 @@
 import json, math
 from pathlib import Path
 
-BASE = Path('/var/minis/workspace')
-OURS = json.load(open(BASE / 'pcb-hover-viewer/public/examples/switch_board_ipc.json'))
-CPP = json.load(open(BASE / 'ipc_crosscheck/switch_external.json'))
-JAVA = json.load(open(BASE / 'ipc_crosscheck/switch_java.json'))
+ROOT = Path(__file__).resolve().parents[2]
+OURS = json.load(open(ROOT / 'public/examples/switch_board_ipc.json'))
+CPP = json.load(open(Path.home() / 'tmp_ipc_align/switch_cpp.json'))
+JAVA = json.load(open(Path.home() / 'tmp_ipc_align/switch_java.json'))
+
 
 
 def our_comp_map(d):

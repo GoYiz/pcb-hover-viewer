@@ -190,6 +190,50 @@ async function main() {
         ]),
         width: 0.7,
       },
+      {
+        id: "O001",
+        boardId,
+        netId: null,
+        layerId: "TOP",
+        kind: "board_outline",
+        pathJson: JSON.stringify([
+          [4, 4], [116, 4], [116, 56], [4, 56], [4, 4],
+        ]),
+        width: 0.12,
+      },
+      {
+        id: "DOC001",
+        boardId,
+        netId: null,
+        layerId: "TOP",
+        kind: "documentation",
+        pathJson: JSON.stringify([
+          [12, 10], [28, 10],
+        ]),
+        width: 0.1,
+      },
+      {
+        id: "MECH001",
+        boardId,
+        netId: null,
+        layerId: "TOP",
+        kind: "mechanical",
+        pathJson: JSON.stringify([
+          [46, 30], [58, 30], [58, 40], [46, 40], [46, 30],
+        ]),
+        width: 0.1,
+      },
+      {
+        id: "GFX001",
+        boardId,
+        netId: null,
+        layerId: "TOP",
+        kind: "graphics",
+        pathJson: JSON.stringify([
+          [14, 48], [22, 52], [30, 48],
+        ]),
+        width: 0.1,
+      },
     ],
   });
 

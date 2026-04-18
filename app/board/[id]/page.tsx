@@ -12,6 +12,7 @@ const INSPECT_FAMILY_MAP: Record<string, string[]> = {
   keepouts: ["keepouts", "silkscreen", "drills"],
   silkscreen: ["keepouts", "silkscreen", "drills"],
   drills: ["keepouts", "silkscreen", "drills"],
+  boardOutlines: ["boardOutlines"],
   documentation: ["documentation", "mechanical", "graphics"],
   mechanical: ["documentation", "mechanical", "graphics"],
   graphics: ["documentation", "mechanical", "graphics"],
@@ -45,6 +46,7 @@ export default async function BoardPage({ params, searchParams }: { params: Prom
         initialPads={board.pads}
         initialKeepouts={board.keepouts}
         initialSilkscreen={board.silkscreen}
+        initialBoardOutlines={board.boardOutlines}
         initialDocumentation={board.documentation}
         initialMechanical={board.mechanical}
         initialGraphics={board.graphics}

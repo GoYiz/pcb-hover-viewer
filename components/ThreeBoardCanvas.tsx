@@ -21,6 +21,7 @@ type Props = {
   mechanical?: TraceItem[];
   graphics?: TraceItem[];
   drills?: TraceItem[];
+  boardOutlines?: TraceItem[];
   visibleDetail?: string[];
   visibleLayers?: string[];
   focusComponentId?: string;
@@ -66,6 +67,7 @@ const DEFAULT_VISIBLE_DETAIL = [
   "mechanical",
   "graphics",
   "drills",
+  "boardOutlines",
 ];
 
 function xy(x: number, y: number, bw: number, bh: number) {
@@ -181,6 +183,7 @@ export default function ThreeBoardCanvas({
   mechanical = [],
   graphics = [],
   drills = [],
+  boardOutlines = [],
   visibleDetail,
   visibleLayers = ["F.Cu", "B.Cu"],
   focusComponentId,
@@ -414,6 +417,7 @@ export default function ThreeBoardCanvas({
       { key: "zones", items: zones, color: "#60a5fa", opacity: 0.42, z: 0.22 },
       { key: "keepouts", items: keepouts, color: "#ef4444", opacity: 0.88, z: 0.56 },
       { key: "silkscreen", items: silkscreen, color: "#f8fafc", opacity: 0.92, z: 0.7 },
+      { key: "boardOutlines", items: boardOutlines, color: "#a78bfa", opacity: 0.96, z: 0.84 },
       { key: "documentation", items: documentation, color: "#4ade80", opacity: 0.52, z: 0.96 },
       { key: "mechanical", items: mechanical, color: "#fb7185", opacity: 0.72, z: 1.08 },
       { key: "graphics", items: graphics, color: "#cbd5e1", opacity: 0.48, z: 1.18 },
@@ -483,7 +487,7 @@ export default function ThreeBoardCanvas({
         r.hoverables.push(mesh);
       }
     }
-  }, [components, traces, zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills, visibleLayers, visibleDetailKey, boardWidthMm, boardHeightMm]);
+  }, [components, traces, zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills, boardOutlines, visibleLayers, visibleDetailKey, boardWidthMm, boardHeightMm]);
 
   useEffect(() => {
     const r = refs.current;

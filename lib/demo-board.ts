@@ -31,6 +31,18 @@ export const DEMO_BOARD = {
   silkscreen: [
     { id: "S1", netId: "", layerId: "F.SilkS", width: 0.12, path: [[16, 14], [42, 14]] as [number, number][] },
   ],
+  documentation: [
+    { id: "DOC1", netId: "", layerId: "Dwgs.User", width: 0.1, path: [[12, 10], [28, 10]] as [number, number][] },
+  ],
+  mechanical: [
+    { id: "M1", netId: "", layerId: "Eco1.User", width: 0.1, path: [[46, 30], [58, 30], [58, 40], [46, 40], [46, 30]] as [number, number][] },
+  ],
+  graphics: [
+    { id: "G1", netId: "", layerId: "Cmts.User", width: 0.1, path: [[14, 48], [22, 52], [30, 48]] as [number, number][] },
+  ],
+  boardOutlines: [
+    { id: "O1", netId: "", layerId: "BOARD_EDGE", width: 0.12, path: [[4, 4], [116, 4], [116, 56], [4, 56], [4, 4]] as [number, number][] },
+  ],
   drills: [
     { id: "D1", netId: "", layerId: "DRILL", width: 0.7, path: [[36.35, 20], [36.2899, 20.2475], [36.1232, 20.438], [35.888, 20.4987], [35.6527, 20.438], [35.4861, 20.2475], [35.426, 20], [35.4861, 19.7525], [35.6527, 19.562], [35.888, 19.5013], [36.1232, 19.562], [36.2899, 19.7525], [36.35, 20]] as [number, number][] },
   ],
@@ -81,6 +93,10 @@ export function getDemoBoardGeometryById(id: string, layer = "TOP") {
     pads: includeTopGeometry ? [...(board.pads || [])] : [],
     keepouts: includeTopGeometry ? [...(board.keepouts || [])] : [],
     silkscreen: includeTopGeometry ? [...(board.silkscreen || [])] : [],
+    boardOutlines: includeTopGeometry ? [...(board.boardOutlines || [])] : [],
+    documentation: includeTopGeometry ? [...(board.documentation || [])] : [],
+    mechanical: includeTopGeometry ? [...(board.mechanical || [])] : [],
+    graphics: includeTopGeometry ? [...(board.graphics || [])] : [],
     drills: includeTopGeometry ? [...(board.drills || [])] : [],
   };
 }

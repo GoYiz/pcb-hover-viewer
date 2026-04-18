@@ -590,6 +590,7 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
     zones = []
     keepouts = []
     silkscreen = []
+    board_outlines = []
     documentation = []
     mechanical = []
     graphics = []
@@ -608,6 +609,8 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
             keepouts.append(t)
         elif semantic == 'silkscreen':
             silkscreen.append(t)
+        elif semantic == 'board_outline':
+            board_outlines.append(t)
         elif semantic == 'documentation':
             documentation.append(t)
         elif semantic == 'mechanical':
@@ -708,6 +711,7 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
                 'zones': len(zones),
                 'keepouts': len(keepouts),
                 'silkscreen': len(silkscreen),
+                'boardOutlines': len(board_outlines),
                 'documentation': len(documentation),
                 'mechanical': len(mechanical),
                 'graphics': len(graphics),
@@ -718,7 +722,7 @@ def parse_ipc2581(path: Path, board_id: str, board_name: str):
         'warnings': warnings,
     }
 
-    return {'board': {'id': board_id, 'name': board_name, 'version': 'imported-ipc2581', 'widthMm': round(width_mm, 2), 'heightMm': round(height_mm, 2)}, 'layers': layers, 'components': components, 'traces': copper_traces, 'vias': vias, 'pads': pads, 'zones': zones, 'keepouts': keepouts, 'silkscreen': silkscreen, 'documentation': documentation, 'mechanical': mechanical, 'graphics': graphics, 'drills': drills, 'nets': nets, 'importMetadata': import_metadata}
+    return {'board': {'id': board_id, 'name': board_name, 'version': 'imported-ipc2581', 'widthMm': round(width_mm, 2), 'heightMm': round(height_mm, 2)}, 'layers': layers, 'components': components, 'traces': copper_traces, 'vias': vias, 'pads': pads, 'zones': zones, 'keepouts': keepouts, 'silkscreen': silkscreen, 'boardOutlines': board_outlines, 'documentation': documentation, 'mechanical': mechanical, 'graphics': graphics, 'drills': drills, 'nets': nets, 'importMetadata': import_metadata}
 
 
 def fetch(url: str) -> bytes:

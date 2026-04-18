@@ -12,6 +12,7 @@ export type HostedBoardData = {
   pads?: TraceItem[];
   keepouts?: TraceItem[];
   silkscreen?: TraceItem[];
+  boardOutlines?: TraceItem[];
   documentation?: TraceItem[];
   mechanical?: TraceItem[];
   graphics?: TraceItem[];
@@ -48,6 +49,10 @@ function demoBoardToHosted(): HostedBoardData {
     pads: cloneTraceItems(DEMO_BOARD.pads || []),
     keepouts: cloneTraceItems(DEMO_BOARD.keepouts || []),
     silkscreen: cloneTraceItems(DEMO_BOARD.silkscreen || []),
+    boardOutlines: cloneTraceItems(DEMO_BOARD.boardOutlines || []),
+    documentation: cloneTraceItems(DEMO_BOARD.documentation || []),
+    mechanical: cloneTraceItems(DEMO_BOARD.mechanical || []),
+    graphics: cloneTraceItems(DEMO_BOARD.graphics || []),
     drills: cloneTraceItems(DEMO_BOARD.drills || []),
     importMetadata: (DEMO_BOARD as { importMetadata?: ImportMetadata }).importMetadata,
   };
@@ -78,6 +83,7 @@ function exampleBoardToHosted(example: ExampleBoardData): HostedBoardData {
     pads: cloneTraceItems(example.pads || []),
     keepouts: cloneTraceItems(example.keepouts || []),
     silkscreen: cloneTraceItems(example.silkscreen || []),
+    boardOutlines: cloneTraceItems(example.boardOutlines || []),
     documentation: cloneTraceItems(example.documentation || []),
     mechanical: cloneTraceItems(example.mechanical || []),
     graphics: cloneTraceItems(example.graphics || []),
@@ -179,6 +185,7 @@ export function getHostedBoardGeometryById(id: string, layer = "TOP") {
     pads: filterGeometryByLayer(board.pads || [], layer, false),
     keepouts: filterGeometryByLayer(board.keepouts || [], layer, true),
     silkscreen: filterGeometryByLayer(board.silkscreen || [], layer, true),
+    boardOutlines: filterGeometryByLayer(board.boardOutlines || [], layer, true),
     documentation: filterGeometryByLayer(board.documentation || [], layer, true),
     mechanical: filterGeometryByLayer(board.mechanical || [], layer, true),
     graphics: filterGeometryByLayer(board.graphics || [], layer, true),

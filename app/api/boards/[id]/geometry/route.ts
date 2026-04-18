@@ -61,14 +61,19 @@ export async function GET(
   }));
 
   return NextResponse.json({
-    boardId: id,
-    layer,
-    traces: mappedTraces,
-    zones: mappedOverlays.filter((t) => t.kind === "zone").map(({ kind, ...rest }) => rest),
-    vias: mappedOverlays.filter((t) => t.kind === "via").map(({ kind, ...rest }) => rest),
-    pads: mappedOverlays.filter((t) => t.kind === "pad").map(({ kind, ...rest }) => rest),
-    keepouts: mappedOverlays.filter((t) => t.kind === "keepout").map(({ kind, ...rest }) => rest),
-    silkscreen: mappedOverlays.filter((t) => t.kind === "silkscreen").map(({ kind, ...rest }) => rest),
-    drills: mappedOverlays.filter((t) => t.kind === "drill").map(({ kind, ...rest }) => rest),
-  });
+  boardId: id,
+  layer,
+  traces: mappedTraces,
+  zones: mappedOverlays.filter((t) => t.kind === "zone").map(({ kind, ...rest }) => rest),
+  vias: mappedOverlays.filter((t) => t.kind === "via").map(({ kind, ...rest }) => rest),
+  pads: mappedOverlays.filter((t) => t.kind === "pad").map(({ kind, ...rest }) => rest),
+  keepouts: mappedOverlays.filter((t) => t.kind === "keepout").map(({ kind, ...rest }) => rest),
+  silkscreen: mappedOverlays.filter((t) => t.kind === "silkscreen").map(({ kind, ...rest }) => rest),
+  boardOutlines: mappedOverlays.filter((t) => t.kind === "board_outline").map(({ kind, ...rest }) => rest),
+  documentation: mappedOverlays.filter((t) => t.kind === "documentation").map(({ kind, ...rest }) => rest),
+  mechanical: mappedOverlays.filter((t) => t.kind === "mechanical").map(({ kind, ...rest }) => rest),
+  graphics: mappedOverlays.filter((t) => t.kind === "graphics").map(({ kind, ...rest }) => rest),
+  drills: mappedOverlays.filter((t) => t.kind === "drill").map(({ kind, ...rest }) => rest),
+});
 }
+

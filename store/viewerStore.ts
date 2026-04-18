@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type HoverFeatureType = "component" | "trace" | "zones" | "vias" | "pads" | "keepouts" | "silkscreen" | "documentation" | "mechanical" | "graphics" | "drills";
+export type HoverFeatureType = "component" | "trace" | "zones" | "vias" | "pads" | "keepouts" | "silkscreen" | "boardOutlines" | "documentation" | "mechanical" | "graphics" | "drills";
 
 type HighlightSet = {
   targetId?: string;

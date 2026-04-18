@@ -55,6 +55,10 @@ try:
     assert len(demo_geom['pads']) == 1
     assert len(demo_geom['keepouts']) == 1
     assert len(demo_geom['silkscreen']) == 1
+    assert len(demo_geom['boardOutlines']) == 1
+    assert len(demo_geom['documentation']) == 1
+    assert len(demo_geom['mechanical']) == 1
+    assert len(demo_geom['graphics']) == 1
     assert len(demo_geom['drills']) == 1
 
     demo_rel = fetch_json('/api/boards/iphone-mainboard-demo/relations/component/U1200')
@@ -73,7 +77,7 @@ try:
         components = fetch_json(f'/api/boards/{board_id}/components')
         assert len(components['components']) >= min_components, (board_id, 'component count too low')
         geometry = fetch_json(f'/api/boards/{board_id}/geometry?layer={urllib.request.quote(layer)}')
-        total = sum(len(geometry.get(key, [])) for key in ['traces', 'zones', 'vias', 'pads', 'keepouts', 'silkscreen', 'documentation', 'mechanical', 'graphics', 'drills'])
+        total = sum(len(geometry.get(key, [])) for key in ['traces', 'zones', 'vias', 'pads', 'keepouts', 'silkscreen', 'boardOutlines', 'documentation', 'mechanical', 'graphics', 'drills'])
         assert total >= min_geometry, (board_id, 'geometry too low', total)
 
     page = urllib.request.urlopen(f'{BASE}/board/switch_board_ipc', timeout=20).read().decode('utf-8', errors='ignore')

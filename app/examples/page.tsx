@@ -12,6 +12,7 @@ const INSPECT_FAMILY_MAP: Record<string, string[]> = {
   keepouts: ["keepouts", "silkscreen", "drills"],
   silkscreen: ["keepouts", "silkscreen", "drills"],
   drills: ["keepouts", "silkscreen", "drills"],
+  boardOutlines: ["boardOutlines"],
   documentation: ["documentation", "mechanical", "graphics"],
   mechanical: ["documentation", "mechanical", "graphics"],
   graphics: ["documentation", "mechanical", "graphics"],

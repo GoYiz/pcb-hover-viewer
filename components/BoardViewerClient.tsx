@@ -19,13 +19,14 @@ const TOOL_SECTIONS = [
   { title: "Actions", items: ["Export", "Snapshot"] },
 ];
 
-const OVERLAY_DETAIL_NAMES = ["zones", "vias", "pads", "keepouts", "silkscreen", "documentation", "mechanical", "graphics", "drills"];
+const OVERLAY_DETAIL_NAMES = ["zones", "vias", "pads", "keepouts", "silkscreen", "documentation", "mechanical", "graphics", "drills", "boardOutlines"];
 const BASE_VISIBLE_DETAIL_NAMES = ["grid", "components", "labels", "measures"];
 const OVERLAY_FAMILY_PRESETS = {
   all: [...OVERLAY_DETAIL_NAMES],
   copper: ["zones", "vias", "pads"],
   fabrication: ["keepouts", "silkscreen", "drills"],
   documentation: ["documentation", "mechanical", "graphics"],
+  structure: ["boardOutlines"],
 } as const;
 
 type Props = {
@@ -44,6 +45,7 @@ type Props = {
   initialMechanical?: TraceItem[];
   initialGraphics?: TraceItem[];
   initialDrills?: TraceItem[];
+  initialBoardOutlines?: TraceItem[];
   initialViewMode?: "leafer" | "three";
   initialVisibleDetail?: string[];
   initialInspectType?: HoverFeatureType;
@@ -67,6 +69,7 @@ export default function BoardViewerClient({
   initialMechanical,
   initialGraphics,
   initialDrills,
+  initialBoardOutlines,
   initialViewMode,
   initialVisibleDetail,
   initialInspectType,
@@ -84,6 +87,7 @@ export default function BoardViewerClient({
   const [mechanical, setMechanical] = useState<TraceItem[]>(initialMechanical || []);
   const [graphics, setGraphics] = useState<TraceItem[]>(initialGraphics || []);
   const [drills, setDrills] = useState<TraceItem[]>(initialDrills || []);
+  const [boardOutlines, setBoardOutlines] = useState<TraceItem[]>(initialBoardOutlines || []);
   const [boardWidthMm, setBoardWidthMm] = useState(initialBoardWidthMm || 160);
   const [boardHeightMm, setBoardHeightMm] = useState(initialBoardHeightMm || 90);
   const [loading, setLoading] = useState(!(initialComponents?.length && initialTraces?.length));
@@ -125,9 +129,10 @@ export default function BoardViewerClient({
       mechanical: mechanical.length,
       graphics: graphics.length,
       drills: drills.length,
+      boardOutlines: boardOutlines.length,
     };
     return Object.entries(fallbackCounts).filter(([, count]) => Number(count) > 0).sort((a, b) => Number(b[1]) - Number(a[1]));
-  }, [importMetadata, traces, zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills]);
+  }, [importMetadata, traces, zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills, boardOutlines]);
   const totalImportedGeometry = useMemo(() => importGeometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0), [importGeometryBuckets]);
   const [visibleDetail, setVisibleDetail] = useState<string[]>(initialVisibleDetail || [...BASE_VISIBLE_DETAIL_NAMES, ...OVERLAY_DETAIL_NAMES]);
   const requestedEnabledOverlays = useMemo(() => visibleDetail.filter((name) => OVERLAY_DETAIL_NAMES.includes(name)), [visibleDetail]);
@@ -139,7 +144,8 @@ export default function BoardViewerClient({
     copper: zones.length + vias.length + pads.length,
     fabrication: keepouts.length + silkscreen.length + drills.length,
     documentation: documentation.length + mechanical.length + graphics.length,
-  }), [zones, vias, pads, keepouts, silkscreen, drills, documentation, mechanical, graphics]);
+    structure: boardOutlines.length,
+  }), [zones, vias, pads, keepouts, silkscreen, drills, documentation, mechanical, graphics, boardOutlines]);
 
   const netCount = useMemo(() => {
     const nets = new Set<string>();
@@ -203,6 +209,7 @@ export default function BoardViewerClient({
         setMechanical(geom.mechanical || []);
         setGraphics(geom.graphics || []);
         setDrills(geom.drills || []);
+        setBoardOutlines(geom.boardOutlines || []);
       } catch (e) {
         if (!alive) return;
         setError(e instanceof Error ? e.message : "Failed to load board");
@@ -290,17 +297,18 @@ export default function BoardViewerClient({
     [traces, effectiveTargetId, effectiveTargetType],
   );
 
-  const overlayBucketMap = useMemo(() => ({
+  const overlayBucketMap = useMemo<Record<Exclude<HoverFeatureType, "component" | "trace">, TraceItem[]>>(() => ({
     zones,
     vias,
     pads,
     keepouts,
     silkscreen,
+    boardOutlines,
     documentation,
     mechanical,
     graphics,
     drills,
-  }), [zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills]);
+  }), [zones, vias, pads, keepouts, silkscreen, boardOutlines, documentation, mechanical, graphics, drills]);
 
   const hoveredOverlay = useMemo(() => {
     const type = effectiveTargetType;
@@ -384,10 +392,11 @@ export default function BoardViewerClient({
   const stageStatus = loading ? "Loading board" : error ? "Data fault" : boardName || "Live workbench";
   const sourceHint = importMetadata?.sourceFormat ? `${importMetadata.sourceFormat} import` : "API-backed board";
   const overlayFamilyButtons = [
-    { key: "all", label: "All", names: OVERLAY_FAMILY_PRESETS.all, tone: "var(--cyan)", count: overlayFamilyCounts.copper + overlayFamilyCounts.fabrication + overlayFamilyCounts.documentation },
+    { key: "all", label: "All", names: OVERLAY_FAMILY_PRESETS.all, tone: "var(--cyan)", count: overlayFamilyCounts.copper + overlayFamilyCounts.fabrication + overlayFamilyCounts.documentation + overlayFamilyCounts.structure },
     { key: "copper", label: "Copper", names: OVERLAY_FAMILY_PRESETS.copper, tone: "#38bdf8", count: overlayFamilyCounts.copper },
     { key: "fabrication", label: "Fab", names: OVERLAY_FAMILY_PRESETS.fabrication, tone: "#f59e0b", count: overlayFamilyCounts.fabrication },
     { key: "documentation", label: "Docs", names: OVERLAY_FAMILY_PRESETS.documentation, tone: "#22c55e", count: overlayFamilyCounts.documentation },
+    { key: "structure", label: "Outline", names: OVERLAY_FAMILY_PRESETS.structure, tone: "#a78bfa", count: overlayFamilyCounts.structure },
   ] as const;
   const activeOverlayFamily = overlayFamilyButtons.find(({ names }) => names.length === requestedEnabledOverlays.length && names.every((name) => requestedEnabledOverlays.includes(name)))?.key || null;
   const applyOverlayFamily = (names: readonly string[]) => {
@@ -401,6 +410,7 @@ export default function BoardViewerClient({
       { family: "fabrication", kind: "keepouts", items: keepouts },
       { family: "fabrication", kind: "silkscreen", items: silkscreen },
       { family: "fabrication", kind: "drills", items: drills },
+      { family: "structure", kind: "boardOutlines", items: boardOutlines },
       { family: "documentation", kind: "documentation", items: documentation },
       { family: "documentation", kind: "mechanical", items: mechanical },
       { family: "documentation", kind: "graphics", items: graphics },
@@ -408,7 +418,7 @@ export default function BoardViewerClient({
     return buckets
       .map((bucket) => ({ ...bucket, sample: bucket.items[0] }))
       .filter((bucket): bucket is typeof bucket & { sample: TraceItem } => Boolean(bucket.sample));
-  }, [zones, vias, pads, keepouts, silkscreen, drills, documentation, mechanical, graphics]);
+  }, [zones, vias, pads, keepouts, silkscreen, drills, documentation, mechanical, graphics, boardOutlines]);
 
   return (
     <div className="console-shell">
@@ -604,6 +614,7 @@ export default function BoardViewerClient({
                 mechanical={mechanical}
                 graphics={graphics}
                 drills={drills}
+                boardOutlines={boardOutlines}
                 visibleDetail={visibleDetail}
                 visibleLayers={visibleLayers}
                 focusComponentId={focusComponentId}
@@ -714,7 +725,7 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Warnings</span><strong>{importWarnings.length}</strong></div>
               <div className="inspector-kv"><span>Imported geometry</span><strong>{totalImportedGeometry}</strong></div>
               <div className="inspector-kv"><span>Enabled overlays</span><strong>{requestedEnabledOverlays.join(", ") || "—"}</strong></div>
-              <div className="inspector-kv"><span>Overlay families</span><strong>Copper {overlayFamilyCounts.copper} · Fab {overlayFamilyCounts.fabrication} · Docs {overlayFamilyCounts.documentation}</strong></div>
+              <div className="inspector-kv"><span>Overlay families</span><strong>Copper {overlayFamilyCounts.copper} · Fab {overlayFamilyCounts.fabrication} · Docs {overlayFamilyCounts.documentation} · Outline {overlayFamilyCounts.structure}</strong></div>
               <div className="inspector-kv"><span>Active family preset</span><strong>{activeOverlayFamily || "custom"}</strong></div>
               <div className="inspector-kv"><span>Source format</span><strong>{importMetadata?.sourceFormat || "native"}</strong></div>
             </div>
@@ -729,7 +740,7 @@ export default function BoardViewerClient({
               <div className="focus-meta">Family buckets</div>
               <div className="focus-meta">Copper: zones · vias · pads</div>
               <div className="focus-meta">Fab: keepouts · silkscreen · drills</div>
-              <div className="focus-meta">Docs: documentation · mechanical · graphics</div>
+              <div className="focus-meta">Docs: documentation · mechanical · graphics · outline: boardOutlines</div>
             </div>
             {importSemantics.length > 0 && (
               <div className="focus-card" style={{ marginTop: 14 }}>

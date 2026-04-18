@@ -2,15 +2,16 @@ import json
 from collections import Counter
 from pathlib import Path
 
-BASE = Path('/var/minis/workspace')
+ROOT = Path(__file__).resolve().parents[2]
 OURS = {
-    'led': BASE / 'pcb-hover-viewer/public/examples/led_power_board_ipc.json',
-    'switch': BASE / 'pcb-hover-viewer/public/examples/switch_board_ipc.json',
+    'led': ROOT / 'public/examples/led_power_board_ipc.json',
+    'switch': ROOT / 'public/examples/switch_board_ipc.json',
 }
 EXT = {
-    'led': BASE / 'ipc_crosscheck/led_external.json',
-    'switch': BASE / 'ipc_crosscheck/switch_external.json',
+    'led': Path.home() / 'tmp_ipc_align/led_cpp.json',
+    'switch': Path.home() / 'tmp_ipc_align/switch_cpp.json',
 }
+
 
 
 def load_json(p):

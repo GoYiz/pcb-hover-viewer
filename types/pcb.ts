@@ -40,6 +40,7 @@ export type BoardGeometry = {
   pads: TraceItem[];
   keepouts: TraceItem[];
   silkscreen: TraceItem[];
+  boardOutlines: TraceItem[];
   documentation: TraceItem[];
   mechanical: TraceItem[];
   graphics: TraceItem[];

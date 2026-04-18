@@ -79,6 +79,13 @@ export type ExampleBoardData = {
     width: number;
     path: [number, number][];
   }>;
+  boardOutlines?: Array<{
+    id: string;
+    netId: string;
+    layerId: string;
+    width: number;
+    path: [number, number][];
+  }>;
   documentation?: Array<{
     id: string;
     netId: string;
