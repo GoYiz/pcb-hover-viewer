@@ -8,6 +8,7 @@ const PcbCanvas = dynamic(() => import("@/components/PcbCanvas"), { ssr: false }
 
 const CANVAS_W = 980;
 const CANVAS_H = 620;
+const OVERLAY_DETAIL_NAMES = ["zones", "vias", "pads", "keepouts", "silkscreen", "documentation", "mechanical", "graphics", "drills"];
 
 type ExampleMap = Record<string, ExampleBoardData>;
 
@@ -30,7 +31,24 @@ export default function ExamplesClient({
   const layerCategoryEntries = Object.entries(metadata?.layerCategories || {});
   const topLayerStats = Object.entries(metadata?.stats?.traceCountByLayer || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const semanticStats = Object.entries(metadata?.stats?.traceCountBySemantic || {}).sort((a, b) => b[1] - a[1]);
-  const geometryBuckets = Object.entries(metadata?.stats?.geometryArrayCounts || {}).sort((a, b) => b[1] - a[1]);
+  const geometryBuckets = useMemo(() => {
+    const metaCounts = metadata?.stats?.geometryArrayCounts || {};
+    if (Object.keys(metaCounts).length > 0) return Object.entries(metaCounts).sort((a, b) => Number(b[1]) - Number(a[1]));
+    if (!active) return [] as Array<[string, number]>;
+    const fallbackCounts: Record<string, number> = {
+      traces: active.traces.length,
+      zones: active.zones?.length || 0,
+      vias: active.vias?.length || 0,
+      pads: active.pads?.length || 0,
+      keepouts: active.keepouts?.length || 0,
+      silkscreen: active.silkscreen?.length || 0,
+      documentation: active.documentation?.length || 0,
+      mechanical: active.mechanical?.length || 0,
+      graphics: active.graphics?.length || 0,
+      drills: active.drills?.length || 0,
+    };
+    return Object.entries(fallbackCounts).filter(([, count]) => Number(count) > 0).sort((a, b) => Number(b[1]) - Number(a[1]));
+  }, [metadata, active]);
 
   const relation = useMemo(() => {
     if (!active || !hoveredId || !hoveredType) {
@@ -62,8 +80,13 @@ export default function ExamplesClient({
   const sourceHref = activeIndexItem?.source;
   const catalogComponents = index.reduce((acc, item) => acc + item.components, 0);
   const totalGeometry = geometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0);
-  const importedOverlayNames = geometryBuckets.map(([name]) => name).filter((name) => ['zones','vias','pads','keepouts','silkscreen','drills'].includes(name));
-  const enabledOverlayNames = (liveVisibleDetail.length ? liveVisibleDetail : importedOverlayNames).filter((name) => ['zones','vias','pads','keepouts','silkscreen','drills'].includes(name));
+  const importedOverlayNames = geometryBuckets.map(([name]) => name).filter((name) => OVERLAY_DETAIL_NAMES.includes(name));
+  const enabledOverlayNames = (liveVisibleDetail.length ? liveVisibleDetail : importedOverlayNames).filter((name) => OVERLAY_DETAIL_NAMES.includes(name));
+  const overlayFamilyCounts = useMemo(() => ({
+    copper: geometryBuckets.filter(([name]) => ['zones', 'vias', 'pads'].includes(name)).reduce((acc, [, count]) => acc + Number(count), 0),
+    fabrication: geometryBuckets.filter(([name]) => ['keepouts', 'silkscreen', 'drills'].includes(name)).reduce((acc, [, count]) => acc + Number(count), 0),
+    documentation: geometryBuckets.filter(([name]) => ['documentation', 'mechanical', 'graphics'].includes(name)).reduce((acc, [, count]) => acc + Number(count), 0),
+  }), [geometryBuckets]);
   const activeDensity = active ? (active.components.length + totalGeometry) / Math.max(active.board.widthMm * active.board.heightMm, 1) : 0;
 
   useEffect(() => {
@@ -195,6 +218,9 @@ export default function ExamplesClient({
                 pads={active.pads || []}
                 keepouts={active.keepouts || []}
                 silkscreen={active.silkscreen || []}
+                documentation={active.documentation || []}
+                mechanical={active.mechanical || []}
+                graphics={active.graphics || []}
                 drills={active.drills || []}
                 zones={active.zones || []}
                 vias={active.vias || []}
@@ -228,6 +254,7 @@ export default function ExamplesClient({
                 <div className="inspector-kv"><span>Warnings</span><strong>{warningCount}</strong></div>
                 <div className="inspector-kv"><span>Layer classes</span><strong>{new Set(layerCategoryEntries.map(([, v]) => v)).size}</strong></div>
                 <div className="inspector-kv"><span>Enabled overlays</span><strong>{enabledOverlayNames.join(', ') || '—'}</strong></div>
+                <div className="inspector-kv"><span>Overlay families</span><strong>{overlayFamilyCounts.copper} / {overlayFamilyCounts.fabrication} / {overlayFamilyCounts.documentation}</strong></div>
               </div>
               {sourceHref && (
                 <a className="source-link" href={sourceHref} target="_blank">

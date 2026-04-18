@@ -24,6 +24,9 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
         initialPads={board.pads}
         initialKeepouts={board.keepouts}
         initialSilkscreen={board.silkscreen}
+        initialDocumentation={board.documentation}
+        initialMechanical={board.mechanical}
+        initialGraphics={board.graphics}
         initialDrills={board.drills}
         importMetadata={board.importMetadata}
       />

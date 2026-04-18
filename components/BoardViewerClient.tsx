@@ -95,9 +95,30 @@ export default function BoardViewerClient({
   const importWarnings = importMetadata?.warnings || [];
   const topImportLayers = useMemo(() => Object.entries(importMetadata?.stats?.traceCountByLayer || {}).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 5), [importMetadata]);
   const importSemantics = useMemo(() => Object.entries(importMetadata?.stats?.traceCountBySemantic || {}).sort((a, b) => Number(b[1]) - Number(a[1])), [importMetadata]);
-  const importGeometryBuckets = useMemo(() => Object.entries(importMetadata?.stats?.geometryArrayCounts || {}).sort((a, b) => Number(b[1]) - Number(a[1])), [importMetadata]);
+  const importGeometryBuckets = useMemo(() => {
+    const metaCounts = importMetadata?.stats?.geometryArrayCounts || {};
+    if (Object.keys(metaCounts).length > 0) return Object.entries(metaCounts).sort((a, b) => Number(b[1]) - Number(a[1]));
+    const fallbackCounts: Record<string, number> = {
+      traces: traces.length,
+      zones: zones.length,
+      vias: vias.length,
+      pads: pads.length,
+      keepouts: keepouts.length,
+      silkscreen: silkscreen.length,
+      documentation: documentation.length,
+      mechanical: mechanical.length,
+      graphics: graphics.length,
+      drills: drills.length,
+    };
+    return Object.entries(fallbackCounts).filter(([, count]) => Number(count) > 0).sort((a, b) => Number(b[1]) - Number(a[1]));
+  }, [importMetadata, traces, zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills]);
   const totalImportedGeometry = useMemo(() => importGeometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0), [importGeometryBuckets]);
   const liveEnabledOverlays = useMemo(() => (canvasBridge.visibleDetail || '').split(',').map((s) => s.trim()).filter((name) => OVERLAY_DETAIL_NAMES.includes(name)), [canvasBridge.visibleDetail]);
+  const overlayFamilyCounts = useMemo(() => ({
+    copper: zones.length + vias.length + pads.length,
+    fabrication: keepouts.length + silkscreen.length + drills.length,
+    documentation: documentation.length + mechanical.length + graphics.length,
+  }), [zones, vias, pads, keepouts, silkscreen, drills, documentation, mechanical, graphics]);
 
   const netCount = useMemo(() => {
     const nets = new Set<string>();
@@ -546,6 +567,7 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Warnings</span><strong>{importWarnings.length}</strong></div>
               <div className="inspector-kv"><span>Imported geometry</span><strong>{totalImportedGeometry}</strong></div>
               <div className="inspector-kv"><span>Enabled overlays</span><strong>{liveEnabledOverlays.join(", ") || "—"}</strong></div>
+              <div className="inspector-kv"><span>Overlay families</span><strong>{overlayFamilyCounts.copper} / {overlayFamilyCounts.fabrication} / {overlayFamilyCounts.documentation}</strong></div>
               <div className="inspector-kv"><span>Source format</span><strong>{importMetadata?.sourceFormat || "native"}</strong></div>
             </div>
             {importGeometryBuckets.length > 0 && (
