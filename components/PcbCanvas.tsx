@@ -644,7 +644,7 @@ export default function PcbCanvas({
 
         const renderInspector = () => {
           let source: "hover" | "selected" | "summary" = "summary";
-          let kind: "component" | "trace" | null = null;
+          let kind: HoverFeatureType | null = null;
           let targetId: string | null = null;
           const selectedCompList = Array.from(selectedCompIds);
           const selectedTraceList = Array.from(selectedTraceIds);
