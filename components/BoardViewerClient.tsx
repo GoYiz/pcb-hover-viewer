@@ -99,7 +99,7 @@ export default function BoardViewerClient({
   const [focusComponentId, setFocusComponentId] = useState<string | undefined>();
   const [canvasBridge, setCanvasBridge] = useState({ tool: "select", selectionFilter: "all", visibleDetail: "-", zoom: "1.000", selectedComponents: 0, selectedTraces: 0, selectedOverlays: 0 });
   const [urlSelection, setUrlSelection] = useState({ sc: [] as string[], st: [] as string[] });
-  const [overlaySelection, setOverlaySelection] = useState<{ kind?: Exclude<HoverFeatureType, "component" | "trace">; id?: string }>({});
+  const [overlaySelection, setOverlaySelection] = useState<{ kind?: Exclude<HoverFeatureType, "component" | "trace">; id?: string; keys?: string[] }>({});
   const [relationOverlayCount, setRelationOverlayCount] = useState(0);
 
   const hoveredFeatureId = useViewerStore((s) => s.hoveredFeatureId);
@@ -247,6 +247,11 @@ export default function BoardViewerClient({
     let targetType: HoverFeatureType | undefined = hoveredFeatureType;
     let targetId: string | undefined = hoveredFeatureId;
 
+    if ((!targetType || !targetId) && overlaySelection.kind && overlaySelection.id) {
+      targetType = overlaySelection.kind;
+      targetId = overlaySelection.id;
+    }
+
     if (!targetType || !targetId) {
       const totalSelected = urlSelection.sc.length + urlSelection.st.length;
       if (totalSelected === 1) {
@@ -316,7 +321,7 @@ export default function BoardViewerClient({
     return () => {
       cancelled = true;
     };
-  }, [boardId, components, traces, hoveredFeatureId, hoveredFeatureType, urlSelection, setHighlight]);
+  }, [boardId, components, traces, hoveredFeatureId, hoveredFeatureType, urlSelection, overlaySelection, setHighlight]);
 
   const searchMatches = useMemo(() => {
     const kw = search.trim().toUpperCase();
@@ -369,8 +374,9 @@ export default function BoardViewerClient({
       const st = (url.searchParams.get("st") || "").split(",").filter(Boolean);
       const ok = url.searchParams.get("ok") || undefined;
       const oi = url.searchParams.get("oi") || undefined;
+      const os = (url.searchParams.get("os") || "").split(",").filter(Boolean);
       setUrlSelection((prev) => (prev.sc.join(",") === sc.join(",") && prev.st.join(",") === st.join(",")) ? prev : { sc, st });
-      setOverlaySelection((prev) => (prev.kind === (ok as any) && prev.id === oi) ? prev : { kind: ok as any, id: oi });
+      setOverlaySelection((prev) => (prev.kind === (ok as any) && prev.id === oi && (prev.keys || []).join(",") === os.join(",")) ? prev : { kind: ok as any, id: oi, keys: os });
     };
     readUrlSelection();
     const timer = window.setInterval(readUrlSelection, 300);
@@ -415,13 +421,16 @@ export default function BoardViewerClient({
     window.history.replaceState({}, "", url.toString());
   };
 
-  const applySharedSelection = (type?: HoverFeatureType, id?: string) => {
+  const applySharedSelection = (type?: HoverFeatureType, id?: string, overlayKeys?: string[]) => {
     const url = new URL(window.location.href);
     if (!type || !id) {
       url.searchParams.delete("sc");
       url.searchParams.delete("st");
       url.searchParams.delete("ok");
       url.searchParams.delete("oi");
+      url.searchParams.delete("os");
+      url.searchParams.delete("os");
+      url.searchParams.delete("os");
       window.history.replaceState({}, "", url.toString());
       return;
     }
@@ -440,6 +449,8 @@ export default function BoardViewerClient({
       url.searchParams.delete("st");
       url.searchParams.set("ok", type);
       url.searchParams.set("oi", id);
+      if (overlayKeys && overlayKeys.length) url.searchParams.set("os", overlayKeys.join(","));
+      else url.searchParams.delete("os");
     }
     window.history.replaceState({}, "", url.toString());
   };
@@ -684,7 +695,7 @@ export default function BoardViewerClient({
                 traceHighlightIds={highlight.traceIds}
                 overlayHighlightKeys={highlight.overlayKeys}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
-                onSelectFeature={(type, id) => applySharedSelection(type, id)}
+                onSelectFeature={(type, id, overlayKeys) => applySharedSelection(type, id, overlayKeys)}
               />
             ) : (
               <ThreeBoardCanvas
@@ -714,7 +725,7 @@ export default function BoardViewerClient({
                 selectedComponentIds={urlSelection.sc}
                 selectedTraceIds={urlSelection.st}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
-                onSelectFeature={(type, id) => applySharedSelection(type, id)}
+                onSelectFeature={(type, id, overlayKeys) => applySharedSelection(type, id, overlayKeys)}
               />
             )}
           </div>

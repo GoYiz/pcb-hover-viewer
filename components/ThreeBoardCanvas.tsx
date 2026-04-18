@@ -35,7 +35,7 @@ type Props = {
   selectedOverlayId?: string;
   overlayHighlightKeys?: string[];
   onHoverFeature: (type?: HoverFeatureType, id?: string) => void;
-  onSelectFeature?: (type?: HoverFeatureType, id?: string) => void;
+  onSelectFeature?: (type?: HoverFeatureType, id?: string, overlayKeys?: string[]) => void;
 };
 
 type SceneRefs = {
@@ -354,8 +354,12 @@ export default function ThreeBoardCanvas({
       raycaster.setFromCamera(mouse, camera);
       const hit = raycaster.intersectObjects(refsObj.hoverables, false)[0];
       const obj = hit?.object as THREE.Object3D & { userData?: { kind?: HoverFeatureType; id?: string } };
-      if (obj?.userData?.kind && obj?.userData?.id) onSelectFeature?.(obj.userData.kind, obj.userData.id);
-      else onSelectFeature?.(undefined, undefined);
+      if (obj?.userData?.kind && obj?.userData?.id) {
+        const kind = obj.userData.kind;
+        const id = obj.userData.id;
+        const overlayKeys = kind && kind !== 'component' && kind !== 'trace' ? [`${kind}:${id}`] : [];
+        onSelectFeature?.(kind, id, overlayKeys);
+      } else onSelectFeature?.(undefined, undefined, []);
     };
 
     const wheel = (ev: WheelEvent) => {
