@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import type { ComponentItem, TraceItem } from "@/types/pcb";
 
@@ -42,8 +42,30 @@ type SceneRefs = {
   compMap: Map<string, THREE.Mesh>;
   traceMap: Map<string, THREE.Line>;
   overlayObjects: THREE.Object3D[];
+  orbit: {
+    yaw: number;
+    pitch: number;
+    radius: number;
+    baseRadius: number;
+  };
   rafId?: number;
 };
+
+const DEFAULT_VISIBLE_DETAIL = [
+  "grid",
+  "components",
+  "labels",
+  "measures",
+  "zones",
+  "vias",
+  "pads",
+  "keepouts",
+  "silkscreen",
+  "documentation",
+  "mechanical",
+  "graphics",
+  "drills",
+];
 
 function xy(x: number, y: number, bw: number, bh: number) {
   return new THREE.Vector3(x - bw / 2, -(y - bh / 2), 0);
@@ -77,10 +99,35 @@ function setTraceColor(line: THREE.Line, mode: "normal" | "related" | "selected"
 }
 
 function layerMatchesVisible(layerId: unknown, visibleLayers: string[]) {
-  const value = String(layerId || '');
+  const value = String(layerId || "");
   if (!value) return true;
-  if (value === 'F.Cu' || value === 'B.Cu') return visibleLayers.length ? visibleLayers.includes(value) : true;
+  if (value === "F.Cu" || value === "B.Cu") return visibleLayers.length ? visibleLayers.includes(value) : true;
   return true;
+}
+
+function pathBounds(item: TraceItem) {
+  const pts = item.path || [];
+  if (!pts.length) return null;
+  let minX = pts[0][0];
+  let maxX = pts[0][0];
+  let minY = pts[0][1];
+  let maxY = pts[0][1];
+  for (const [x, y] of pts) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  return {
+    minX,
+    maxX,
+    minY,
+    maxY,
+    width: Math.max(0.4, maxX - minX),
+    height: Math.max(0.4, maxY - minY),
+    cx: (minX + maxX) / 2,
+    cy: (minY + maxY) / 2,
+  };
 }
 
 function buildOverlayLine(item: TraceItem, bw: number, bh: number, color: string, opacity: number, z: number) {
@@ -91,6 +138,30 @@ function buildOverlayLine(item: TraceItem, bw: number, bh: number, color: string
   const line = new THREE.Line(geo, mat);
   line.position.z = z;
   return line;
+}
+
+function buildPadMesh(item: TraceItem, bw: number, bh: number, color: string, z: number) {
+  const bounds = pathBounds(item);
+  if (!bounds) return null;
+  const geo = new THREE.BoxGeometry(bounds.width, bounds.height, 0.45);
+  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.18, roughness: 0.45, metalness: 0.12, transparent: true, opacity: 0.82 });
+  const mesh = new THREE.Mesh(geo, mat);
+  const p = xy(bounds.cx, bounds.cy, bw, bh);
+  mesh.position.set(p.x, p.y, z);
+  return mesh;
+}
+
+function buildCylinderMarker(item: TraceItem, bw: number, bh: number, color: string, z: number, depth: number, opacity: number) {
+  const bounds = pathBounds(item);
+  if (!bounds) return null;
+  const radius = Math.max(bounds.width, bounds.height) / 2;
+  const geo = new THREE.CylinderGeometry(Math.max(0.2, radius), Math.max(0.2, radius), depth, 20);
+  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.12, roughness: 0.5, metalness: 0.08, transparent: true, opacity });
+  const mesh = new THREE.Mesh(geo, mat);
+  const p = xy(bounds.cx, bounds.cy, bw, bh);
+  mesh.rotation.x = Math.PI / 2;
+  mesh.position.set(p.x, p.y, z);
+  return mesh;
 }
 
 export default function ThreeBoardCanvas({
@@ -124,6 +195,22 @@ export default function ThreeBoardCanvas({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const refs = useRef<SceneRefs | null>(null);
   const onHoverRef = useRef(onHoverFeature);
+  const effectiveVisibleDetail = visibleDetail && visibleDetail.length ? visibleDetail : DEFAULT_VISIBLE_DETAIL;
+  const visibleDetailKey = effectiveVisibleDetail.join(",");
+  const [bridgeState, setBridgeState] = useState({
+    tool: "orbit",
+    zoom: 1,
+    ox: 0,
+    oy: 0,
+    sc: [] as string[],
+    st: [] as string[],
+    sf: "all",
+    vd: visibleDetailKey,
+    lm: "three-orbit",
+    gm: "perspective",
+    th: "three-raycaster",
+    le: "-",
+  });
 
   useEffect(() => {
     onHoverRef.current = onHoverFeature;
@@ -136,8 +223,6 @@ export default function ThreeBoardCanvas({
     scene.background = new THREE.Color("#071025");
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 5000);
-    camera.position.set(0, -boardHeightMm * 0.8, Math.max(boardWidthMm, boardHeightMm) * 1.1);
-    camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(width, height);
@@ -159,6 +244,7 @@ export default function ThreeBoardCanvas({
     board.position.z = -1.2;
     scene.add(board);
 
+    const baseRadius = Math.max(boardWidthMm, boardHeightMm) * 1.2;
     const refsObj: SceneRefs = {
       scene,
       camera,
@@ -168,6 +254,12 @@ export default function ThreeBoardCanvas({
       compMap: new Map(),
       traceMap: new Map(),
       overlayObjects: [],
+      orbit: {
+        yaw: 0,
+        pitch: 0.85,
+        radius: baseRadius,
+        baseRadius,
+      },
     };
     refs.current = refsObj;
 
@@ -175,16 +267,26 @@ export default function ThreeBoardCanvas({
     let moved = false;
     let lx = 0;
     let ly = 0;
-    let yaw = 0;
-    let pitch = 0.85;
-    let radius = Math.max(boardWidthMm, boardHeightMm) * 1.2;
+
+    const syncOrbitBridge = () => {
+      const orbit = refsObj.orbit;
+      setBridgeState((prev) => ({
+        ...prev,
+        tool: "orbit",
+        zoom: Number((orbit.baseRadius / orbit.radius).toFixed(3)),
+        ox: Number(orbit.yaw.toFixed(3)),
+        oy: Number(orbit.pitch.toFixed(3)),
+      }));
+    };
 
     const updateCamera = () => {
-      const cx = radius * Math.cos(pitch) * Math.sin(yaw);
-      const cy = -radius * Math.cos(pitch) * Math.cos(yaw);
-      const cz = radius * Math.sin(pitch);
+      const orbit = refsObj.orbit;
+      const cx = orbit.radius * Math.cos(orbit.pitch) * Math.sin(orbit.yaw);
+      const cy = -orbit.radius * Math.cos(orbit.pitch) * Math.cos(orbit.yaw);
+      const cz = orbit.radius * Math.sin(orbit.pitch);
       camera.position.set(cx, cy, cz);
       camera.lookAt(0, 0, 0);
+      syncOrbitBridge();
     };
 
     const raycaster = new THREE.Raycaster();
@@ -201,8 +303,8 @@ export default function ThreeBoardCanvas({
         lx = px;
         ly = py;
         if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
-        yaw -= dx * 0.006;
-        pitch = Math.max(0.2, Math.min(1.4, pitch + dy * 0.004));
+        refsObj.orbit.yaw -= dx * 0.006;
+        refsObj.orbit.pitch = Math.max(0.2, Math.min(1.4, refsObj.orbit.pitch + dy * 0.004));
         updateCamera();
         return;
       }
@@ -247,8 +349,8 @@ export default function ThreeBoardCanvas({
 
     const wheel = (ev: WheelEvent) => {
       ev.preventDefault();
-      radius *= ev.deltaY < 0 ? 0.92 : 1.08;
-      radius = Math.max(Math.max(boardWidthMm, boardHeightMm) * 0.55, Math.min(radius, Math.max(boardWidthMm, boardHeightMm) * 2.6));
+      refsObj.orbit.radius *= ev.deltaY < 0 ? 0.92 : 1.08;
+      refsObj.orbit.radius = Math.max(Math.max(boardWidthMm, boardHeightMm) * 0.55, Math.min(refsObj.orbit.radius, Math.max(boardWidthMm, boardHeightMm) * 2.6));
       updateCamera();
     };
 
@@ -256,6 +358,8 @@ export default function ThreeBoardCanvas({
     renderer.domElement.addEventListener("pointerdown", pointerDown);
     window.addEventListener("pointerup", pointerUp);
     renderer.domElement.addEventListener("wheel", wheel, { passive: false });
+
+    updateCamera();
 
     const animate = () => {
       refsObj.rafId = requestAnimationFrame(animate);
@@ -274,35 +378,29 @@ export default function ThreeBoardCanvas({
       refs.current = null;
       if (hostRef.current) hostRef.current.innerHTML = "";
     };
-  }, [width, height, boardWidthMm, boardHeightMm]);
+  }, [width, height, boardWidthMm, boardHeightMm, onHoverFeature, onSelectFeature]);
 
   useEffect(() => {
     const r = refs.current;
     if (!r) return;
 
-    for (const m of r.compMap.values()) {
-      r.scene.remove(m);
-    }
-    for (const l of r.traceMap.values()) {
-      r.scene.remove(l);
-    }
-    for (const obj of r.overlayObjects) {
-      r.scene.remove(obj);
-    }
+    for (const m of r.compMap.values()) r.scene.remove(m);
+    for (const l of r.traceMap.values()) r.scene.remove(l);
+    for (const obj of r.overlayObjects) r.scene.remove(obj);
     r.compMap.clear();
     r.traceMap.clear();
     r.overlayObjects = [];
     r.hoverables = [];
 
-    const detailSet = new Set(visibleDetail || ["grid", "components", "labels", "measures", "zones", "vias", "pads", "keepouts", "silkscreen", "documentation", "mechanical", "graphics", "drills"]);
+    const detailSet = new Set(effectiveVisibleDetail);
+    const showComponents = detailSet.has("components");
 
     for (const t of traces) {
-      if (!detailSet.has("zones") && !detailSet.has("vias") && !detailSet.has("pads")) continue;
       if (!layerMatchesVisible(t.layerId, visibleLayers)) continue;
-      const pts = t.path.map(([x, y]) => xy(x, y, boardWidthMm, boardHeightMm));
+      const pts = (t.path || []).map(([x, y]) => xy(x, y, boardWidthMm, boardHeightMm));
       if (pts.length < 2) continue;
       const geo = new THREE.BufferGeometry().setFromPoints(pts);
-      const mat = new THREE.LineBasicMaterial({ color: "#3b82f6", transparent: true, opacity: 0.4 });
+      const mat = new THREE.LineBasicMaterial({ color: "#3b82f6", transparent: true, opacity: 0.42 });
       const line = new THREE.Line(geo, mat);
       line.position.z = 0.25;
       line.userData = { kind: "trace", id: t.id };
@@ -311,22 +409,19 @@ export default function ThreeBoardCanvas({
       r.hoverables.push(line);
     }
 
-    const overlayBuckets = [
-      { key: "zones", items: zones, color: "#60a5fa", opacity: 0.35, z: 0.18 },
-      { key: "vias", items: vias, color: "#22d3ee", opacity: 0.8, z: 0.32 },
-      { key: "pads", items: pads, color: "#fbbf24", opacity: 0.72, z: 0.28 },
-      { key: "keepouts", items: keepouts, color: "#ef4444", opacity: 0.6, z: 0.4 },
-      { key: "silkscreen", items: silkscreen, color: "#e5e7eb", opacity: 0.75, z: 0.5 },
-      { key: "documentation", items: documentation, color: "#22c55e", opacity: 0.6, z: 0.58 },
-      { key: "mechanical", items: mechanical, color: "#f472b6", opacity: 0.6, z: 0.64 },
-      { key: "graphics", items: graphics, color: "#94a3b8", opacity: 0.55, z: 0.7 },
-      { key: "drills", items: drills, color: "#64748b", opacity: 0.8, z: 0.1 },
+    const overlayLineBuckets = [
+      { key: "zones", items: zones, color: "#60a5fa", opacity: 0.34, z: 0.18 },
+      { key: "keepouts", items: keepouts, color: "#ef4444", opacity: 0.62, z: 0.48 },
+      { key: "silkscreen", items: silkscreen, color: "#e5e7eb", opacity: 0.78, z: 0.58 },
+      { key: "documentation", items: documentation, color: "#22c55e", opacity: 0.62, z: 0.72 },
+      { key: "mechanical", items: mechanical, color: "#f472b6", opacity: 0.62, z: 0.82 },
+      { key: "graphics", items: graphics, color: "#94a3b8", opacity: 0.56, z: 0.92 },
     ] as const;
 
-    for (const bucket of overlayBuckets) {
+    for (const bucket of overlayLineBuckets) {
       if (!detailSet.has(bucket.key)) continue;
       for (const item of bucket.items) {
-        if (!layerMatchesVisible(item.layerId, visibleLayers) && (bucket.key === "zones" || bucket.key === "vias" || bucket.key === "pads")) continue;
+        if ((bucket.key === "zones") && !layerMatchesVisible(item.layerId, visibleLayers)) continue;
         const line = buildOverlayLine(item, boardWidthMm, boardHeightMm, bucket.color, bucket.opacity, bucket.z);
         if (!line) continue;
         r.scene.add(line);
@@ -334,23 +429,52 @@ export default function ThreeBoardCanvas({
       }
     }
 
-    const showComponents = !visibleDetail || visibleDetail.includes("components");
-    for (const c of components) {
-      const [bx, by, bw, bh] = c.bbox;
-      const cx = bx + bw / 2;
-      const cy = by + bh / 2;
-      const geo = new THREE.BoxGeometry(Math.max(0.8, bw), Math.max(0.8, bh), 1.2);
-      const mat = new THREE.MeshStandardMaterial({ color: "#94a3b8", roughness: 0.5, metalness: 0.1, emissive: "#0f172a" });
-      const mesh = new THREE.Mesh(geo, mat);
-      const p = xy(cx, cy, boardWidthMm, boardHeightMm);
-      mesh.position.set(p.x, p.y, 0.8);
-      mesh.userData = { kind: "component", id: c.id };
-      mesh.visible = showComponents;
-      r.scene.add(mesh);
-      r.compMap.set(c.id, mesh);
-      r.hoverables.push(mesh);
+    if (detailSet.has("pads")) {
+      for (const item of pads) {
+        if (!layerMatchesVisible(item.layerId, visibleLayers)) continue;
+        const mesh = buildPadMesh(item, boardWidthMm, boardHeightMm, "#fbbf24", 0.44);
+        if (!mesh) continue;
+        r.scene.add(mesh);
+        r.overlayObjects.push(mesh);
+      }
     }
-  }, [components, traces, zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills, visibleDetail, visibleLayers, boardWidthMm, boardHeightMm]);
+
+    if (detailSet.has("vias")) {
+      for (const item of vias) {
+        if (!layerMatchesVisible(item.layerId, visibleLayers)) continue;
+        const mesh = buildCylinderMarker(item, boardWidthMm, boardHeightMm, "#22d3ee", 0.68, 0.9, 0.82);
+        if (!mesh) continue;
+        r.scene.add(mesh);
+        r.overlayObjects.push(mesh);
+      }
+    }
+
+    if (detailSet.has("drills")) {
+      for (const item of drills) {
+        const mesh = buildCylinderMarker(item, boardWidthMm, boardHeightMm, "#64748b", 0.12, 0.7, 0.78);
+        if (!mesh) continue;
+        r.scene.add(mesh);
+        r.overlayObjects.push(mesh);
+      }
+    }
+
+    if (showComponents) {
+      for (const c of components) {
+        const [bx, by, bw, bh] = c.bbox;
+        const cx = bx + bw / 2;
+        const cy = by + bh / 2;
+        const geo = new THREE.BoxGeometry(Math.max(0.8, bw), Math.max(0.8, bh), 1.2);
+        const mat = new THREE.MeshStandardMaterial({ color: "#94a3b8", roughness: 0.5, metalness: 0.1, emissive: "#0f172a" });
+        const mesh = new THREE.Mesh(geo, mat);
+        const p = xy(cx, cy, boardWidthMm, boardHeightMm);
+        mesh.position.set(p.x, p.y, 1.08);
+        mesh.userData = { kind: "component", id: c.id };
+        r.scene.add(mesh);
+        r.compMap.set(c.id, mesh);
+        r.hoverables.push(mesh);
+      }
+    }
+  }, [components, traces, zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills, visibleLayers, visibleDetailKey, boardWidthMm, boardHeightMm]);
 
   useEffect(() => {
     const r = refs.current;
@@ -375,6 +499,21 @@ export default function ThreeBoardCanvas({
   }, [hoveredId, hoveredType, directIds, traceHighlightIds, selectedComponentIds, selectedTraceIds]);
 
   useEffect(() => {
+    setBridgeState((prev) => ({
+      ...prev,
+      tool: "orbit",
+      sc: selectedComponentIds,
+      st: selectedTraceIds,
+      sf: "all",
+      vd: visibleDetailKey,
+      lm: "three-orbit",
+      gm: "perspective",
+      th: "three-raycaster",
+      le: "-",
+    }));
+  }, [selectedComponentIds, selectedTraceIds, visibleDetailKey]);
+
+  useEffect(() => {
     if (!focusComponentId) return;
     const r = refs.current;
     if (!r) return;
@@ -383,7 +522,41 @@ export default function ThreeBoardCanvas({
     const target = mesh.position.clone();
     r.camera.position.set(target.x, target.y - boardHeightMm * 0.45, Math.max(boardWidthMm, boardHeightMm) * 0.72);
     r.camera.lookAt(target.x, target.y, 0);
-  }, [focusComponentId]);
+    setBridgeState((prev) => ({ ...prev, zoom: Number((r.orbit.baseRadius / Math.max(r.orbit.radius, 0.001)).toFixed(3)) }));
+  }, [focusComponentId, boardWidthMm, boardHeightMm]);
 
-  return <div ref={hostRef} style={{ width, height, borderRadius: 12, overflow: "hidden" }} />;
+  return (
+    <div style={{ position: "relative", width, height, borderRadius: 12, overflow: "hidden" }}>
+      <div ref={hostRef} style={{ width, height }} />
+      <div
+        data-testid="canvas-state-bridge"
+        style={{
+          position: "absolute",
+          left: 92,
+          bottom: 8,
+          maxWidth: 520,
+          background: "rgba(2,6,23,0.72)",
+          color: "#93c5fd",
+          border: "1px solid rgba(148,163,184,0.18)",
+          borderRadius: 8,
+          padding: "6px 8px",
+          fontSize: 10,
+          lineHeight: 1.35,
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          pointerEvents: "none",
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {`State tool=${bridgeState.tool} zoom=${bridgeState.zoom.toFixed(3)} ox=${bridgeState.ox.toFixed(1)} oy=${bridgeState.oy.toFixed(1)}
+selected_components=${bridgeState.sc.join(",") || "-"}
+selected_traces=${bridgeState.st.join(",") || "-"}
+selection_filter=${bridgeState.sf || "all"}
+visible_detail=${bridgeState.vd || "-"}
+label_mode=${bridgeState.lm || "three-orbit"}
+grid_mode=${bridgeState.gm || "perspective"}
+trace_hit=${bridgeState.th || "three-raycaster"}
+last_export=${bridgeState.le || "-"}`}
+      </div>
+    </div>
+  );
 }
