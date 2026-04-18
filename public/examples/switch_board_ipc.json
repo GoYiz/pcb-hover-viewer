@@ -267686,15 +267686,15 @@
         "copper": 120,
         "via": 12,
         "zone": 71,
-        "graphics": 559,
+        "graphics": 735,
         "graphicsByLayer": {
-          "Dwgs.User": 558,
+          "Dwgs.User": 734,
           "F.SilkS": 1
         },
         "graphicsBySource": {
-          "documentation": 87,
+          "documentation": 184,
           "graphics": 449,
-          "mechanical": 22,
+          "mechanical": 101,
           "silkscreen": 1
         }
       },

@@ -411,14 +411,20 @@ def project_external_bucket_counts(components: list[dict], object_semantic_count
     board_level_graphics = 0
     graphics_by_layer = {}
     graphics_by_source = {}
+    always_board_level_layers = {'Dwgs.User', 'Cmts.User', 'F.Fab', 'B.Fab', 'F.CrtYd', 'B.CrtYd'}
     for item in external_graphics_candidates:
         mapped = map_external_graphics_layer(str(item.get('layerId') or ''))
         if not mapped or '.Cu' in mapped or mapped == 'Edge.Cuts':
             continue
+        source = str(item.get('source') or 'unknown')
+        if mapped in always_board_level_layers:
+            board_level_graphics += 1
+            graphics_by_layer[mapped] = graphics_by_layer.get(mapped, 0) + 1
+            graphics_by_source[source] = graphics_by_source.get(source, 0) + 1
+            continue
         if item_span(item) > MAX_ATTACH_SPAN:
             board_level_graphics += 1
             graphics_by_layer[mapped] = graphics_by_layer.get(mapped, 0) + 1
-            source = str(item.get('source') or 'unknown')
             graphics_by_source[source] = graphics_by_source.get(source, 0) + 1
             continue
         cx, cy = item_centroid(item)
@@ -432,7 +438,6 @@ def project_external_bucket_counts(components: list[dict], object_semantic_count
         if min_dist >= THRESHOLD:
             board_level_graphics += 1
             graphics_by_layer[mapped] = graphics_by_layer.get(mapped, 0) + 1
-            source = str(item.get('source') or 'unknown')
             graphics_by_source[source] = graphics_by_source.get(source, 0) + 1
 
     return {
