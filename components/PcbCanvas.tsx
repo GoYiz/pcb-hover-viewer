@@ -1959,6 +1959,7 @@ export default function PcbCanvas({
     if (same) return;
     rt.detailVisibilityRef.value = next;
     rt.renderVisibility?.();
+    rt.updateHud?.();
   }, [visibleDetail]);
 
   useEffect(() => {
