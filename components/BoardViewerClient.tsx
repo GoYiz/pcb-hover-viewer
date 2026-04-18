@@ -99,7 +99,7 @@ export default function BoardViewerClient({
   const [focusComponentId, setFocusComponentId] = useState<string | undefined>();
   const [canvasBridge, setCanvasBridge] = useState({ tool: "select", selectionFilter: "all", visibleDetail: "-", zoom: "1.000", selectedComponents: 0, selectedTraces: 0, selectedOverlays: 0 });
   const [urlSelection, setUrlSelection] = useState({ sc: [] as string[], st: [] as string[] });
-  const [overlaySelection, setOverlaySelection] = useState<{ kind?: Exclude<HoverFeatureType, "component" | "trace">; id?: string; keys?: string[] }>({});
+  const [overlaySelection, setOverlaySelection] = useState<{ kind?: Exclude<HoverFeatureType, "component" | "trace">; id?: string; keys?: string[] }>({ keys: [] });
   const [relationOverlayCount, setRelationOverlayCount] = useState(0);
 
   const hoveredFeatureId = useViewerStore((s) => s.hoveredFeatureId);
@@ -376,7 +376,9 @@ export default function BoardViewerClient({
       const oi = url.searchParams.get("oi") || undefined;
       const os = (url.searchParams.get("os") || "").split(",").filter(Boolean);
       setUrlSelection((prev) => (prev.sc.join(",") === sc.join(",") && prev.st.join(",") === st.join(",")) ? prev : { sc, st });
-      setOverlaySelection((prev) => (prev.kind === (ok as any) && prev.id === oi && (prev.keys || []).join(",") === os.join(",")) ? prev : { kind: ok as any, id: oi, keys: os });
+      const nextKind = (ok as any) || (os[0] ? (os[0].split(":")[0] as any) : undefined);
+      const nextId = oi || (os[0] ? os[0].split(":").slice(1).join(":") : undefined);
+      setOverlaySelection((prev) => (prev.kind === nextKind && prev.id === nextId && (prev.keys || []).join(",") === os.join(",")) ? prev : { kind: nextKind, id: nextId, keys: os });
     };
     readUrlSelection();
     const timer = window.setInterval(readUrlSelection, 300);
@@ -449,8 +451,12 @@ export default function BoardViewerClient({
       url.searchParams.delete("st");
       url.searchParams.set("ok", type);
       url.searchParams.set("oi", id);
-      if (overlayKeys && overlayKeys.length) url.searchParams.set("os", overlayKeys.join(","));
-      else url.searchParams.delete("os");
+      if (overlayKeys && overlayKeys.length) {
+        url.searchParams.set("os", overlayKeys.join(","));
+        const first = overlayKeys[0].split(":");
+        if (!url.searchParams.get("ok")) url.searchParams.set("ok", first[0]);
+        if (!url.searchParams.get("oi")) url.searchParams.set("oi", first.slice(1).join(":"));
+      } else url.searchParams.delete("os");
     }
     window.history.replaceState({}, "", url.toString());
   };

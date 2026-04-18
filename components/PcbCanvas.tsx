@@ -344,7 +344,7 @@ export default function PcbCanvas({
 
         const selectedCompIds = new Set<string>();
         const selectedTraceIds = new Set<string>();
-        const selectedOverlayRef = { kind: undefined as undefined | Exclude<HoverFeatureType, 'component' | 'trace'>, id: undefined as undefined | string };
+        const selectedOverlayKeys = new Set<string>();
         const scaleRef = { value: 1 };
         const offsetRef = { x: 0, y: 0 };
         const dragRef = { active: false, x: 0, y: 0 };
@@ -428,13 +428,13 @@ export default function PcbCanvas({
 
         const updateHud = () => {
           const label = visibleLayers.length === 0 || visibleLayers.length === 2 ? "All" : visibleLayers.join(" + ");
-          const count = selectedCompIds.size + selectedTraceIds.size + (selectedOverlayRef.kind && selectedOverlayRef.id ? 1 : 0);
+          const count = selectedCompIds.size + selectedTraceIds.size + selectedOverlayKeys.size;
           const currentMeasureText = measureRef.distanceMm == null ? "—" : `ΔX ${Math.abs(measureRef.dxMm || 0).toFixed(2)} · ΔY ${Math.abs(measureRef.dyMm || 0).toFixed(2)} · D ${measureRef.distanceMm.toFixed(2)} mm`;
           hud.text = `Layer: ${label} · Zoom ${scaleRef.value.toFixed(2)}x · Tool ${toolModeRef.value} · Selected ${count} · Measures ${measureHistory.length} · Current ${currentMeasureText}`;
           hud.x = width - 18 - Math.max(320, String(hud.text).length * 6.7);
           const modeText = boxRef.active ? (boxRef.mode === "zoom" ? " · Box Zoom" : boxRef.mode === "subtract" ? " · Box Subtract" : boxRef.append ? " · Box Append" : " · Box Replace") : "";
           const filterLabel = selectionFilterRef.value === "all" ? "All" : selectionFilterRef.value === "component" ? "Comp" : "Trace";
-          selectionBar.text = `Selection · Filter ${filterLabel} · ${selectedCompIds.size} components · ${selectedTraceIds.size} traces · ${(selectedOverlayRef.kind && selectedOverlayRef.id) ? 1 : 0} overlays · Total ${count}${modeText}`;
+          selectionBar.text = `Selection · Filter ${filterLabel} · ${selectedCompIds.size} components · ${selectedTraceIds.size} traces · ${selectedOverlayKeys.size} overlays · Total ${count}${modeText}`;
           const visibleDetail = Object.entries(detailVisibilityRef.value)
             .filter(([, enabled]) => enabled)
             .map(([key]) => key)
@@ -446,7 +446,7 @@ export default function PcbCanvas({
             oy: offsetRef.y,
             sc: Array.from(selectedCompIds),
             st: Array.from(selectedTraceIds),
-            so: selectedOverlayRef.kind && selectedOverlayRef.id ? [`${selectedOverlayRef.kind}:${selectedOverlayRef.id}`] : [],
+            so: Array.from(selectedOverlayKeys),
             sf: selectionFilterRef.value,
             vd: visibleDetail,
             lm: "adaptive",
@@ -532,8 +532,8 @@ export default function PcbCanvas({
             maxX = Math.max(maxX, b.maxX);
             maxY = Math.max(maxY, b.maxY);
           }
-          if (selectedOverlayRef.kind && selectedOverlayRef.id) {
-            const nodes = overlayMap.get(`${selectedOverlayRef.kind}:${selectedOverlayRef.id}`) || [];
+          for (const key of selectedOverlayKeys) {
+            const nodes = overlayMap.get(key) || [];
             for (const node of nodes) {
               const x = Number(node.x || 0);
               const y = Number(node.y || 0);
@@ -782,7 +782,12 @@ export default function PcbCanvas({
           const items = [
             ...Array.from(selectedCompIds).map((id) => ({ kind: "component" as const, id, label: components.find((c) => c.id === id)?.refdes || id })),
             ...Array.from(selectedTraceIds).map((id) => ({ kind: "trace" as const, id, label: id })),
-            ...(selectedOverlayRef.kind && selectedOverlayRef.id ? [{ kind: selectedOverlayRef.kind, id: selectedOverlayRef.id, label: `${selectedOverlayRef.kind}:${selectedOverlayRef.id}` }] : []),
+            ...Array.from(selectedOverlayKeys).map((key) => {
+              const parts = key.split(":");
+              const kind = parts[0] as HoverFeatureType;
+              const id = parts.slice(1).join(":");
+              return { kind, id, label: `${kind}:${id}` };
+            }),
           ];
           if (!items.length) {
             selectedPanelBody.text = "No selection";
@@ -821,8 +826,14 @@ export default function PcbCanvas({
               if (item.kind === "component") selectedCompIds.delete(item.id);
               else if (item.kind === "trace") selectedTraceIds.delete(item.id);
               else {
-                selectedOverlayRef.kind = undefined;
-                selectedOverlayRef.id = undefined;
+                selectedOverlayKeys.delete(`${item.kind}:${item.id}`);
+                const first = Array.from(selectedOverlayKeys)[0];
+                if (first) {
+                  const parts = first.split(":");
+                  onSelectFeature?.(parts[0] as HoverFeatureType, parts.slice(1).join(":"), Array.from(selectedOverlayKeys));
+                } else {
+                  onSelectFeature?.(undefined, undefined, []);
+                }
               }
               if (selectionUiRef.hoverKind === item.kind && selectionUiRef.hoverId === item.id) {
                 selectionUiRef.hoverKind = null;
@@ -957,7 +968,7 @@ export default function PcbCanvas({
           const layerLabel = visibleLayers.length === 0 || visibleLayers.length === 2 ? "All" : visibleLayers.join(" + ");
           const selectedComponents = Array.from(selectedCompIds).map((id) => components.find((c) => c.id === id)?.refdes || id);
           const selectedTraces = Array.from(selectedTraceIds);
-          const selectedOverlays = selectedOverlayRef.kind && selectedOverlayRef.id ? [`${selectedOverlayRef.kind}:${selectedOverlayRef.id}`] : [];
+          const selectedOverlays = Array.from(selectedOverlayKeys);
           return [
             `Board: ${getExportSlug()}`,
             `Layer: ${layerLabel}`,
@@ -1035,7 +1046,10 @@ export default function PcbCanvas({
               path: trace.path,
             };
           });
-          const selectedOverlays = selectedOverlayRef.kind && selectedOverlayRef.id ? [{ kind: selectedOverlayRef.kind, id: selectedOverlayRef.id }] : [];
+          const selectedOverlays = Array.from(selectedOverlayKeys).map((key) => {
+            const parts = key.split(":");
+            return { kind: parts[0], id: parts.slice(1).join(":") };
+          });
           return JSON.stringify({
             board: getExportSlug(),
             tool: toolModeRef.value,
@@ -1060,7 +1074,10 @@ export default function PcbCanvas({
         const buildWorkbenchSessionJson = () => {
           const selectedComponents = Array.from(selectedCompIds).map((id) => components.find((c) => c.id === id)).filter(Boolean);
           const selectedTraces = Array.from(selectedTraceIds).map((id) => traces.find((tr) => tr.id === id)).filter(Boolean);
-          const selectedOverlays = selectedOverlayRef.kind && selectedOverlayRef.id ? [{ kind: selectedOverlayRef.kind, id: selectedOverlayRef.id }] : [];
+          const selectedOverlays = Array.from(selectedOverlayKeys).map((key) => {
+            const parts = key.split(":");
+            return { kind: parts[0], id: parts.slice(1).join(":") };
+          });
           const visibleDetail = Object.entries(detailVisibilityRef.value).filter(([, enabled]) => enabled).map(([key]) => key);
           return JSON.stringify({
             board: getExportSlug(),
@@ -1412,7 +1429,7 @@ export default function PcbCanvas({
         const updateOverlayStyle = (kind: Exclude<HoverFeatureType, 'component' | 'trace'>, id: string) => {
           const nodes = overlayMap.get(`${kind}:${id}`) || [];
           const isTarget = hoveredType === kind && hoveredId === id;
-          const isSelected = selectedOverlayRef.kind === kind && selectedOverlayRef.id === id;
+          const isSelected = selectedOverlayKeys.has(`${kind}:${id}`);
           const isRelated = overlayHighlightKeys.includes(`${kind}:${id}`);
           for (const node of nodes) {
             if (!node) continue;
@@ -1481,9 +1498,8 @@ export default function PcbCanvas({
         const clearSelection = () => {
           selectedCompIds.clear();
           selectedTraceIds.clear();
-          selectedOverlayRef.kind = undefined;
-          selectedOverlayRef.id = undefined;
-          onSelectFeature?.(undefined, undefined);
+          selectedOverlayKeys.clear();
+          onSelectFeature?.(undefined, undefined, []);
           refreshStyles();
         };
 
@@ -1496,8 +1512,7 @@ export default function PcbCanvas({
             if (!selectionKindAllowed(kind)) return;
             selectedCompIds.clear();
             selectedTraceIds.clear();
-            selectedOverlayRef.kind = undefined;
-            selectedOverlayRef.id = undefined;
+            selectedOverlayKeys.clear();
             if (kind === "component") selectedCompIds.add(id);
             else selectedTraceIds.add(id);
             onSelectFeature?.(kind, id);
@@ -1506,9 +1521,9 @@ export default function PcbCanvas({
           }
           selectedCompIds.clear();
           selectedTraceIds.clear();
-          selectedOverlayRef.kind = kind;
-          selectedOverlayRef.id = id;
-          onSelectFeature?.(kind, id, [`${kind}:${id}`]);
+          selectedOverlayKeys.clear();
+          selectedOverlayKeys.add(`${kind}:${id}`);
+          onSelectFeature?.(kind, id, Array.from(selectedOverlayKeys));
           refreshStyles();
         };
 
@@ -1526,14 +1541,18 @@ export default function PcbCanvas({
             refreshStyles();
             return;
           }
-          if (selectedOverlayRef.kind === kind && selectedOverlayRef.id === id) {
-            selectedOverlayRef.kind = undefined;
-            selectedOverlayRef.id = undefined;
-            onSelectFeature?.(undefined, undefined, []);
+          const key = `${kind}:${id}`;
+          if (selectedOverlayKeys.has(key)) {
+            selectedOverlayKeys.delete(key);
           } else {
-            selectedOverlayRef.kind = kind;
-            selectedOverlayRef.id = id;
-            onSelectFeature?.(kind, id, [`${kind}:${id}`]);
+            selectedOverlayKeys.add(key);
+          }
+          const first = Array.from(selectedOverlayKeys)[0];
+          if (first) {
+            const parts = first.split(":");
+            onSelectFeature?.(parts[0] as HoverFeatureType, parts.slice(1).join(":"), Array.from(selectedOverlayKeys));
+          } else {
+            onSelectFeature?.(undefined, undefined, []);
           }
           refreshStyles();
         };
@@ -1579,6 +1598,25 @@ export default function PcbCanvas({
             for (const [id, b] of traceBoundsMap) {
               if (b.maxX >= wx1 && b.minX <= wx2 && b.maxY >= wy1 && b.minY <= wy2) selectedTraceIds.add(id);
             }
+          }
+          for (const [key, nodes] of overlayMap) {
+            let hit = false;
+            for (const node of nodes) {
+              const x = Number(node.x || 0);
+              const y = Number(node.y || 0);
+              const w = Number(node.width || 0);
+              const h = Number(node.height || 0);
+              if (w > 0 && h > 0 && x + w >= sx && x <= ex && y + h >= sy && y <= ey) {
+                hit = true;
+                break;
+              }
+            }
+            if (hit) selectedOverlayKeys.add(key);
+          }
+          const first = Array.from(selectedOverlayKeys)[0];
+          if (first) {
+            const parts = first.split(":");
+            onSelectFeature?.(parts[0] as HoverFeatureType, parts.slice(1).join(":"), Array.from(selectedOverlayKeys));
           }
           refreshStyles();
         };
@@ -1777,6 +1815,9 @@ export default function PcbCanvas({
           }
           for (const id of initialUrlState.sc) if (compBoundsMap.has(id)) selectedCompIds.add(id);
           for (const id of initialUrlState.st) if (traceBoundsMap.has(id)) selectedTraceIds.add(id);
+          const params = new URL(window.location.href).searchParams;
+          const os = (params.get("os") || "").split(",").filter(Boolean);
+          for (const key of os) if (overlayMap.has(key)) selectedOverlayKeys.add(key);
         }
 
         const view = hostRef.current!;
