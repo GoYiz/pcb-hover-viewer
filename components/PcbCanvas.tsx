@@ -29,6 +29,7 @@ type Props = {
   directIds: string[];
   traceHighlightIds: string[];
   onHoverFeature: (type?: HoverFeatureType, id?: string) => void;
+  onSelectFeature?: (type?: HoverFeatureType, id?: string) => void;
 };
 
 const PAD = 20;
@@ -68,6 +69,7 @@ export default function PcbCanvas({
   directIds,
   traceHighlightIds,
   onHoverFeature,
+  onSelectFeature,
 }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -329,6 +331,7 @@ export default function PcbCanvas({
 
         const traceMap = new Map<string, any>();
         const traceMetaMap = new Map<string, { widthMm: number }>();
+        const overlayMap = new Map<string, any[]>();
         const compMap = new Map<string, any>();
         const labelMap = new Map<string, any>();
         const labelAnchorMap = new Map<string, { x: number; y: number }>();
@@ -338,6 +341,7 @@ export default function PcbCanvas({
 
         const selectedCompIds = new Set<string>();
         const selectedTraceIds = new Set<string>();
+        const selectedOverlayRef = { kind: undefined as undefined | Exclude<HoverFeatureType, 'component' | 'trace'>, id: undefined as undefined | string };
         const scaleRef = { value: 1 };
         const offsetRef = { x: 0, y: 0 };
         const dragRef = { active: false, x: 0, y: 0 };
@@ -1374,6 +1378,17 @@ export default function PcbCanvas({
           }
         };
 
+        const updateOverlayStyle = (kind: Exclude<HoverFeatureType, 'component' | 'trace'>, id: string) => {
+          const nodes = overlayMap.get(`${kind}:${id}`) || [];
+          const isTarget = hoveredType === kind && hoveredId === id;
+          const isSelected = selectedOverlayRef.kind === kind && selectedOverlayRef.id === id;
+          for (const node of nodes) {
+            if (!node) continue;
+            node.opacity = isTarget ? 1 : isSelected ? Math.min((node.opacity || 1) + 0.18, 1) : (node.opacity ?? 1);
+            node.strokeWidth = isTarget ? 1.8 : isSelected ? 1.5 : (node.strokeWidth || 1.2);
+          }
+        };
+
         const updateCompStyle = (id: string) => {
           const rect = compMap.get(id);
           const label = labelMap.get(id);
@@ -1409,6 +1424,12 @@ export default function PcbCanvas({
           drillLayer.visible = detailVisibilityRef.value.drills;
           for (const id of traceMap.keys()) updateTraceStyle(id);
           for (const id of compMap.keys()) updateCompStyle(id);
+          for (const key of overlayMap.keys()) {
+            const idx = key.indexOf(':');
+            const kind = key.slice(0, idx) as Exclude<HoverFeatureType, 'component' | 'trace'>;
+            const id = key.slice(idx + 1);
+            updateOverlayStyle(kind, id);
+          }
           applyLabelVisibilityStrategy();
           for (const [id, marker] of markerMap) marker.visible = detailVisibilityRef.value.components && focusComponentId === id;
           updateMeasureOverlay();
@@ -1422,6 +1443,9 @@ export default function PcbCanvas({
         const clearSelection = () => {
           selectedCompIds.clear();
           selectedTraceIds.clear();
+          selectedOverlayRef.kind = undefined;
+          selectedOverlayRef.id = undefined;
+          onSelectFeature?.(undefined, undefined);
           refreshStyles();
         };
 
@@ -1429,23 +1453,49 @@ export default function PcbCanvas({
           return selectionFilterRef.value === "all" || selectionFilterRef.value === kind;
         };
 
-        const selectOnly = (kind: "component" | "trace", id: string) => {
-          if (!selectionKindAllowed(kind)) return;
+        const selectOnly = (kind: HoverFeatureType, id: string) => {
+          if (kind === "component" || kind === "trace") {
+            if (!selectionKindAllowed(kind)) return;
+            selectedCompIds.clear();
+            selectedTraceIds.clear();
+            selectedOverlayRef.kind = undefined;
+            selectedOverlayRef.id = undefined;
+            if (kind === "component") selectedCompIds.add(id);
+            else selectedTraceIds.add(id);
+            onSelectFeature?.(kind, id);
+            refreshStyles();
+            return;
+          }
           selectedCompIds.clear();
           selectedTraceIds.clear();
-          if (kind === "component") selectedCompIds.add(id);
-          else selectedTraceIds.add(id);
+          selectedOverlayRef.kind = kind;
+          selectedOverlayRef.id = id;
+          onSelectFeature?.(kind, id);
           refreshStyles();
         };
 
-        const toggleSelection = (kind: "component" | "trace", id: string) => {
-          if (!selectionKindAllowed(kind)) return;
-          if (kind === "component") {
-            if (selectedCompIds.has(id)) selectedCompIds.delete(id);
-            else selectedCompIds.add(id);
+        const toggleSelection = (kind: HoverFeatureType, id: string) => {
+          if (kind === "component" || kind === "trace") {
+            if (!selectionKindAllowed(kind)) return;
+            if (kind === "component") {
+              if (selectedCompIds.has(id)) selectedCompIds.delete(id);
+              else selectedCompIds.add(id);
+            } else {
+              if (selectedTraceIds.has(id)) selectedTraceIds.delete(id);
+              else selectedTraceIds.add(id);
+            }
+            onSelectFeature?.(kind, id);
+            refreshStyles();
+            return;
+          }
+          if (selectedOverlayRef.kind === kind && selectedOverlayRef.id === id) {
+            selectedOverlayRef.kind = undefined;
+            selectedOverlayRef.id = undefined;
+            onSelectFeature?.(undefined, undefined);
           } else {
-            if (selectedTraceIds.has(id)) selectedTraceIds.delete(id);
-            else selectedTraceIds.add(id);
+            selectedOverlayRef.kind = kind;
+            selectedOverlayRef.id = id;
+            onSelectFeature?.(kind, id);
           }
           refreshStyles();
         };
@@ -1513,7 +1563,7 @@ export default function PcbCanvas({
           }
         };
 
-        const renderOverlayPath = (targetLayer: any, feature: TraceItem, style: { stroke: string; fill?: string; opacity?: number; strokeWidth?: number }) => {
+        const renderOverlayPath = (targetLayer: any, kind: Exclude<HoverFeatureType, 'component' | 'trace'>, feature: TraceItem, style: { stroke: string; fill?: string; opacity?: number; strokeWidth?: number }) => {
           const points: number[] = [];
           let minX = Infinity;
           let minY = Infinity;
@@ -1541,50 +1591,60 @@ export default function PcbCanvas({
               opacity: Math.min(style.opacity ?? 1, 0.22),
               cornerRadius: 2,
             });
+            fillRect.on('pointer.enter', () => onHoverFeature(kind, feature.id));
+            fillRect.on('pointer.leave', () => onHoverFeature(undefined, undefined));
+            fillRect.on('pointer.tap', (e: any) => ((e?.metaKey || e?.ctrlKey) ? toggleSelection(kind, feature.id) : selectOnly(kind, feature.id)));
             targetLayer.add(fillRect);
+            if (!overlayMap.has(`${kind}:${feature.id}`)) overlayMap.set(`${kind}:${feature.id}`, []);
+            overlayMap.get(`${kind}:${feature.id}`)?.push(fillRect);
           }
-          const line = new Line({ points, stroke: style.stroke, strokeWidth: style.strokeWidth ?? 1.2, opacity: style.opacity ?? 1, hitRadius: 0, hitFill: 'rgba(0,0,0,0)' });
+          const line = new Line({ points, stroke: style.stroke, strokeWidth: style.strokeWidth ?? 1.2, opacity: style.opacity ?? 1, hitRadius: 8, hitFill: '#ffffff' });
+          line.on('pointer.enter', () => onHoverFeature(kind, feature.id));
+          line.on('pointer.leave', () => onHoverFeature(undefined, undefined));
+          line.on('pointer.tap', (e: any) => ((e?.metaKey || e?.ctrlKey) ? toggleSelection(kind, feature.id) : selectOnly(kind, feature.id)));
           targetLayer.add(line);
+          if (!overlayMap.has(`${kind}:${feature.id}`)) overlayMap.set(`${kind}:${feature.id}`, []);
+          overlayMap.get(`${kind}:${feature.id}`)?.push(line);
         };
 
         for (const zone of zones) {
-          renderOverlayPath(zoneLayer, zone, { stroke: 'rgba(96,165,250,0.55)', fill: 'rgba(37,99,235,0.10)', opacity: 0.68, strokeWidth: 1.0 });
+          renderOverlayPath(zoneLayer, "zones", zone, { stroke: 'rgba(96,165,250,0.55)', fill: 'rgba(37,99,235,0.10)', opacity: 0.68, strokeWidth: 1.0 });
         }
 
         for (const via of vias) {
-          renderOverlayPath(viaLayer, via, { stroke: 'rgba(34,211,238,0.95)', fill: 'rgba(8,145,178,0.16)', opacity: 0.9, strokeWidth: 1.0 });
+          renderOverlayPath(viaLayer, "vias", via, { stroke: 'rgba(34,211,238,0.95)', fill: 'rgba(8,145,178,0.16)', opacity: 0.9, strokeWidth: 1.0 });
         }
 
         for (const keepout of keepouts) {
-          renderOverlayPath(keepoutLayer, keepout, { stroke: 'rgba(248,113,113,0.95)', fill: 'rgba(127,29,29,0.18)', opacity: 0.95, strokeWidth: 1.4 });
+          renderOverlayPath(keepoutLayer, "keepouts", keepout, { stroke: 'rgba(248,113,113,0.95)', fill: 'rgba(127,29,29,0.18)', opacity: 0.95, strokeWidth: 1.4 });
         }
 
         for (const pad of pads) {
-          renderOverlayPath(padLayer, pad, { stroke: 'rgba(251,191,36,0.95)', fill: 'rgba(250,204,21,0.18)', opacity: 0.9, strokeWidth: 1.1 });
+          renderOverlayPath(padLayer, "pads", pad, { stroke: 'rgba(251,191,36,0.95)', fill: 'rgba(250,204,21,0.18)', opacity: 0.9, strokeWidth: 1.1 });
         }
 
         for (const drill of drills) {
-          renderOverlayPath(drillLayer, drill, { stroke: 'rgba(148,163,184,0.95)', fill: 'rgba(15,23,42,0.42)', opacity: 0.88, strokeWidth: 1.0 });
+          renderOverlayPath(drillLayer, "drills", drill, { stroke: 'rgba(148,163,184,0.95)', fill: 'rgba(15,23,42,0.42)', opacity: 0.88, strokeWidth: 1.0 });
         }
 
         for (const silk of silkscreen) {
-          renderOverlayPath(silkLayer, silk, { stroke: 'rgba(226,232,240,0.92)', opacity: 0.82, strokeWidth: 0.9 });
+          renderOverlayPath(silkLayer, "silkscreen", silk, { stroke: 'rgba(226,232,240,0.92)', opacity: 0.82, strokeWidth: 0.9 });
         }
 
         for (const outline of boardOutlines) {
-          renderOverlayPath(boardOutlineLayer, outline, { stroke: 'rgba(167,139,250,0.96)', opacity: 0.9, strokeWidth: 1.2 });
+          renderOverlayPath(boardOutlineLayer, "boardOutlines", outline, { stroke: 'rgba(167,139,250,0.96)', opacity: 0.9, strokeWidth: 1.2 });
         }
 
         for (const doc of documentation) {
-          renderOverlayPath(docLayer, doc, { stroke: 'rgba(34,197,94,0.82)', opacity: 0.72, strokeWidth: 0.85 });
+          renderOverlayPath(docLayer, "documentation", doc, { stroke: 'rgba(34,197,94,0.82)', opacity: 0.72, strokeWidth: 0.85 });
         }
 
         for (const mech of mechanical) {
-          renderOverlayPath(mechLayer, mech, { stroke: 'rgba(244,114,182,0.86)', opacity: 0.76, strokeWidth: 0.95 });
+          renderOverlayPath(mechLayer, "mechanical", mech, { stroke: 'rgba(244,114,182,0.86)', opacity: 0.76, strokeWidth: 0.95 });
         }
 
         for (const graphic of graphics) {
-          renderOverlayPath(graphicsLayer, graphic, { stroke: 'rgba(148,163,184,0.82)', opacity: 0.62, strokeWidth: 0.8 });
+          renderOverlayPath(graphicsLayer, "graphics", graphic, { stroke: 'rgba(148,163,184,0.82)', opacity: 0.62, strokeWidth: 0.8 });
         }
 
         for (const trace of traces) {

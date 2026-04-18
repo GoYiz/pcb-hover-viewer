@@ -48,6 +48,19 @@ export async function GET(
       select: { netId: true },
     });
     if (trace?.netId) uniqueNetIds = [trace.netId];
+  } else {
+    const overlay = await prisma.overlayGeometry.findFirst({
+      where: { boardId: id, id: scopeId(id, featureId), kind: featureType === 'boardOutlines' ? 'board_outline' : featureType.slice(0, -1) === 'zone' ? 'zone' : undefined },
+      select: { netId: true, kind: true },
+    }).catch(() => null);
+    if (overlay?.netId) uniqueNetIds = [overlay.netId];
+    if (!uniqueNetIds.length) {
+      const fallbackOverlay = await prisma.overlayGeometry.findFirst({
+        where: { boardId: id, id: scopeId(id, featureId) },
+        select: { netId: true },
+      });
+      if (fallbackOverlay?.netId) uniqueNetIds = [fallbackOverlay.netId];
+    }
   }
 
   const traces = uniqueNetIds.length
@@ -94,6 +107,21 @@ export async function GET(
     })),
   ];
 
+  const overlays = uniqueNetIds.length
+    ? await prisma.overlayGeometry.findMany({
+        where: {
+          boardId: id,
+          netId: { in: uniqueNetIds },
+        },
+        select: {
+          id: true,
+          netId: true,
+          layerId: true,
+          kind: true,
+        },
+      })
+    : [];
+
   return NextResponse.json({
     target: {
       type: featureType,
@@ -105,5 +133,13 @@ export async function GET(
       id: unscopeId(id, trace.id),
       netId: unscopeId(id, trace.netId),
     })),
+    overlays: overlays
+      .filter((item) => !(featureType !== 'component' && featureType !== 'trace' && unscopeId(id, item.id) === featureId))
+      .map((item) => ({
+        id: unscopeId(id, item.id),
+        kind: item.kind === 'board_outline' ? 'boardOutlines' : `${item.kind}s`,
+        netId: item.netId ? unscopeId(id, item.netId) : '',
+        layerId: unscopeId(id, item.layerId),
+      })),
   });
 }

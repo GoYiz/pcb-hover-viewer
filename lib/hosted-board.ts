@@ -197,17 +197,39 @@ export function getHostedBoardRelationsById(id: string, featureType: string, fea
   const board = getHostedBoardById(id);
   if (!board) return null;
 
+  const overlayBuckets: Record<string, TraceItem[]> = {
+    zones: board.zones || [],
+    vias: board.vias || [],
+    pads: board.pads || [],
+    keepouts: board.keepouts || [],
+    silkscreen: board.silkscreen || [],
+    boardOutlines: board.boardOutlines || [],
+    documentation: board.documentation || [],
+    mechanical: board.mechanical || [],
+    graphics: board.graphics || [],
+    drills: board.drills || [],
+  };
+
   let netIds: string[] = [];
   if (featureType === "component") {
     netIds = [...new Set(board.components.find((component) => component.id === featureId)?.netIds || [])];
   } else if (featureType === "trace") {
     const trace = board.traces.find((item) => item.id === featureId);
     netIds = trace?.netId ? [trace.netId] : [];
+  } else {
+    const overlay = (overlayBuckets[featureType] || []).find((item) => item.id === featureId);
+    netIds = overlay?.netId ? [String(overlay.netId)] : [];
   }
 
   const traces = board.traces
     .filter((trace) => netIds.includes(String(trace.netId)))
     .map((trace) => ({ id: trace.id, netId: String(trace.netId) }));
+
+  const overlays = Object.entries(overlayBuckets)
+    .flatMap(([kind, items]) => items.map((item) => ({ kind, ...item })))
+    .filter((item) => item.netId && netIds.includes(String(item.netId)))
+    .filter((item) => !(item.kind === featureType && item.id === featureId))
+    .map((item) => ({ id: item.id, kind: item.kind, netId: String(item.netId || ""), layerId: String(item.layerId || "") }));
 
   const direct = board.components
     .filter((component) => !(featureType === "component" && component.id === featureId))
@@ -227,5 +249,6 @@ export function getHostedBoardRelationsById(id: string, featureType: string, fea
     direct,
     nets: netIds,
     traces,
+    overlays,
   };
 }

@@ -20,7 +20,7 @@ export async function fetchBoardGeometry(boardId: string, layer = "TOP") {
 
 export async function fetchRelations(
   boardId: string,
-  featureType: "component" | "trace",
+  featureType: "component" | "trace" | "zones" | "vias" | "pads" | "keepouts" | "silkscreen" | "boardOutlines" | "documentation" | "mechanical" | "graphics" | "drills",
   featureId: string,
 ) {
   const res = await fetch(`/api/boards/${boardId}/relations/${featureType}/${featureId}`, {

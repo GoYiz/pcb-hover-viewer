@@ -57,6 +57,7 @@ export type RelationsResponse = {
   }>;
   nets: string[];
   traces: Array<{ id: string; netId: string }>;
+  overlays?: Array<{ id: string; kind: string; netId: string; layerId: string }>;
 };
 
 export type ImportMetadata = {

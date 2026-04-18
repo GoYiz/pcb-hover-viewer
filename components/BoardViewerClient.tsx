@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { fetchBoardComponents, fetchBoardGeometry, fetchBoardMeta } from "@/lib/api";
+import { fetchBoardComponents, fetchBoardGeometry, fetchBoardMeta, fetchRelations } from "@/lib/api";
 import { useViewerStore } from "@/store/viewerStore";
 import type { HoverFeatureType } from "@/store/viewerStore";
 import type { ComponentItem, TraceItem, ImportMetadata } from "@/types/pcb";
@@ -99,6 +99,8 @@ export default function BoardViewerClient({
   const [focusComponentId, setFocusComponentId] = useState<string | undefined>();
   const [canvasBridge, setCanvasBridge] = useState({ tool: "select", selectionFilter: "all", visibleDetail: "-", zoom: "1.000", selectedComponents: 0, selectedTraces: 0 });
   const [urlSelection, setUrlSelection] = useState({ sc: [] as string[], st: [] as string[] });
+  const [overlaySelection, setOverlaySelection] = useState<{ kind?: Exclude<HoverFeatureType, "component" | "trace">; id?: string }>({});
+  const [relationOverlayCount, setRelationOverlayCount] = useState(0);
 
   const hoveredFeatureId = useViewerStore((s) => s.hoveredFeatureId);
   const hoveredFeatureType = useViewerStore((s) => s.hoveredFeatureType);
@@ -260,23 +262,60 @@ export default function BoardViewerClient({
 
     if (!targetId || !targetType) {
       setHighlight({ targetId: undefined, targetType: undefined, directComponentIds: [], traceIds: [], netIds: [] });
+      setRelationOverlayCount(0);
       return;
     }
 
-    let netIds: string[] = [];
-    if (targetType === "component") netIds = componentNetMap.get(targetId) || [];
-    else {
-      const trace = traces.find((t) => t.id === targetId);
-      netIds = trace ? [trace.netId] : [];
+    const resolvedTargetId = targetId;
+    const resolvedTargetType = targetType;
+    let cancelled = false;
+    async function resolveRelations() {
+      if (resolvedTargetType === "component") {
+        const netIds = componentNetMap.get(resolvedTargetId) || [];
+        const directComponentIds = [...new Set(netIds.flatMap((n) => [...(netToComponents.get(n) || new Set())]))].filter(
+          (id) => !(resolvedTargetType === "component" && id === resolvedTargetId),
+        );
+        const traceIds = [...new Set(netIds.flatMap((n) => [...(netToTraces.get(n) || new Set())]))];
+        if (!cancelled) {
+          setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds });
+          setRelationOverlayCount(0);
+        }
+        return;
+      }
+
+      if (resolvedTargetType === "trace") {
+        const trace = traces.find((t) => t.id === resolvedTargetId);
+        const netIds = trace ? [trace.netId] : [];
+        const directComponentIds = [...new Set(netIds.flatMap((n) => [...(netToComponents.get(n) || new Set())]))];
+        const traceIds = [...new Set(netIds.flatMap((n) => [...(netToTraces.get(n) || new Set())]))];
+        if (!cancelled) {
+          setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds });
+          setRelationOverlayCount(0);
+        }
+        return;
+      }
+
+      try {
+        const rel = await fetchRelations(boardId, resolvedTargetType, resolvedTargetId);
+        if (cancelled) return;
+        const directComponentIds = [...new Set((rel.direct || []).filter((item) => item.targetType === 'component').map((item) => item.targetId))];
+        const traceIds = [...new Set((rel.traces || []).map((item) => item.id))];
+        const netIds = rel.nets || [];
+        setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds });
+        setRelationOverlayCount((rel.overlays || []).length);
+      } catch {
+        if (!cancelled) {
+          setHighlight({ targetId, targetType, directComponentIds: [], traceIds: [], netIds: [] });
+          setRelationOverlayCount(0);
+        }
+      }
     }
 
-    const directComponentIds = [...new Set(netIds.flatMap((n) => [...(netToComponents.get(n) || new Set())]))].filter(
-      (id) => !(targetType === "component" && id === targetId),
-    );
-    const traceIds = [...new Set(netIds.flatMap((n) => [...(netToTraces.get(n) || new Set())]))];
-
-    setHighlight({ targetId, targetType, directComponentIds, traceIds, netIds });
-  }, [components, traces, hoveredFeatureId, hoveredFeatureType, urlSelection, setHighlight]);
+    resolveRelations();
+    return () => {
+      cancelled = true;
+    };
+  }, [boardId, components, traces, hoveredFeatureId, hoveredFeatureType, urlSelection, setHighlight]);
 
   const searchMatches = useMemo(() => {
     const kw = search.trim().toUpperCase();
@@ -327,7 +366,10 @@ export default function BoardViewerClient({
       const url = new URL(window.location.href);
       const sc = (url.searchParams.get("sc") || "").split(",").filter(Boolean);
       const st = (url.searchParams.get("st") || "").split(",").filter(Boolean);
+      const ok = url.searchParams.get("ok") || undefined;
+      const oi = url.searchParams.get("oi") || undefined;
       setUrlSelection((prev) => (prev.sc.join(",") === sc.join(",") && prev.st.join(",") === st.join(",")) ? prev : { sc, st });
+      setOverlaySelection((prev) => (prev.kind === (ok as any) && prev.id === oi) ? prev : { kind: ok as any, id: oi });
     };
     readUrlSelection();
     const timer = window.setInterval(readUrlSelection, 300);
@@ -371,23 +413,39 @@ export default function BoardViewerClient({
     window.history.replaceState({}, "", url.toString());
   };
 
-  const applySharedSelection = (type?: "component" | "trace", id?: string) => {
+  const applySharedSelection = (type?: HoverFeatureType, id?: string) => {
     const url = new URL(window.location.href);
     if (!type || !id) {
       url.searchParams.delete("sc");
       url.searchParams.delete("st");
+      url.searchParams.delete("ok");
+      url.searchParams.delete("oi");
       window.history.replaceState({}, "", url.toString());
       return;
     }
     if (type === "component") {
       url.searchParams.set("sc", id);
       url.searchParams.delete("st");
-    } else {
+      url.searchParams.delete("ok");
+      url.searchParams.delete("oi");
+    } else if (type === "trace") {
       url.searchParams.set("st", id);
       url.searchParams.delete("sc");
+      url.searchParams.delete("ok");
+      url.searchParams.delete("oi");
+    } else {
+      url.searchParams.delete("sc");
+      url.searchParams.delete("st");
+      url.searchParams.set("ok", type);
+      url.searchParams.set("oi", id);
     }
     window.history.replaceState({}, "", url.toString());
   };
+
+  useEffect(() => {
+    if (!overlaySelection.kind || !overlaySelection.id) return;
+    setHoveredFeature(overlaySelection.kind, overlaySelection.id);
+  }, [overlaySelection, setHoveredFeature]);
 
   const stageStatus = loading ? "Loading board" : error ? "Data fault" : boardName || "Live workbench";
   const sourceHint = importMetadata?.sourceFormat ? `${importMetadata.sourceFormat} import` : "API-backed board";
@@ -623,6 +681,7 @@ export default function BoardViewerClient({
                 directIds={highlight.directComponentIds}
                 traceHighlightIds={highlight.traceIds}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
+                onSelectFeature={(type, id) => applySharedSelection(type, id)}
               />
             ) : (
               <ThreeBoardCanvas
@@ -641,6 +700,7 @@ export default function BoardViewerClient({
                 mechanical={mechanical}
                 graphics={graphics}
                 drills={drills}
+                boardOutlines={boardOutlines}
                 visibleDetail={visibleDetail}
                 visibleLayers={visibleLayers}
                 focusComponentId={focusComponentId}
@@ -651,7 +711,7 @@ export default function BoardViewerClient({
                 selectedComponentIds={urlSelection.sc}
                 selectedTraceIds={urlSelection.st}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
-                onSelectFeature={(type, id) => { if (type === "component" || type === "trace" || !type) applySharedSelection(type, id); }}
+                onSelectFeature={(type, id) => applySharedSelection(type, id)}
               />
             )}
           </div>
@@ -673,6 +733,7 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Direct components</span><strong>{highlight.directComponentIds.length}</strong></div>
               <div className="inspector-kv"><span>Highlighted traces</span><strong>{highlight.traceIds.length}</strong></div>
               <div className="inspector-kv"><span>Context nets</span><strong>{highlight.netIds.length}</strong></div>
+              <div className="inspector-kv"><span>Related overlays</span><strong>{relationOverlayCount}</strong></div>
               <div className="inspector-kv"><span>Layer visibility</span><strong>{visibleLayers.join(", ")}</strong></div>
             </div>
             {hoveredOverlay && (
