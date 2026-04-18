@@ -9,7 +9,10 @@
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "test:hosted-fallback": "python3 scripts/validate_hosted_api_fallback.py",
+    "test:viewer-debug": "python3 scripts/validate_viewer_debug_hooks.py",
+    "test:smoke": "python3 scripts/validate_hosted_api_fallback.py && python3 scripts/validate_viewer_debug_hooks.py"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

@@ -44,6 +44,10 @@ type Props = {
   initialMechanical?: TraceItem[];
   initialGraphics?: TraceItem[];
   initialDrills?: TraceItem[];
+  initialViewMode?: "leafer" | "three";
+  initialVisibleDetail?: string[];
+  initialInspectType?: HoverFeatureType;
+  initialInspectId?: string;
   importMetadata?: ImportMetadata;
 };
 
@@ -63,6 +67,10 @@ export default function BoardViewerClient({
   initialMechanical,
   initialGraphics,
   initialDrills,
+  initialViewMode,
+  initialVisibleDetail,
+  initialInspectType,
+  initialInspectId,
   importMetadata,
 }: Props) {
   const [components, setComponents] = useState<ComponentItem[]>(initialComponents || []);
@@ -82,7 +90,7 @@ export default function BoardViewerClient({
   const [error, setError] = useState<string | null>(null);
   const [layerMode, setLayerMode] = useState<"all" | "fcu" | "bcu">("all");
   const [urlReady, setUrlReady] = useState(false);
-  const [viewMode, setViewMode] = useState<"leafer" | "three">("leafer");
+  const [viewMode, setViewMode] = useState<"leafer" | "three">(initialViewMode || "leafer");
   const [search, setSearch] = useState("");
   const [focusComponentId, setFocusComponentId] = useState<string | undefined>();
   const [canvasBridge, setCanvasBridge] = useState({ tool: "select", selectionFilter: "all", visibleDetail: "-", zoom: "1.000", selectedComponents: 0, selectedTraces: 0 });
@@ -121,7 +129,7 @@ export default function BoardViewerClient({
     return Object.entries(fallbackCounts).filter(([, count]) => Number(count) > 0).sort((a, b) => Number(b[1]) - Number(a[1]));
   }, [importMetadata, traces, zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills]);
   const totalImportedGeometry = useMemo(() => importGeometryBuckets.reduce((acc, [, count]) => acc + Number(count), 0), [importGeometryBuckets]);
-  const [visibleDetail, setVisibleDetail] = useState<string[]>([...BASE_VISIBLE_DETAIL_NAMES, ...OVERLAY_DETAIL_NAMES]);
+  const [visibleDetail, setVisibleDetail] = useState<string[]>(initialVisibleDetail || [...BASE_VISIBLE_DETAIL_NAMES, ...OVERLAY_DETAIL_NAMES]);
   const requestedEnabledOverlays = useMemo(() => visibleDetail.filter((name) => OVERLAY_DETAIL_NAMES.includes(name)), [visibleDetail]);
   const liveEnabledOverlays = useMemo(() => {
     const parsed = (canvasBridge.visibleDetail || '').split(',').map((s) => s.trim()).filter((name) => OVERLAY_DETAIL_NAMES.includes(name));
@@ -269,14 +277,17 @@ export default function BoardViewerClient({
     return components.filter((c) => c.refdes.toUpperCase().includes(kw)).slice(0, 8);
   }, [components, search]);
 
+  const effectiveTargetType = highlight.targetType || initialInspectType;
+  const effectiveTargetId = highlight.targetId || initialInspectId;
+
   const hoveredComponent = useMemo(
-    () => (highlight.targetType === "component" ? components.find((c) => c.id === highlight.targetId) : undefined),
-    [components, highlight.targetId, highlight.targetType],
+    () => (effectiveTargetType === "component" ? components.find((c) => c.id === effectiveTargetId) : undefined),
+    [components, effectiveTargetId, effectiveTargetType],
   );
 
   const hoveredTrace = useMemo(
-    () => (highlight.targetType === "trace" ? traces.find((t) => t.id === highlight.targetId) : undefined),
-    [traces, highlight.targetId, highlight.targetType],
+    () => (effectiveTargetType === "trace" ? traces.find((t) => t.id === effectiveTargetId) : undefined),
+    [traces, effectiveTargetId, effectiveTargetType],
   );
 
   const overlayBucketMap = useMemo(() => ({
@@ -292,10 +303,10 @@ export default function BoardViewerClient({
   }), [zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills]);
 
   const hoveredOverlay = useMemo(() => {
-    const type = highlight.targetType;
+    const type = effectiveTargetType;
     if (!type || type === "component" || type === "trace") return undefined;
-    return (overlayBucketMap[type] || []).find((item) => item.id === highlight.targetId);
-  }, [highlight.targetType, highlight.targetId, overlayBucketMap]);
+    return (overlayBucketMap[type] || []).find((item) => item.id === effectiveTargetId);
+  }, [effectiveTargetType, effectiveTargetId, overlayBucketMap]);
 
   useEffect(() => {
     if (!focusComponentId) return;
@@ -442,8 +453,8 @@ export default function BoardViewerClient({
       <section className="summary-rail summary-rail-workbench">
         <div className="summary-cell">
           <span className="summary-label">Focus target</span>
-          <strong className="summary-value">{highlight.targetId || "None"}</strong>
-          <span className="summary-meta">{highlight.targetType || "Awaiting hover"}</span>
+          <strong className="summary-value">{effectiveTargetId || "None"}</strong>
+          <span className="summary-meta">{effectiveTargetType || "Awaiting hover"}</span>
         </div>
         <div className="summary-cell">
           <span className="summary-label">Workbench tool</span>
@@ -596,8 +607,8 @@ export default function BoardViewerClient({
                 visibleDetail={visibleDetail}
                 visibleLayers={visibleLayers}
                 focusComponentId={focusComponentId}
-                hoveredId={highlight.targetId}
-                hoveredType={highlight.targetType}
+                hoveredId={effectiveTargetId}
+                hoveredType={effectiveTargetType}
                 directIds={highlight.directComponentIds}
                 traceHighlightIds={highlight.traceIds}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
@@ -622,8 +633,8 @@ export default function BoardViewerClient({
                 visibleDetail={visibleDetail}
                 visibleLayers={visibleLayers}
                 focusComponentId={focusComponentId}
-                hoveredId={highlight.targetId}
-                hoveredType={highlight.targetType}
+                hoveredId={effectiveTargetId}
+                hoveredType={effectiveTargetType}
                 directIds={highlight.directComponentIds}
                 traceHighlightIds={highlight.traceIds}
                 selectedComponentIds={urlSelection.sc}

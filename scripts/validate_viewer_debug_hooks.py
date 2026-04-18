@@ -39,14 +39,14 @@ with LOG.open('w', encoding='utf-8') as log:
 try:
     wait_ready()
 
-    board = fetch_text('/board/switch_board_ipc?view=three')
+    board = fetch_text('/board/switch_board_ipc?view=three&inspect_kind=documentation&inspect_id=T776')
     assert 'QA / Debug panel' in board
     assert 'QA / Debug panel' in board
     assert 'documentation' in board and 'Hovered overlay' in board
     assert 'Hovered overlay' in board
     assert 'Family buckets' in board
 
-    examples = fetch_text('/examples?example=switch_board_ipc')
+    examples = fetch_text('/examples?example=switch_board_ipc&inspect_kind=documentation&inspect_id=T776')
     assert 'REFERENCE EXAMPLE LIBRARY' in examples
     assert 'Switch Board IPC' in examples
     assert 'QA / Debug panel' in examples

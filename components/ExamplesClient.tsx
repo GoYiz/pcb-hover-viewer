@@ -24,15 +24,21 @@ export default function ExamplesClient({
   index,
   examples,
   initialExampleId,
+  initialInspectType,
+  initialInspectId,
+  initialVisibleDetail,
 }: {
   index: ExampleIndexItem[];
   examples: ExampleMap;
   initialExampleId?: string;
+  initialInspectType?: HoverFeatureType;
+  initialInspectId?: string;
+  initialVisibleDetail?: string[];
 }) {
   const [activeId, setActiveId] = useState(initialExampleId || index[0]?.id || "");
-  const [hoveredType, setHoveredType] = useState<HoverFeatureType | undefined>(undefined);
-  const [hoveredId, setHoveredId] = useState<string | undefined>(undefined);
-  const [visibleDetail, setVisibleDetail] = useState<string[]>([...BASE_VISIBLE_DETAIL_NAMES, ...OVERLAY_DETAIL_NAMES]);
+  const [hoveredType, setHoveredType] = useState<HoverFeatureType | undefined>(initialInspectType);
+  const [hoveredId, setHoveredId] = useState<string | undefined>(initialInspectId);
+  const [visibleDetail, setVisibleDetail] = useState<string[]>(initialVisibleDetail || [...BASE_VISIBLE_DETAIL_NAMES, ...OVERLAY_DETAIL_NAMES]);
   const [liveVisibleDetail, setLiveVisibleDetail] = useState<string[]>([]);
 
   const active = examples[activeId];
