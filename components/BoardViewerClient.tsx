@@ -405,6 +405,53 @@ export default function BoardViewerClient({
     return (overlayBucketMap[type] || []).find((item) => item.id === effectiveTargetId);
   }, [effectiveTargetType, effectiveTargetId, overlayBucketMap]);
 
+  const relationDescriptor = useMemo(() => {
+    if (relationMode === 'none') {
+      return { classLabel: 'Idle', sourceLabel: 'No active target', rationale: 'Awaiting hover, inspect target, or selection union.' };
+    }
+    if (relationMode === 'selection-union') {
+      return { classLabel: 'Union', sourceLabel: 'Selection merge', rationale: 'Combines nets from selected components, traces, and overlays.' };
+    }
+    if (effectiveTargetType === 'component' || effectiveTargetType === 'trace') {
+      const netLabel = highlight.netIds.length ? highlight.netIds.slice(0, 3).join(' · ') : 'target net context';
+      return { classLabel: 'Electrical', sourceLabel: 'Net graph', rationale: `Direct electrical neighborhood derived from ${netLabel}.` };
+    }
+    if (effectiveTargetType === 'zones' || effectiveTargetType === 'vias') {
+      const netLabel = highlight.netIds.length ? highlight.netIds.slice(0, 3).join(' · ') : (hoveredOverlay?.netId || 'net context');
+      return { classLabel: 'Electrical', sourceLabel: 'Copper net', rationale: `Copper relation fanout across ${netLabel}.` };
+    }
+    if (effectiveTargetType === 'pads') {
+      if (relationOverlayCount > 0 && !highlight.netIds.length) {
+        return { classLabel: 'Pad stack', sourceLabel: 'Local package cluster', rationale: 'Cross-layer coincident pads grouped as one local pad stack.' };
+      }
+      if (highlight.netIds.length) {
+        return { classLabel: 'Electrical', sourceLabel: 'Copper net', rationale: 'Pad participates in a routable electrical net.' };
+      }
+    }
+    if (effectiveTargetType === 'boardOutlines') {
+      return { classLabel: 'Structure', sourceLabel: 'Board profile cluster', rationale: 'Outer edge and cutouts are grouped into a shared board structure cluster.' };
+    }
+    if (effectiveTargetType === 'drills') {
+      if ((hoveredOverlay?.netId || '').includes('$HOLE$') || relationOverlaySummary.nets.includes('$HOLE$')) {
+        return { classLabel: 'Fabrication', sourceLabel: 'Hole class', rationale: 'Drill relations stay scoped to matching hole-class geometry.' };
+      }
+      return { classLabel: 'Fabrication', sourceLabel: 'Drill locality', rationale: 'Drill relation set follows fabrication-specific hole semantics.' };
+    }
+    if (effectiveTargetType === 'documentation' || effectiveTargetType === 'mechanical' || effectiveTargetType === 'graphics') {
+      if (relationOverlayCount > 0) {
+        return { classLabel: 'Weak document', sourceLabel: 'Local same-kind cluster', rationale: 'Same-kind, same-layer neighbors within a tight document-local radius.' };
+      }
+      return { classLabel: 'Weak document', sourceLabel: 'No nearby cluster', rationale: 'No same-kind document neighbors found inside the local radius.' };
+    }
+    if (effectiveTargetType === 'keepouts' || effectiveTargetType === 'silkscreen') {
+      if (relationOverlayCount > 0) {
+        return { classLabel: 'Weak fabrication', sourceLabel: 'Local same-kind cluster', rationale: 'Same-kind fabrication geometry grouped by local proximity on the same layer.' };
+      }
+      return { classLabel: 'Weak fabrication', sourceLabel: 'No nearby cluster', rationale: 'No same-kind fabrication neighbors found inside the local radius.' };
+    }
+    return { classLabel: 'Target', sourceLabel: 'Overlay relation', rationale: 'Target-specific overlay relation context.' };
+  }, [relationMode, effectiveTargetType, highlight.netIds, relationOverlayCount, hoveredOverlay, relationOverlaySummary.nets]);
+
   const summarizeOverlayEntries = (items: Array<{ kind: string; netId?: string | null; layerId?: string | null }>) => {
     const families = { copper: 0, fabrication: 0, documentation: 0, structure: 0 };
     const kindCounts = new Map<string, number>();
@@ -836,6 +883,8 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Hovered trace</span><strong>{hoveredTrace?.id || "—"}</strong></div>
               <div className="inspector-kv"><span>Hovered overlay</span><strong>{hoveredOverlay && effectiveTargetType ? `${effectiveTargetType}:${hoveredOverlay.id}` : "—"}</strong></div>
               <div className="inspector-kv"><span>Relation mode</span><strong>{relationMode}</strong></div>
+              <div className="inspector-kv"><span>Relation class</span><strong>{relationDescriptor.classLabel}</strong></div>
+              <div className="inspector-kv"><span>Relation source</span><strong>{relationDescriptor.sourceLabel}</strong></div>
               <div className="inspector-kv"><span>Direct components</span><strong>{highlight.directComponentIds.length}</strong></div>
               <div className="inspector-kv"><span>Highlighted traces</span><strong>{highlight.traceIds.length}</strong></div>
               <div className="inspector-kv"><span>Context nets</span><strong>{highlight.netIds.length}</strong></div>
@@ -853,6 +902,7 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Selection overlay layers</span><strong>{selectedOverlayInspectSummary.layers}</strong></div>
               <div className="inspector-kv"><span>Selection overlay nets</span><strong>{selectedOverlayInspectSummary.nets}</strong></div>
               <div className="inspector-kv"><span>Layer visibility</span><strong>{visibleLayers.join(", ")}</strong></div>
+              <div className="inspector-kv inspector-kv-wide"><span>Relation rationale</span><strong>{relationDescriptor.rationale}</strong></div>
             </div>
             {hoveredOverlay && (
               <div className="focus-card" data-testid="overlay-inspect-card" aria-label="Overlay inspect details" style={{ marginTop: 14 }}>
