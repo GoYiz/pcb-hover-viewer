@@ -78,16 +78,16 @@ function xy(x: number, y: number, bw: number, bh: number) {
   return new THREE.Vector3(x - bw / 2, -(y - bh / 2), 0);
 }
 
-function setCompColor(mesh: THREE.Mesh, mode: "normal" | "related" | "selected" | "target") {
+function setCompColor(mesh: THREE.Mesh, mode: "normal" | "related" | "selected" | "target", relatedTone = "#22d3ee") {
   const mat = mesh.material as THREE.MeshStandardMaterial;
   if (mode === "target") mat.color.set("#f43f5e");
   else if (mode === "selected") mat.color.set("#f59e0b");
-  else if (mode === "related") mat.color.set("#22d3ee");
+  else if (mode === "related") mat.color.set(relatedTone);
   else mat.color.set("#94a3b8");
-  mat.emissive.set(mode === "target" ? "#7f1d1d" : mode === "selected" ? "#78350f" : mode === "related" ? "#164e63" : "#0f172a");
+  mat.emissive.set(mode === "target" ? "#7f1d1d" : mode === "selected" ? "#78350f" : mode === "related" ? relatedTone : "#0f172a");
 }
 
-function setTraceColor(line: THREE.Line, mode: "normal" | "related" | "selected" | "target") {
+function setTraceColor(line: THREE.Line, mode: "normal" | "related" | "selected" | "target", relatedTone = "#22d3ee") {
   const mat = line.material as THREE.LineBasicMaterial;
   if (mode === "target") {
     mat.color.set("#f43f5e");
@@ -96,7 +96,7 @@ function setTraceColor(line: THREE.Line, mode: "normal" | "related" | "selected"
     mat.color.set("#f59e0b");
     mat.opacity = 1;
   } else if (mode === "related") {
-    mat.color.set("#22d3ee");
+    mat.color.set(relatedTone);
     mat.opacity = 1;
   } else {
     mat.color.set("#3b82f6");
@@ -517,14 +517,14 @@ export default function ThreeBoardCanvas({
       const isTarget = hoveredType === "component" && hoveredId === id;
       const isSelected = selectedComponentIds.includes(id);
       const isRelated = direct.has(id);
-      setCompColor(mesh, isTarget ? "target" : isSelected ? "selected" : isRelated ? "related" : "normal");
+      setCompColor(mesh, isTarget ? "target" : isSelected ? "selected" : isRelated ? "related" : "normal", relationVisualTone);
     }
 
     for (const [id, line] of r.traceMap) {
       const isTarget = hoveredType === "trace" && hoveredId === id;
       const isSelected = selectedTraceIds.includes(id);
       const isRelated = hlTraces.has(id);
-      setTraceColor(line, isTarget ? "target" : isSelected ? "selected" : isRelated ? "related" : "normal");
+      setTraceColor(line, isTarget ? "target" : isSelected ? "selected" : isRelated ? "related" : "normal", relationVisualTone);
     }
 
     for (const obj of r.overlayObjects) {

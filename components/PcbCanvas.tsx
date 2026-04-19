@@ -1454,7 +1454,7 @@ export default function PcbCanvas({
           const isTarget = hoveredType === "trace" && hoveredId === id;
           const isSelected = selectedTraceIds.has(id);
           const isRelated = traceHighlightIds.includes(id);
-          line.stroke = isTarget ? "#f43f5e" : isSelected ? "#f59e0b" : isRelated ? "#22d3ee" : "#3b82f6";
+          line.stroke = isTarget ? "#f43f5e" : isSelected ? "#f59e0b" : isRelated ? relationVisualTone : "#3b82f6";
           line.strokeWidth = (isTarget ? 5 : isSelected ? 4.5 : isRelated ? 4 : 2) / Math.max(scaleRef.value * 0.9, 0.8);
           line.opacity = isTarget || isSelected || isRelated ? 1 : 0.45;
           line.hitRadius = getTraceHitRadius(id);
@@ -1539,12 +1539,12 @@ export default function PcbCanvas({
           const isSelected = selectedCompIds.has(id);
           const isRelated = directIds.includes(id);
           rect.visible = detailVisibilityRef.value.components;
-          rect.fill = isTarget ? "#f43f5e" : isSelected ? "#f59e0b" : isRelated ? "#22d3ee" : "#94a3b8";
+          rect.fill = isTarget ? "#f43f5e" : isSelected ? "#f59e0b" : isRelated ? relationVisualTone : "#94a3b8";
           rect.opacity = isTarget ? 1 : isSelected ? 0.98 : isRelated ? 0.92 : 0.55;
           rect.stroke = isSelected ? "#fde68a" : isTarget ? "#fecdd3" : "rgba(0,0,0,0)";
           rect.strokeWidth = isSelected || isTarget ? 1.5 / Math.max(scaleRef.value, 0.8) : 0;
           if (label) {
-            label.fill = isTarget ? "#ffffff" : isSelected ? "#fef3c7" : isRelated ? "#a5f3fc" : "#e2e8f0";
+            label.fill = isTarget ? "#ffffff" : isSelected ? "#fef3c7" : isRelated ? relationVisualTone : "#e2e8f0";
           }
         };
 
