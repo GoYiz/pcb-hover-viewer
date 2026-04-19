@@ -267,6 +267,11 @@ export default function BoardViewerClient({
       targetId = overlaySelection.id;
     }
 
+    if ((!targetType || !targetId) && initialInspectType && initialInspectId) {
+      targetType = initialInspectType;
+      targetId = initialInspectId;
+    }
+
     const selectedOverlayKeySet = new Set(overlaySelection.keys || []);
     const totalSelected = urlSelection.sc.length + urlSelection.st.length + selectedOverlayKeySet.size;
 
@@ -373,7 +378,7 @@ export default function BoardViewerClient({
     return () => {
       cancelled = true;
     };
-  }, [boardId, components, traces, hoveredFeatureId, hoveredFeatureType, urlSelection, overlaySelection, setHighlight, overlayBucketMap]);
+  }, [boardId, components, traces, hoveredFeatureId, hoveredFeatureType, urlSelection, overlaySelection, setHighlight, overlayBucketMap, initialInspectType, initialInspectId]);
 
   const searchMatches = useMemo(() => {
     const kw = search.trim().toUpperCase();
@@ -829,7 +834,7 @@ export default function BoardViewerClient({
             <div className="inspector-grid">
               <div className="inspector-kv"><span>Hovered component</span><strong>{hoveredComponent?.refdes || "—"}</strong></div>
               <div className="inspector-kv"><span>Hovered trace</span><strong>{hoveredTrace?.id || "—"}</strong></div>
-              <div className="inspector-kv"><span>Hovered overlay</span><strong>{hoveredOverlay ? `${highlight.targetType}:${hoveredOverlay.id}` : "—"}</strong></div>
+              <div className="inspector-kv"><span>Hovered overlay</span><strong>{hoveredOverlay && effectiveTargetType ? `${effectiveTargetType}:${hoveredOverlay.id}` : "—"}</strong></div>
               <div className="inspector-kv"><span>Relation mode</span><strong>{relationMode}</strong></div>
               <div className="inspector-kv"><span>Direct components</span><strong>{highlight.directComponentIds.length}</strong></div>
               <div className="inspector-kv"><span>Highlighted traces</span><strong>{highlight.traceIds.length}</strong></div>
@@ -852,7 +857,7 @@ export default function BoardViewerClient({
             {hoveredOverlay && (
               <div className="focus-card" data-testid="overlay-inspect-card" aria-label="Overlay inspect details" style={{ marginTop: 14 }}>
                 <div className="focus-meta">Overlay inspect</div>
-                <div className="focus-meta">kind: {highlight.targetType}</div>
+                <div className="focus-meta">kind: {effectiveTargetType}</div>
                 <div className="focus-meta">id: {hoveredOverlay.id}</div>
                 <div className="focus-meta">layer: {hoveredOverlay.layerId || "—"}</div>
                 <div className="focus-meta">net: {hoveredOverlay.netId || "—"}</div>
@@ -873,6 +878,7 @@ export default function BoardViewerClient({
                     onClick={() => {
                       applyOverlayFamily(OVERLAY_FAMILY_PRESETS[target.family as keyof typeof OVERLAY_FAMILY_PRESETS]);
                       setViewMode("three");
+                      applySharedSelection(target.kind, target.sample.id, [`${target.kind}:${target.sample.id}`]);
                       setHoveredFeature(target.kind, target.sample.id);
                     }}
                   >
@@ -884,7 +890,10 @@ export default function BoardViewerClient({
                   data-testid="overlay-target-clear"
                   aria-label="Clear overlay inspect target"
                   className="overlay-target-pill overlay-target-pill-muted"
-                  onClick={() => setHoveredFeature(undefined, undefined)}
+                  onClick={() => {
+                    applySharedSelection(undefined, undefined);
+                    setHoveredFeature(undefined, undefined);
+                  }}
                 >
                   <span>clear</span>
                   <strong>—</strong>
