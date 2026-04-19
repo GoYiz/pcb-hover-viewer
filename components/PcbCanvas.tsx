@@ -32,6 +32,9 @@ type Props = {
   relationNetIds?: string[];
   relationMode?: 'none' | 'target' | 'selection-union';
   relationVisualTone?: string;
+  relationClassLabel?: string;
+  relationSourceLabel?: string;
+  relationRationale?: string;
   onHoverFeature: (type?: HoverFeatureType, id?: string) => void;
   onSelectFeature?: (type?: HoverFeatureType, id?: string, overlayKeys?: string[]) => void;
 };
@@ -76,6 +79,9 @@ export default function PcbCanvas({
   relationNetIds = [],
   relationMode = 'none',
   relationVisualTone = '#22d3ee',
+  relationClassLabel = 'Idle',
+  relationSourceLabel = 'No active target',
+  relationRationale = 'Awaiting hover, inspect target, or selection union.',
   onHoverFeature,
   onSelectFeature,
 }: Props) {
@@ -1043,6 +1049,13 @@ export default function PcbCanvas({
             `Overlay Kinds: ${overlaySummary.topKinds.join(", ") || "-"}`,
             `Overlay Layers: ${overlaySummary.topLayers.join(", ") || "-"}`,
             `Overlay Nets (${overlaySummary.netIds.length}): ${overlaySummary.netIds.join(", ") || "-"}`,
+            `Relation Class: ${relationClassLabel}`,
+            `Relation Source: ${relationSourceLabel}`,
+            `Relation Rationale: ${relationRationale}`,
+            `Related Components (${directIds.length}): ${directIds.join(", ") || "-"}`,
+            `Related Traces (${traceHighlightIds.length}): ${traceHighlightIds.join(", ") || "-"}`,
+            `Related Overlays (${overlayHighlightKeys.length}): ${overlayHighlightKeys.join(", ") || "-"}`,
+            `Related Nets (${relationNetIds.length}): ${relationNetIds.join(", ") || "-"}`,
             "",
             "Measurements:",
             buildAllMeasurementsText(),
@@ -1134,6 +1147,11 @@ export default function PcbCanvas({
               relatedOverlayCount: overlayHighlightKeys.length,
               relatedNetIds: relationNetIds,
             },
+            relationSemantics: {
+              classLabel: relationClassLabel,
+              sourceLabel: relationSourceLabel,
+              rationale: relationRationale,
+            },
           }, null, 2);
         };
 
@@ -1182,6 +1200,11 @@ export default function PcbCanvas({
               related_overlay_keys: overlayHighlightKeys,
               related_overlay_count: overlayHighlightKeys.length,
               related_net_ids: relationNetIds,
+            },
+            relation_semantics: {
+              class_label: relationClassLabel,
+              source_label: relationSourceLabel,
+              rationale: relationRationale,
             },
             measurements: measureHistory,
           }, null, 2);

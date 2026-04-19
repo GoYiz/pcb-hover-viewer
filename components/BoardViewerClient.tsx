@@ -844,6 +844,9 @@ export default function BoardViewerClient({
                 relationNetIds={highlight.netIds}
                 relationMode={relationMode}
                 relationVisualTone={relationVisualTone}
+                relationClassLabel={relationDescriptor.classLabel}
+                relationSourceLabel={relationDescriptor.sourceLabel}
+                relationRationale={relationDescriptor.rationale}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
                 onSelectFeature={(type, id, overlayKeys) => applySharedSelection(type, id, overlayKeys)}
               />
