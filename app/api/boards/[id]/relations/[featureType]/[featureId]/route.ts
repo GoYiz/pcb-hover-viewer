@@ -9,6 +9,13 @@ function isStructureRelationNet(netId: unknown) {
 }
 
 
+function weakDocumentRelationRadius(featureType: string) {
+  if (featureType === 'graphics') return 1.0;
+  if (featureType === 'mechanical') return 1.25;
+  if (featureType === 'documentation') return 2.0;
+  return 0;
+}
+
 function isRelationExpandableNet(netId: unknown) {
   const value = String(netId || '').trim();
   return !!value && value !== '$NONE$';
@@ -125,7 +132,7 @@ export async function GET(
     })),
   ];
 
-  const overlays = uniqueNetIds.length
+  let overlays = uniqueNetIds.length
     ? await prisma.overlayGeometry.findMany({
         where: {
           boardId: id,
@@ -136,9 +143,42 @@ export async function GET(
           netId: true,
           layerId: true,
           kind: true,
+          pathJson: true,
         },
       })
     : [];
+
+  if (!overlays.length && (featureType === 'documentation' || featureType === 'mechanical' || featureType === 'graphics')) {
+    const target = await prisma.overlayGeometry.findFirst({
+      where: { boardId: id, id: scopeId(id, featureId) },
+      select: { id: true, layerId: true, pathJson: true },
+    });
+    const radius = weakDocumentRelationRadius(featureType);
+    if (target?.pathJson && radius > 0) {
+      const targetPath = JSON.parse(target.pathJson || '[]');
+      const xs = targetPath.map((pt: number[]) => Number(pt[0] || 0));
+      const ys = targetPath.map((pt: number[]) => Number(pt[1] || 0));
+      const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+      const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+      const kindValue = featureType === 'graphics' ? 'graphics' : featureType === 'mechanical' ? 'mechanical' : 'documentation';
+      const candidates = await prisma.overlayGeometry.findMany({
+        where: { boardId: id, kind: kindValue, layerId: target.layerId, NOT: { id: target.id } },
+        select: { id: true, netId: true, layerId: true, kind: true, pathJson: true },
+      });
+      overlays = candidates
+        .map((item) => {
+          const path = JSON.parse(item.pathJson || '[]');
+          const ox = path.map((pt: number[]) => Number(pt[0] || 0));
+          const oy = path.map((pt: number[]) => Number(pt[1] || 0));
+          const ocx = (Math.min(...ox) + Math.max(...ox)) / 2;
+          const ocy = (Math.min(...oy) + Math.max(...oy)) / 2;
+          return { ...item, dist: Math.hypot(ocx - cx, ocy - cy) };
+        })
+        .filter((item) => Number.isFinite(item.dist) && item.dist <= radius)
+        .sort((a, b) => a.dist - b.dist)
+        .slice(0, 8);
+    }
+  }
 
   return NextResponse.json({
     target: {

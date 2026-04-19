@@ -98,6 +98,13 @@ function isStructureRelationNet(netId: unknown) {
   return value === '$BOARD$' || value === '$CUTOUT$';
 }
 
+function weakDocumentRelationRadius(featureType: string) {
+  if (featureType === 'graphics') return 1.0;
+  if (featureType === 'mechanical') return 1.25;
+  if (featureType === 'documentation') return 2.0;
+  return 0;
+}
+
 function isRelationExpandableNet(netId: unknown) {
   const value = String(netId || '').trim();
   return !!value && value !== '$NONE$';
@@ -238,11 +245,36 @@ export function getHostedBoardRelationsById(id: string, featureType: string, fea
     .filter((trace) => netIds.includes(String(trace.netId)))
     .map((trace) => ({ id: trace.id, netId: String(trace.netId) }));
 
-  const overlays = Object.entries(overlayBuckets)
+  let overlays = Object.entries(overlayBuckets)
     .flatMap(([kind, items]) => items.map((item) => ({ kind, ...item })))
     .filter((item) => item.netId && netIds.includes(String(item.netId)))
     .filter((item) => !(item.kind === featureType && item.id === featureId))
     .map((item) => ({ id: item.id, kind: item.kind, netId: String(item.netId || ""), layerId: String(item.layerId || "") }));
+
+  if (!overlays.length && (featureType === 'documentation' || featureType === 'mechanical' || featureType === 'graphics')) {
+    const target = (overlayBuckets[featureType] || []).find((item) => item.id === featureId);
+    const radius = weakDocumentRelationRadius(featureType);
+    if (target && radius > 0 && (target.path || []).length) {
+      const xs = (target.path || []).map((pt) => Number(pt[0] || 0));
+      const ys = (target.path || []).map((pt) => Number(pt[1] || 0));
+      const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+      const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+      overlays = (overlayBuckets[featureType] || [])
+        .filter((item) => item.id !== featureId && String(item.layerId || '') === String(target.layerId || '') && (item.path || []).length)
+        .map((item) => {
+          const ox = (item.path || []).map((pt) => Number(pt[0] || 0));
+          const oy = (item.path || []).map((pt) => Number(pt[1] || 0));
+          const ocx = (Math.min(...ox) + Math.max(...ox)) / 2;
+          const ocy = (Math.min(...oy) + Math.max(...oy)) / 2;
+          const dist = Math.hypot(ocx - cx, ocy - cy);
+          return { item, dist };
+        })
+        .filter(({ dist }) => dist <= radius)
+        .sort((a, b) => a.dist - b.dist)
+        .slice(0, 8)
+        .map(({ item }) => ({ id: item.id, kind: featureType, netId: String(item.netId || ''), layerId: String(item.layerId || '') }));
+    }
+  }
 
   const direct = board.components
     .filter((component) => !(featureType === "component" && component.id === featureId))
