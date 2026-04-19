@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { fetchBoardComponents, fetchBoardGeometry, fetchBoardMeta, fetchRelations } from "@/lib/api";
 import { useViewerStore } from "@/store/viewerStore";
@@ -103,6 +103,7 @@ export default function BoardViewerClient({
   const [relationOverlayCount, setRelationOverlayCount] = useState(0);
   const [relationOverlaySummary, setRelationOverlaySummary] = useState({ families: "-", kinds: "-", layers: "-", nets: "-" });
   const [relationMode, setRelationMode] = useState<'none' | 'target' | 'selection-union'>("none");
+  const leaferExportRef = useRef<{ exportCanvasShot?: () => void; exportWorkbenchText?: () => void; exportMeasurementsCsv?: () => void; exportSelectionJson?: () => void; exportWorkbenchSession?: () => void } | null>(null);
 
   const hoveredFeatureId = useViewerStore((s) => s.hoveredFeatureId);
   const hoveredFeatureType = useViewerStore((s) => s.hoveredFeatureType);
@@ -849,6 +850,7 @@ export default function BoardViewerClient({
                 relationRationale={relationDescriptor.rationale}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
                 onSelectFeature={(type, id, overlayKeys) => applySharedSelection(type, id, overlayKeys)}
+                onRuntimeReady={(runtime) => { leaferExportRef.current = runtime; }}
               />
             ) : (
               <ThreeBoardCanvas
@@ -929,6 +931,19 @@ export default function BoardViewerClient({
                 <div className="focus-meta">net: {hoveredOverlay.netId || "—"}</div>
                 <div className="focus-meta">width: {hoveredOverlay.width}</div>
                 <div className="focus-meta">points: {hoveredOverlay.path.length}</div>
+              </div>
+            )}
+            {viewMode === 'leafer' && (
+              <div className="focus-card qa-debug-card" data-testid="export-automation-controls" aria-label="Export automation controls" style={{ marginTop: 14 }}>
+                <div className="focus-meta">Export automation</div>
+                <div className="focus-meta">Accessible DOM proxy controls for triggering Leafer export actions during automation tests.</div>
+                <div className="overlay-target-grid">
+                  <button data-testid="export-proxy-shot" aria-label="Export proxy shot" className="overlay-target-pill" onClick={() => leaferExportRef.current?.exportCanvasShot?.()}><span>shot</span><strong>png</strong></button>
+                  <button data-testid="export-proxy-text" aria-label="Export proxy text" className="overlay-target-pill" onClick={() => leaferExportRef.current?.exportWorkbenchText?.()}><span>export</span><strong>txt</strong></button>
+                  <button data-testid="export-proxy-measurements" aria-label="Export proxy measurements csv" className="overlay-target-pill" onClick={() => leaferExportRef.current?.exportMeasurementsCsv?.()}><span>measure</span><strong>csv</strong></button>
+                  <button data-testid="export-proxy-selection" aria-label="Export proxy selection json" className="overlay-target-pill" onClick={() => leaferExportRef.current?.exportSelectionJson?.()}><span>selection</span><strong>json</strong></button>
+                  <button data-testid="export-proxy-session" aria-label="Export proxy session json" className="overlay-target-pill" onClick={() => leaferExportRef.current?.exportWorkbenchSession?.()}><span>session</span><strong>json</strong></button>
+                </div>
               </div>
             )}
             <div className="focus-card qa-debug-card" data-testid="overlay-inspect-targets" aria-label="Overlay inspect targets" style={{ marginTop: 14 }}>

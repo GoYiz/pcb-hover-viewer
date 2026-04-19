@@ -36,6 +36,7 @@ type Props = {
   relationSourceLabel?: string;
   relationRationale?: string;
   onHoverFeature: (type?: HoverFeatureType, id?: string) => void;
+  onRuntimeReady?: (runtime: { exportCanvasShot?: () => void; exportWorkbenchText?: () => void; exportMeasurementsCsv?: () => void; exportSelectionJson?: () => void; exportWorkbenchSession?: () => void } | null) => void;
   onSelectFeature?: (type?: HoverFeatureType, id?: string, overlayKeys?: string[]) => void;
 };
 
@@ -84,6 +85,7 @@ export default function PcbCanvas({
   relationRationale = 'Awaiting hover, inspect target, or selection union.',
   onHoverFeature,
   onSelectFeature,
+  onRuntimeReady,
 }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1028,6 +1030,8 @@ export default function PcbCanvas({
           if (!canvas) return;
           const boardSlug = getExportSlug();
           triggerDownload(`${boardSlug}-workbench-shot.png`, canvas.toDataURL("image/png"));
+          exportStateRef.last = "shot";
+          updateHud();
         };
 
         const buildWorkbenchExportText = () => {
@@ -1067,6 +1071,8 @@ export default function PcbCanvas({
           const blob = new Blob([buildWorkbenchExportText()], { type: "text/plain;charset=utf-8" });
           const href = URL.createObjectURL(blob);
           triggerDownload(`${boardSlug}-workbench-export.txt`, href);
+          exportStateRef.last = "export-text";
+          updateHud();
           window.setTimeout(() => URL.revokeObjectURL(href), 1500);
         };
 
@@ -1092,6 +1098,8 @@ export default function PcbCanvas({
           const blob = new Blob([buildMeasurementsCsv()], { type: "text/csv;charset=utf-8" });
           const href = URL.createObjectURL(blob);
           triggerDownload(`${boardSlug}-measurements.csv`, href);
+          exportStateRef.last = "measurements-csv";
+          updateHud();
           window.setTimeout(() => URL.revokeObjectURL(href), 1500);
         };
 
@@ -1160,7 +1168,7 @@ export default function PcbCanvas({
           const blob = new Blob([buildSelectionJson()], { type: "application/json;charset=utf-8" });
           const href = URL.createObjectURL(blob);
           triggerDownload(`${boardSlug}-selection.json`, href);
-          exportStateRef.last = "selection";
+          exportStateRef.last = "selection-json";
           updateHud();
           window.setTimeout(() => URL.revokeObjectURL(href), 1500);
         };
@@ -1215,7 +1223,7 @@ export default function PcbCanvas({
           const blob = new Blob([buildWorkbenchSessionJson()], { type: "application/json;charset=utf-8" });
           const href = URL.createObjectURL(blob);
           triggerDownload(`${boardSlug}-workbench-session.json`, href);
-          exportStateRef.last = "session";
+          exportStateRef.last = "session-json";
           updateHud();
           window.setTimeout(() => URL.revokeObjectURL(href), 1500);
         };
@@ -2199,6 +2207,10 @@ export default function PcbCanvas({
           offsetRef,
           updateHud,
           focusComponentById,
+          exportCanvasShot,
+          exportWorkbenchText,
+          exportMeasurementsCsv,
+          exportSelectionJson,
           exportWorkbenchSession,
           cleanup: () => {
             view.removeEventListener("pointerdown", onPointerDown);
@@ -2211,6 +2223,7 @@ export default function PcbCanvas({
           },
         };
 
+        onRuntimeReady?.(runtimeRef.current);
         renderVisibility();
       })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
@@ -2222,6 +2235,7 @@ export default function PcbCanvas({
         runtimeRef.current?.leafer?.destroy?.();
       } catch {}
       runtimeRef.current = null;
+      onRuntimeReady?.(null);
     };
   }, [width, height, boardWidthMm, boardHeightMm, components, traces, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills, boardOutlines, zones, vias, onHoverFeature]);
 
