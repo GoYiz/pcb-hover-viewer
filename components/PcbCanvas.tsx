@@ -29,6 +29,7 @@ type Props = {
   directIds: string[];
   traceHighlightIds: string[];
   overlayHighlightKeys?: string[];
+  relationNetIds?: string[];
   onHoverFeature: (type?: HoverFeatureType, id?: string) => void;
   onSelectFeature?: (type?: HoverFeatureType, id?: string, overlayKeys?: string[]) => void;
 };
@@ -70,6 +71,7 @@ export default function PcbCanvas({
   directIds,
   traceHighlightIds,
   overlayHighlightKeys = [],
+  relationNetIds = [],
   onHoverFeature,
   onSelectFeature,
 }: Props) {
@@ -1120,6 +1122,10 @@ export default function PcbCanvas({
               layerCounts: overlaySummary.layerCounts,
               netIds: overlaySummary.netIds,
             },
+            relationOverlaySummary: {
+              relatedOverlayCount: overlayHighlightKeys.length,
+              relatedNetIds: relationNetIds,
+            },
           }, null, 2);
         };
 
@@ -1160,6 +1166,10 @@ export default function PcbCanvas({
               kindCounts: overlaySummary.kindCounts,
               layerCounts: overlaySummary.layerCounts,
               netIds: overlaySummary.netIds,
+            },
+            relation_overlay_summary: {
+              related_overlay_count: overlayHighlightKeys.length,
+              related_net_ids: relationNetIds,
             },
             measurements: measureHistory,
           }, null, 2);

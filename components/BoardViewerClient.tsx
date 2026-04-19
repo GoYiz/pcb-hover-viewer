@@ -101,6 +101,7 @@ export default function BoardViewerClient({
   const [urlSelection, setUrlSelection] = useState({ sc: [] as string[], st: [] as string[] });
   const [overlaySelection, setOverlaySelection] = useState<{ kind?: Exclude<HoverFeatureType, "component" | "trace">; id?: string; keys?: string[] }>({ keys: [] });
   const [relationOverlayCount, setRelationOverlayCount] = useState(0);
+  const [relationOverlaySummary, setRelationOverlaySummary] = useState({ families: "-", kinds: "-", layers: "-", nets: "-" });
 
   const hoveredFeatureId = useViewerStore((s) => s.hoveredFeatureId);
   const hoveredFeatureType = useViewerStore((s) => s.hoveredFeatureType);
@@ -268,6 +269,7 @@ export default function BoardViewerClient({
     if (!targetId || !targetType) {
       setHighlight({ targetId: undefined, targetType: undefined, directComponentIds: [], traceIds: [], netIds: [], overlayKeys: [] });
       setRelationOverlayCount(0);
+      setRelationOverlaySummary({ families: '-', kinds: '-', layers: '-', nets: '-' });
       return;
     }
 
@@ -284,6 +286,7 @@ export default function BoardViewerClient({
         if (!cancelled) {
           setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds, overlayKeys: [] });
           setRelationOverlayCount(0);
+          setRelationOverlaySummary({ families: '-', kinds: '-', layers: '-', nets: '-' });
         }
         return;
       }
@@ -296,6 +299,7 @@ export default function BoardViewerClient({
         if (!cancelled) {
           setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds, overlayKeys: [] });
           setRelationOverlayCount(0);
+          setRelationOverlaySummary({ families: '-', kinds: '-', layers: '-', nets: '-' });
         }
         return;
       }
@@ -309,10 +313,12 @@ export default function BoardViewerClient({
         const overlayKeys = [...new Set((rel.overlays || []).map((item) => `${item.kind}:${item.id}`))];
         setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds, overlayKeys });
         setRelationOverlayCount((rel.overlays || []).length);
+        setRelationOverlaySummary(summarizeOverlayEntries((rel.overlays || []).map((item) => ({ kind: item.kind, netId: item.netId, layerId: item.layerId }))));
       } catch {
         if (!cancelled) {
           setHighlight({ targetId, targetType, directComponentIds: [], traceIds: [], netIds: [], overlayKeys: [] });
           setRelationOverlayCount(0);
+          setRelationOverlaySummary({ families: '-', kinds: '-', layers: '-', nets: '-' });
         }
       }
     }
@@ -360,6 +366,43 @@ export default function BoardViewerClient({
     if (!type || type === "component" || type === "trace") return undefined;
     return (overlayBucketMap[type] || []).find((item) => item.id === effectiveTargetId);
   }, [effectiveTargetType, effectiveTargetId, overlayBucketMap]);
+
+  const summarizeOverlayEntries = (items: Array<{ kind: string; netId?: string | null; layerId?: string | null }>) => {
+    const families = { copper: 0, fabrication: 0, documentation: 0, structure: 0 };
+    const kindCounts = new Map<string, number>();
+    const layerCounts = new Map<string, number>();
+    const netCounts = new Map<string, number>();
+    for (const item of items) {
+      if (item.kind === 'zones' || item.kind === 'vias' || item.kind === 'pads') families.copper += 1;
+      else if (item.kind === 'keepouts' || item.kind === 'silkscreen' || item.kind === 'drills') families.fabrication += 1;
+      else if (item.kind === 'documentation' || item.kind === 'mechanical' || item.kind === 'graphics') families.documentation += 1;
+      else if (item.kind === 'boardOutlines') families.structure += 1;
+      kindCounts.set(item.kind, (kindCounts.get(item.kind) || 0) + 1);
+      const layer = item.layerId || '—';
+      layerCounts.set(layer, (layerCounts.get(layer) || 0) + 1);
+      if (item.netId) netCounts.set(item.netId, (netCounts.get(item.netId) || 0) + 1);
+    }
+    const topKinds = Array.from(kindCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, c]) => `${k}:${c}`).join(' · ') || '-';
+    const topLayers = Array.from(layerCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, c]) => `${k}:${c}`).join(' · ') || '-';
+    const topNets = Array.from(netCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, c]) => `${k}:${c}`).join(' · ') || '-';
+    return {
+      families: `copper:${families.copper} · fabrication:${families.fabrication} · documentation:${families.documentation} · structure:${families.structure}`,
+      kinds: topKinds,
+      layers: topLayers,
+      nets: topNets,
+    };
+  };
+
+  const selectedOverlayInspectSummary = useMemo(() => {
+    const entries = (overlaySelection.keys || []).map((key) => {
+      const parts = key.split(':');
+      const kind = parts[0] as keyof typeof overlayBucketMap;
+      const id = parts.slice(1).join(':');
+      const item = (overlayBucketMap[kind] || []).find((entry) => entry.id === id);
+      return item ? { kind, netId: item.netId, layerId: item.layerId } : null;
+    }).filter(Boolean) as Array<{ kind: string; netId?: string | null; layerId?: string | null }>;
+    return summarizeOverlayEntries(entries);
+  }, [overlaySelection, overlayBucketMap]);
 
   useEffect(() => {
     if (!focusComponentId) return;
@@ -761,6 +804,13 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Overlay kinds</span><strong>{canvasBridge.overlayKinds}</strong></div>
               <div className="inspector-kv"><span>Overlay layers</span><strong>{canvasBridge.overlayLayers}</strong></div>
               <div className="inspector-kv"><span>Overlay nets</span><strong>{canvasBridge.overlayNets}</strong></div>
+              <div className="inspector-kv"><span>Related overlay families</span><strong>{relationOverlaySummary.families}</strong></div>
+              <div className="inspector-kv"><span>Related overlay kinds</span><strong>{relationOverlaySummary.kinds}</strong></div>
+              <div className="inspector-kv"><span>Related overlay layers</span><strong>{relationOverlaySummary.layers}</strong></div>
+              <div className="inspector-kv"><span>Related overlay nets</span><strong>{relationOverlaySummary.nets}</strong></div>
+              <div className="inspector-kv"><span>Selection overlay kinds</span><strong>{selectedOverlayInspectSummary.kinds}</strong></div>
+              <div className="inspector-kv"><span>Selection overlay layers</span><strong>{selectedOverlayInspectSummary.layers}</strong></div>
+              <div className="inspector-kv"><span>Selection overlay nets</span><strong>{selectedOverlayInspectSummary.nets}</strong></div>
               <div className="inspector-kv"><span>Layer visibility</span><strong>{visibleLayers.join(", ")}</strong></div>
             </div>
             {hoveredOverlay && (
