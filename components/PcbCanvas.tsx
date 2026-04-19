@@ -35,6 +35,8 @@ type Props = {
   relationClassLabel?: string;
   relationSourceLabel?: string;
   relationRationale?: string;
+  activeOverlayFamilyPreset?: string | null;
+  rendererLabel?: string;
   onHoverFeature: (type?: HoverFeatureType, id?: string) => void;
   onRuntimeReady?: (runtime: { exportCanvasShot?: () => void; exportWorkbenchText?: () => void; exportMeasurementsCsv?: () => void; exportSelectionJson?: () => void; exportWorkbenchSession?: () => void } | null) => void;
   onSelectFeature?: (type?: HoverFeatureType, id?: string, overlayKeys?: string[]) => void;
@@ -83,6 +85,8 @@ export default function PcbCanvas({
   relationClassLabel = 'Idle',
   relationSourceLabel = 'No active target',
   relationRationale = 'Awaiting hover, inspect target, or selection union.',
+  activeOverlayFamilyPreset = null,
+  rendererLabel = 'leafer',
   onHoverFeature,
   onSelectFeature,
   onRuntimeReady,
@@ -470,6 +474,7 @@ export default function PcbCanvas({
             .map(([key]) => key)
             .join(",") || "-";
           const overlaySummary = getSelectedOverlayDetails();
+          const overlayBuckets = { zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills, boardOutlines } as const;
           const nextBridge = {
             tool: toolModeRef.value,
             zoom: scaleRef.value,
@@ -809,6 +814,7 @@ export default function PcbCanvas({
             for (const c of selectedCompObjs) for (const net of c.netIds || []) netSet.add(net);
             for (const tr of selectedTraceObjs) netSet.add(tr.netId);
             const overlaySummary = getSelectedOverlayDetails();
+          const overlayBuckets = { zones, vias, pads, keepouts, silkscreen, documentation, mechanical, graphics, drills, boardOutlines } as const;
             for (const net of overlaySummary.netIds) netSet.add(net);
             const relatedComponents = components.filter((c) => !selectedCompIds.has(c.id) && (c.netIds || []).some((net) => netSet.has(net)));
             const relatedTraces = traces.filter((tr) => !selectedTraceIds.has(tr.id) && netSet.has(tr.netId));
@@ -1034,6 +1040,35 @@ export default function PcbCanvas({
           updateHud();
         };
 
+        const relationOverlayEntriesForExport = () => {
+          return overlayHighlightKeys.map((key) => {
+            const parts = key.split(':');
+            const kind = parts[0];
+            const id = parts.slice(1).join(':');
+            const bucket = overlayBuckets[kind as keyof typeof overlayBuckets] || [];
+            const item = bucket.find((entry: any) => entry.id === id);
+            return item ? { kind, layerId: item.layerId, netId: item.netId } : null;
+          }).filter(Boolean) as Array<{ kind: string; layerId?: string; netId?: string }>;
+        };
+
+        const relationOverlayKindsForExport = () => {
+          const counts = new Map<string, number>();
+          for (const item of relationOverlayEntriesForExport()) counts.set(item.kind, (counts.get(item.kind) || 0) + 1);
+          return Array.from(counts.entries()).map(([k, c]) => `${k}:${c}`).join(' · ') || '-';
+        };
+
+        const relationOverlayLayersForExport = () => {
+          const counts = new Map<string, number>();
+          for (const item of relationOverlayEntriesForExport()) counts.set(String(item.layerId || '—'), (counts.get(String(item.layerId || '—')) || 0) + 1);
+          return Array.from(counts.entries()).map(([k, c]) => `${k}:${c}`).join(' · ') || '-';
+        };
+
+        const relationOverlayNetsForExport = () => {
+          const counts = new Map<string, number>();
+          for (const item of relationOverlayEntriesForExport()) counts.set(String(item.netId || '—'), (counts.get(String(item.netId || '—')) || 0) + 1);
+          return Array.from(counts.entries()).map(([k, c]) => `${k}:${c}`).join(' · ') || '-';
+        };
+
         const buildWorkbenchExportText = () => {
           const layerLabel = visibleLayers.length === 0 || visibleLayers.length === 2 ? "All" : visibleLayers.join(" + ");
           const selectedComponents = Array.from(selectedCompIds).map((id) => components.find((c) => c.id === id)?.refdes || id);
@@ -1044,8 +1079,11 @@ export default function PcbCanvas({
             `Board: ${getExportSlug()}`,
             `Layer: ${layerLabel}`,
             `Tool: ${toolModeRef.value}`,
+            `Renderer: ${rendererLabel}`,
             `Zoom: ${scaleRef.value.toFixed(3)}`,
             `Offset: ${offsetRef.x.toFixed(1)}, ${offsetRef.y.toFixed(1)}`,
+            `Active Overlay Family Preset: ${activeOverlayFamilyPreset || 'custom'}`,
+            `Enabled Overlays: ${Object.entries(detailVisibilityRef.value).filter(([, enabled]) => enabled).map(([key]) => key).join(', ')}`,
             `Selected Components (${selectedComponents.length}): ${selectedComponents.join(", ") || "-"}`,
             `Selected Traces (${selectedTraces.length}): ${selectedTraces.join(", ") || "-"}`,
             `Selected Overlays (${selectedOverlays.length}): ${selectedOverlays.join(", ") || "-"}`,
@@ -1060,6 +1098,12 @@ export default function PcbCanvas({
             `Related Traces (${traceHighlightIds.length}): ${traceHighlightIds.join(", ") || "-"}`,
             `Related Overlays (${overlayHighlightKeys.length}): ${overlayHighlightKeys.join(", ") || "-"}`,
             `Related Nets (${relationNetIds.length}): ${relationNetIds.join(", ") || "-"}`,
+            `Related Overlay Families: ${overlayHighlightKeys.length ? bridgeState.sof || '-' : '-'}`,
+            `Related Overlay Kinds: ${overlayHighlightKeys.length ? relationOverlayKindsForExport() : '-'}`,
+            `Related Overlay Layers: ${overlayHighlightKeys.length ? relationOverlayLayersForExport() : '-'}`,
+            `Related Overlay Nets Summary: ${overlayHighlightKeys.length ? relationOverlayNetsForExport() : '-'}`,
+            `Relation Visual Tone: ${relationVisualTone}`,
+            `Last Export: ${exportStateRef.last}`,
             "",
             "Measurements:",
             buildAllMeasurementsText(),
@@ -1159,6 +1203,17 @@ export default function PcbCanvas({
               classLabel: relationClassLabel,
               sourceLabel: relationSourceLabel,
               rationale: relationRationale,
+              visualTone: relationVisualTone,
+            },
+            activeOverlayFamilyPreset: activeOverlayFamilyPreset || 'custom',
+            enabledOverlays: Object.entries(detailVisibilityRef.value).filter(([, enabled]) => enabled).map(([key]) => key),
+            renderer: rendererLabel,
+            lastExport: exportStateRef.last,
+            relatedOverlaySummary: {
+              families: bridgeState.sof || '-',
+              kinds: relationOverlayKindsForExport(),
+              layers: relationOverlayLayersForExport(),
+              nets: relationOverlayNetsForExport(),
             },
           }, null, 2);
         };
@@ -1213,6 +1268,17 @@ export default function PcbCanvas({
               class_label: relationClassLabel,
               source_label: relationSourceLabel,
               rationale: relationRationale,
+              visual_tone: relationVisualTone,
+            },
+            active_overlay_family_preset: activeOverlayFamilyPreset || 'custom',
+            enabled_overlays: Object.entries(detailVisibilityRef.value).filter(([, enabled]) => enabled).map(([key]) => key),
+            renderer: rendererLabel,
+            last_export: exportStateRef.last,
+            related_overlay_summary_expanded: {
+              families: bridgeState.sof || '-',
+              kinds: relationOverlayKindsForExport(),
+              layers: relationOverlayLayersForExport(),
+              nets: relationOverlayNetsForExport(),
             },
             measurements: measureHistory,
           }, null, 2);
