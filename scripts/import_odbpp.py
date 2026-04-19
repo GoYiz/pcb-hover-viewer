@@ -537,7 +537,10 @@ def import_odb_zip(zip_path: Path, board_id: str, board_name: str):
                 'geometryArrayCounts': geometry_counts,
             },
             'layerCategories': layer_types,
-            'warnings': [],
+            'warnings': [
+                'ODB++ non-copper semantic splitting is currently conservative: this sample maps overlay-like board data primarily into silkscreen/outline/drill buckets.',
+                'Current ODB++ importer adds electrical net inference for signal pads/vias/traces where exact netlist point matches exist, but documentation/mechanical/graphics splitting is not yet generalized like IPC.',
+            ],
         },
     }
 
