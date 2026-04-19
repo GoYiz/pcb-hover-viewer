@@ -93,6 +93,11 @@ function exampleBoardToHosted(example: ExampleBoardData): HostedBoardData {
   };
 }
 
+function isStructureRelationNet(netId: unknown) {
+  const value = String(netId || '').trim();
+  return value === '$BOARD$' || value === '$CUTOUT$';
+}
+
 function isRelationExpandableNet(netId: unknown) {
   const value = String(netId || '').trim();
   return !!value && value !== '$NONE$';
@@ -221,6 +226,9 @@ export function getHostedBoardRelationsById(id: string, featureType: string, fea
   } else if (featureType === "trace") {
     const trace = board.traces.find((item) => item.id === featureId);
     netIds = trace?.netId ? [trace.netId] : [];
+  } else if (featureType === 'boardOutlines') {
+    const overlay = (overlayBuckets[featureType] || []).find((item) => item.id === featureId);
+    netIds = overlay?.netId && isStructureRelationNet(overlay.netId) ? ['$BOARD$', '$CUTOUT$'] : [];
   } else {
     const overlay = (overlayBuckets[featureType] || []).find((item) => item.id === featureId);
     netIds = overlay?.netId && isRelationExpandableNet(overlay.netId) ? [String(overlay.netId)] : [];

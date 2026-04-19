@@ -3,6 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { getHostedBoardRelationsById } from "@/lib/hosted-board";
 import { scopeId, unscopeId } from "@/lib/db-scope";
 
+function isStructureRelationNet(netId: unknown) {
+  const value = String(netId || '').trim();
+  return value === '$BOARD$' || value === '$CUTOUT$';
+}
+
+
 function isRelationExpandableNet(netId: unknown) {
   const value = String(netId || '').trim();
   return !!value && value !== '$NONE$';
@@ -54,6 +60,12 @@ export async function GET(
       select: { netId: true },
     });
     if (trace?.netId) uniqueNetIds = [trace.netId];
+  } else if (featureType === 'boardOutlines') {
+    const overlay = await prisma.overlayGeometry.findFirst({
+      where: { boardId: id, id: scopeId(id, featureId), kind: 'board_outline' },
+      select: { netId: true },
+    });
+    if (overlay?.netId && isStructureRelationNet(overlay.netId)) uniqueNetIds = ['$BOARD$', '$CUTOUT$'];
   } else {
     const overlay = await prisma.overlayGeometry.findFirst({
       where: { boardId: id, id: scopeId(id, featureId), kind: featureType === 'boardOutlines' ? 'board_outline' : featureType.slice(0, -1) === 'zone' ? 'zone' : undefined },
