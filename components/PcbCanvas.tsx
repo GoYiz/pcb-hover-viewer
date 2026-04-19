@@ -91,6 +91,10 @@ export default function PcbCanvas({
     gm: "major+minor",
     th: "adaptive-v1",
     le: "-",
+    sof: "-",
+    sok: "-",
+    sol: "-",
+    son: "-",
   });
 
   useEffect(() => {
@@ -345,6 +349,7 @@ export default function PcbCanvas({
         const selectedCompIds = new Set<string>();
         const selectedTraceIds = new Set<string>();
         const selectedOverlayKeys = new Set<string>();
+        const overlayBuckets = { zones, vias, pads, keepouts, silkscreen, boardOutlines, documentation, mechanical, graphics, drills } as const;
         const scaleRef = { value: 1 };
         const offsetRef = { x: 0, y: 0 };
         const dragRef = { active: false, x: 0, y: 0 };
@@ -450,6 +455,7 @@ export default function PcbCanvas({
             .filter(([, enabled]) => enabled)
             .map(([key]) => key)
             .join(",") || "-";
+          const overlaySummary = getSelectedOverlayDetails();
           const nextBridge = {
             tool: toolModeRef.value,
             zoom: scaleRef.value,
@@ -464,6 +470,10 @@ export default function PcbCanvas({
             gm: "major+minor",
             th: "adaptive-v1",
             le: exportStateRef.last,
+            sof: `copper:${overlaySummary.familyCounts.copper}|fabrication:${overlaySummary.familyCounts.fabrication}|documentation:${overlaySummary.familyCounts.documentation}|structure:${overlaySummary.familyCounts.structure}`,
+            sok: overlaySummary.topKinds.join('|') || '-',
+            sol: overlaySummary.topLayers.join('|') || '-',
+            son: overlaySummary.netIds.join(',') || '-',
           };
           const bridgeKey = JSON.stringify(nextBridge);
           if (bridgeKeyRef.current !== bridgeKey) {
@@ -520,6 +530,32 @@ export default function PcbCanvas({
           helpRef.visible = !helpRef.visible;
           renderHelpOverlay();
           leafer.forceRender?.();
+        };
+
+        const getSelectedOverlayDetails = () => {
+          const familyCounts = { copper: 0, fabrication: 0, documentation: 0, structure: 0 };
+          const kindCounts = new Map<string, number>();
+          const layerCounts = new Map<string, number>();
+          const netSet = new Set<string>();
+          const selected = Array.from(selectedOverlayKeys).map((key) => {
+            const parts = key.split(':');
+            const kind = parts[0] as keyof typeof overlayBuckets;
+            const id = parts.slice(1).join(':');
+            const item = (overlayBuckets[kind] || []).find((entry: any) => entry.id === id) as any;
+            if (!item) return { key, kind, id, missing: true };
+            if (kind === 'zones' || kind === 'vias' || kind === 'pads') familyCounts.copper += 1;
+            else if (kind === 'keepouts' || kind === 'silkscreen' || kind === 'drills') familyCounts.fabrication += 1;
+            else if (kind === 'documentation' || kind === 'mechanical' || kind === 'graphics') familyCounts.documentation += 1;
+            else if (kind === 'boardOutlines') familyCounts.structure += 1;
+            kindCounts.set(kind, (kindCounts.get(kind) || 0) + 1);
+            const layer = item.layerId || '—';
+            layerCounts.set(layer, (layerCounts.get(layer) || 0) + 1);
+            if (item.netId) netSet.add(item.netId);
+            return { key, kind, id, layerId: item.layerId || null, netId: item.netId || null, width: item.width ?? null, points: item.path?.length ?? 0 };
+          });
+          const topKinds = Array.from(kindCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, c]) => `${k}:${c}`);
+          const topLayers = Array.from(layerCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, c]) => `${k}:${c}`);
+          return { selected, familyCounts, kindCounts: Object.fromEntries(kindCounts), layerCounts: Object.fromEntries(layerCounts), netIds: Array.from(netSet), topKinds, topLayers };
         };
 
         const getSelectionBounds = () => {
@@ -752,28 +788,25 @@ export default function PcbCanvas({
             return;
           }
 
-          if (totalSelected > 1) {
+          if (totalSelected > 1 || selectedOverlayKeys.size > 0) {
             const selectedCompObjs = components.filter((c) => selectedCompIds.has(c.id));
             const selectedTraceObjs = traces.filter((tr) => selectedTraceIds.has(tr.id));
             const netSet = new Set<string>();
             for (const c of selectedCompObjs) for (const net of c.netIds || []) netSet.add(net);
             for (const tr of selectedTraceObjs) netSet.add(tr.netId);
-            const overlayBuckets = { zones, vias, pads, keepouts, silkscreen, boardOutlines, documentation, mechanical, graphics, drills } as any;
-            for (const key of selectedOverlayKeys) {
-              const parts = key.split(':');
-              const kind = parts[0];
-              const id = parts.slice(1).join(':');
-              const item = (overlayBuckets[kind] || []).find((entry: any) => entry.id === id);
-              if (item?.netId) netSet.add(item.netId);
-            }
+            const overlaySummary = getSelectedOverlayDetails();
+            for (const net of overlaySummary.netIds) netSet.add(net);
             const relatedComponents = components.filter((c) => !selectedCompIds.has(c.id) && (c.netIds || []).some((net) => netSet.has(net)));
             const relatedTraces = traces.filter((tr) => !selectedTraceIds.has(tr.id) && netSet.has(tr.netId));
             inspectorBody.text = [
               "Source: selection-summary",
-              `Selected Objects: ${totalSelected}`,
+              `Selected Objects: ${totalSelected + selectedOverlayKeys.size}`,
               `Selected Components: ${selectedCompList.length}`,
               `Selected Traces: ${selectedTraceList.length}`,
               `Selected Overlays: ${selectedOverlayKeys.size}`,
+              `Overlay Families: copper ${overlaySummary.familyCounts.copper} · fab ${overlaySummary.familyCounts.fabrication} · docs ${overlaySummary.familyCounts.documentation} · outline ${overlaySummary.familyCounts.structure}`,
+              `Overlay Kinds: ${overlaySummary.topKinds.join(', ') || '—'}`,
+              `Overlay Layers: ${overlaySummary.topLayers.join(', ') || '—'}`,
               `Covered Nets: ${netSet.size}`,
               `Related Components: ${relatedComponents.length}`,
               `Related Traces: ${relatedTraces.length}`,
@@ -990,6 +1023,7 @@ export default function PcbCanvas({
           const selectedComponents = Array.from(selectedCompIds).map((id) => components.find((c) => c.id === id)?.refdes || id);
           const selectedTraces = Array.from(selectedTraceIds);
           const selectedOverlays = Array.from(selectedOverlayKeys);
+          const overlaySummary = getSelectedOverlayDetails();
           return [
             `Board: ${getExportSlug()}`,
             `Layer: ${layerLabel}`,
@@ -999,6 +1033,10 @@ export default function PcbCanvas({
             `Selected Components (${selectedComponents.length}): ${selectedComponents.join(", ") || "-"}`,
             `Selected Traces (${selectedTraces.length}): ${selectedTraces.join(", ") || "-"}`,
             `Selected Overlays (${selectedOverlays.length}): ${selectedOverlays.join(", ") || "-"}`,
+            `Overlay Families: copper ${overlaySummary.familyCounts.copper} · fab ${overlaySummary.familyCounts.fabrication} · docs ${overlaySummary.familyCounts.documentation} · outline ${overlaySummary.familyCounts.structure}`,
+            `Overlay Kinds: ${overlaySummary.topKinds.join(", ") || "-"}`,
+            `Overlay Layers: ${overlaySummary.topLayers.join(", ") || "-"}`,
+            `Overlay Nets (${overlaySummary.netIds.length}): ${overlaySummary.netIds.join(", ") || "-"}`,
             "",
             "Measurements:",
             buildAllMeasurementsText(),
@@ -1067,10 +1105,7 @@ export default function PcbCanvas({
               path: trace.path,
             };
           });
-          const selectedOverlays = Array.from(selectedOverlayKeys).map((key) => {
-            const parts = key.split(":");
-            return { kind: parts[0], id: parts.slice(1).join(":") };
-          });
+          const overlaySummary = getSelectedOverlayDetails();
           return JSON.stringify({
             board: getExportSlug(),
             tool: toolModeRef.value,
@@ -1078,7 +1113,13 @@ export default function PcbCanvas({
             offset: { x: Number(offsetRef.x.toFixed(1)), y: Number(offsetRef.y.toFixed(1)) },
             selectedComponents,
             selectedTraces,
-            selectedOverlays,
+            selectedOverlays: overlaySummary.selected,
+            overlaySummary: {
+              familyCounts: overlaySummary.familyCounts,
+              kindCounts: overlaySummary.kindCounts,
+              layerCounts: overlaySummary.layerCounts,
+              netIds: overlaySummary.netIds,
+            },
           }, null, 2);
         };
 
@@ -1095,10 +1136,7 @@ export default function PcbCanvas({
         const buildWorkbenchSessionJson = () => {
           const selectedComponents = Array.from(selectedCompIds).map((id) => components.find((c) => c.id === id)).filter(Boolean);
           const selectedTraces = Array.from(selectedTraceIds).map((id) => traces.find((tr) => tr.id === id)).filter(Boolean);
-          const selectedOverlays = Array.from(selectedOverlayKeys).map((key) => {
-            const parts = key.split(":");
-            return { kind: parts[0], id: parts.slice(1).join(":") };
-          });
+          const overlaySummary = getSelectedOverlayDetails();
           const visibleDetail = Object.entries(detailVisibilityRef.value).filter(([, enabled]) => enabled).map(([key]) => key);
           return JSON.stringify({
             board: getExportSlug(),
@@ -1116,7 +1154,13 @@ export default function PcbCanvas({
             trace_hit: "adaptive-v1",
             selected_components: selectedComponents,
             selected_traces: selectedTraces,
-            selected_overlays: selectedOverlays,
+            selected_overlays: overlaySummary.selected,
+            overlay_summary: {
+              familyCounts: overlaySummary.familyCounts,
+              kindCounts: overlaySummary.kindCounts,
+              layerCounts: overlaySummary.layerCounts,
+              netIds: overlaySummary.netIds,
+            },
             measurements: measureHistory,
           }, null, 2);
         };
@@ -2286,6 +2330,10 @@ export default function PcbCanvas({
 selected_components=${bridgeState.sc.join(",") || "-"}
 selected_traces=${bridgeState.st.join(",") || "-"}
 selected_overlays_count=${bridgeState.so.length || 0}
+selected_overlay_families=${bridgeState.sof || "-"}
+selected_overlay_kinds=${bridgeState.sok || "-"}
+selected_overlay_layers=${bridgeState.sol || "-"}
+selected_overlay_nets=${bridgeState.son || "-"}
 selection_filter=${bridgeState.sf || "all"}
 visible_detail=${bridgeState.vd || "-"}
 label_mode=${bridgeState.lm || "adaptive"}

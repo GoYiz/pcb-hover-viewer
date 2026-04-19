@@ -97,7 +97,7 @@ export default function BoardViewerClient({
   const [viewMode, setViewMode] = useState<"leafer" | "three">(initialViewMode || "leafer");
   const [search, setSearch] = useState("");
   const [focusComponentId, setFocusComponentId] = useState<string | undefined>();
-  const [canvasBridge, setCanvasBridge] = useState({ tool: "select", selectionFilter: "all", visibleDetail: "-", zoom: "1.000", selectedComponents: 0, selectedTraces: 0, selectedOverlays: 0 });
+  const [canvasBridge, setCanvasBridge] = useState({ tool: "select", selectionFilter: "all", visibleDetail: "-", zoom: "1.000", selectedComponents: 0, selectedTraces: 0, selectedOverlays: 0, overlayFamilies: "-", overlayKinds: "-", overlayLayers: "-", overlayNets: "-" });
   const [urlSelection, setUrlSelection] = useState({ sc: [] as string[], st: [] as string[] });
   const [overlaySelection, setOverlaySelection] = useState<{ kind?: Exclude<HoverFeatureType, "component" | "trace">; id?: string; keys?: string[] }>({ keys: [] });
   const [relationOverlayCount, setRelationOverlayCount] = useState(0);
@@ -409,6 +409,10 @@ export default function BoardViewerClient({
         selectedComponents: !sc || sc === "-" ? 0 : sc.split(",").filter(Boolean).length,
         selectedTraces: !st || st === "-" ? 0 : st.split(",").filter(Boolean).length,
         selectedOverlays: Number(pick("selected_overlays_count") || 0),
+        overlayFamilies: pick("selected_overlay_families") || "-",
+        overlayKinds: pick("selected_overlay_kinds") || "-",
+        overlayLayers: pick("selected_overlay_layers") || "-",
+        overlayNets: pick("selected_overlay_nets") || "-",
       });
     };
     parseBridge();
@@ -430,8 +434,6 @@ export default function BoardViewerClient({
       url.searchParams.delete("st");
       url.searchParams.delete("ok");
       url.searchParams.delete("oi");
-      url.searchParams.delete("os");
-      url.searchParams.delete("os");
       url.searchParams.delete("os");
       window.history.replaceState({}, "", url.toString());
       return;
@@ -755,6 +757,10 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Context nets</span><strong>{highlight.netIds.length}</strong></div>
               <div className="inspector-kv"><span>Related overlays</span><strong>{relationOverlayCount}</strong></div>
               <div className="inspector-kv"><span>Selected overlays</span><strong>{canvasBridge.selectedOverlays}</strong></div>
+              <div className="inspector-kv"><span>Overlay families</span><strong>{canvasBridge.overlayFamilies}</strong></div>
+              <div className="inspector-kv"><span>Overlay kinds</span><strong>{canvasBridge.overlayKinds}</strong></div>
+              <div className="inspector-kv"><span>Overlay layers</span><strong>{canvasBridge.overlayLayers}</strong></div>
+              <div className="inspector-kv"><span>Overlay nets</span><strong>{canvasBridge.overlayNets}</strong></div>
               <div className="inspector-kv"><span>Layer visibility</span><strong>{visibleLayers.join(", ")}</strong></div>
             </div>
             {hoveredOverlay && (
