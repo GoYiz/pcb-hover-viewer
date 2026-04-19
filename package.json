@@ -15,7 +15,8 @@
     "test:db-import-chain": "python3 scripts/validate_db_import_chain.py",
     "test:hosted-fallback": "python3 scripts/validate_hosted_api_fallback.py",
     "test:viewer-debug": "python3 scripts/validate_viewer_debug_hooks.py",
-    "test:smoke": "python3 scripts/validate_hosted_api_fallback.py && python3 scripts/validate_viewer_debug_hooks.py"
+    "test:smoke": "python3 scripts/validate_hosted_api_fallback.py && python3 scripts/validate_viewer_debug_hooks.py",
+    "test:odb-db-import-chain": "python3 scripts/validate_odb_db_import_chain.py"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
