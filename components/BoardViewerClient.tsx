@@ -102,6 +102,7 @@ export default function BoardViewerClient({
   const [overlaySelection, setOverlaySelection] = useState<{ kind?: Exclude<HoverFeatureType, "component" | "trace">; id?: string; keys?: string[] }>({ keys: [] });
   const [relationOverlayCount, setRelationOverlayCount] = useState(0);
   const [relationOverlaySummary, setRelationOverlaySummary] = useState({ families: "-", kinds: "-", layers: "-", nets: "-" });
+  const [relationMode, setRelationMode] = useState<'none' | 'target' | 'selection-union'>("none");
 
   const hoveredFeatureId = useViewerStore((s) => s.hoveredFeatureId);
   const hoveredFeatureType = useViewerStore((s) => s.hoveredFeatureType);
@@ -149,6 +150,19 @@ export default function BoardViewerClient({
     documentation: documentation.length + mechanical.length + graphics.length,
     structure: boardOutlines.length,
   }), [zones, vias, pads, keepouts, silkscreen, drills, documentation, mechanical, graphics, boardOutlines]);
+
+  const overlayBucketMap = useMemo<Record<Exclude<HoverFeatureType, "component" | "trace">, TraceItem[]>>(() => ({
+    zones,
+    vias,
+    pads,
+    keepouts,
+    silkscreen,
+    boardOutlines,
+    documentation,
+    mechanical,
+    graphics,
+    drills,
+  }), [zones, vias, pads, keepouts, silkscreen, boardOutlines, documentation, mechanical, graphics, drills]);
 
   const netCount = useMemo(() => {
     const nets = new Set<string>();
@@ -253,8 +267,10 @@ export default function BoardViewerClient({
       targetId = overlaySelection.id;
     }
 
+    const selectedOverlayKeySet = new Set(overlaySelection.keys || []);
+    const totalSelected = urlSelection.sc.length + urlSelection.st.length + selectedOverlayKeySet.size;
+
     if (!targetType || !targetId) {
-      const totalSelected = urlSelection.sc.length + urlSelection.st.length;
       if (totalSelected === 1) {
         if (urlSelection.sc.length === 1) {
           targetType = "component";
@@ -263,6 +279,32 @@ export default function BoardViewerClient({
           targetType = "trace";
           targetId = urlSelection.st[0];
         }
+      } else if (totalSelected > 1) {
+        const netIds = new Set<string>();
+        for (const id of urlSelection.sc) for (const net of componentNetMap.get(id) || []) netIds.add(net);
+        for (const id of urlSelection.st) {
+          const trace = traces.find((item) => item.id === id);
+          if (trace?.netId) netIds.add(trace.netId);
+        }
+        for (const key of selectedOverlayKeySet) {
+          const parts = key.split(':');
+          const kind = parts[0] as keyof typeof overlayBucketMap;
+          const id = parts.slice(1).join(':');
+          const item = (overlayBucketMap[kind] || []).find((entry) => entry.id === id);
+          if (item?.netId) netIds.add(item.netId);
+        }
+        const netList = Array.from(netIds);
+        const directComponentIds = components.filter((c) => !urlSelection.sc.includes(c.id) && (c.netIds || []).some((net) => netIds.has(net))).map((c) => c.id);
+        const traceIds = traces.filter((t) => !urlSelection.st.includes(t.id) && netIds.has(t.netId)).map((t) => t.id);
+        const relatedOverlayEntries = Object.entries(overlayBucketMap).flatMap(([kind, items]) =>
+          items.filter((item) => item.netId && netIds.has(item.netId) && !selectedOverlayKeySet.has(`${kind}:${item.id}`)).map((item) => ({ kind, id: item.id, netId: item.netId, layerId: item.layerId })),
+        );
+        const overlayKeys = [...new Set(relatedOverlayEntries.map((item) => `${item.kind}:${item.id}`))];
+        setHighlight({ targetId: undefined, targetType: undefined, directComponentIds, traceIds, netIds: netList, overlayKeys });
+        setRelationOverlayCount(overlayKeys.length);
+        setRelationOverlaySummary(summarizeOverlayEntries(relatedOverlayEntries));
+        setRelationMode('selection-union');
+        return;
       }
     }
 
@@ -270,6 +312,7 @@ export default function BoardViewerClient({
       setHighlight({ targetId: undefined, targetType: undefined, directComponentIds: [], traceIds: [], netIds: [], overlayKeys: [] });
       setRelationOverlayCount(0);
       setRelationOverlaySummary({ families: '-', kinds: '-', layers: '-', nets: '-' });
+      setRelationMode('none');
       return;
     }
 
@@ -287,6 +330,7 @@ export default function BoardViewerClient({
           setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds, overlayKeys: [] });
           setRelationOverlayCount(0);
           setRelationOverlaySummary({ families: '-', kinds: '-', layers: '-', nets: '-' });
+          setRelationMode('target');
         }
         return;
       }
@@ -314,11 +358,13 @@ export default function BoardViewerClient({
         setHighlight({ targetId: resolvedTargetId, targetType: resolvedTargetType, directComponentIds, traceIds, netIds, overlayKeys });
         setRelationOverlayCount((rel.overlays || []).length);
         setRelationOverlaySummary(summarizeOverlayEntries((rel.overlays || []).map((item) => ({ kind: item.kind, netId: item.netId, layerId: item.layerId }))));
+        setRelationMode('target');
       } catch {
         if (!cancelled) {
           setHighlight({ targetId, targetType, directComponentIds: [], traceIds: [], netIds: [], overlayKeys: [] });
           setRelationOverlayCount(0);
           setRelationOverlaySummary({ families: '-', kinds: '-', layers: '-', nets: '-' });
+          setRelationMode('target');
         }
       }
     }
@@ -327,7 +373,7 @@ export default function BoardViewerClient({
     return () => {
       cancelled = true;
     };
-  }, [boardId, components, traces, hoveredFeatureId, hoveredFeatureType, urlSelection, overlaySelection, setHighlight]);
+  }, [boardId, components, traces, hoveredFeatureId, hoveredFeatureType, urlSelection, overlaySelection, setHighlight, overlayBucketMap]);
 
   const searchMatches = useMemo(() => {
     const kw = search.trim().toUpperCase();
@@ -335,8 +381,8 @@ export default function BoardViewerClient({
     return components.filter((c) => c.refdes.toUpperCase().includes(kw)).slice(0, 8);
   }, [components, search]);
 
-  const effectiveTargetType = highlight.targetType || initialInspectType;
-  const effectiveTargetId = highlight.targetId || initialInspectId;
+  const effectiveTargetType = relationMode === 'selection-union' ? undefined : (highlight.targetType || initialInspectType);
+  const effectiveTargetId = relationMode === 'selection-union' ? undefined : (highlight.targetId || initialInspectId);
 
   const hoveredComponent = useMemo(
     () => (effectiveTargetType === "component" ? components.find((c) => c.id === effectiveTargetId) : undefined),
@@ -347,19 +393,6 @@ export default function BoardViewerClient({
     () => (effectiveTargetType === "trace" ? traces.find((t) => t.id === effectiveTargetId) : undefined),
     [traces, effectiveTargetId, effectiveTargetType],
   );
-
-  const overlayBucketMap = useMemo<Record<Exclude<HoverFeatureType, "component" | "trace">, TraceItem[]>>(() => ({
-    zones,
-    vias,
-    pads,
-    keepouts,
-    silkscreen,
-    boardOutlines,
-    documentation,
-    mechanical,
-    graphics,
-    drills,
-  }), [zones, vias, pads, keepouts, silkscreen, boardOutlines, documentation, mechanical, graphics, drills]);
 
   const hoveredOverlay = useMemo(() => {
     const type = effectiveTargetType;
@@ -745,6 +778,8 @@ export default function BoardViewerClient({
                 directIds={highlight.directComponentIds}
                 traceHighlightIds={highlight.traceIds}
                 overlayHighlightKeys={highlight.overlayKeys}
+                relationNetIds={highlight.netIds}
+                relationMode={relationMode}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
                 onSelectFeature={(type, id, overlayKeys) => applySharedSelection(type, id, overlayKeys)}
               />
@@ -795,6 +830,7 @@ export default function BoardViewerClient({
               <div className="inspector-kv"><span>Hovered component</span><strong>{hoveredComponent?.refdes || "—"}</strong></div>
               <div className="inspector-kv"><span>Hovered trace</span><strong>{hoveredTrace?.id || "—"}</strong></div>
               <div className="inspector-kv"><span>Hovered overlay</span><strong>{hoveredOverlay ? `${highlight.targetType}:${hoveredOverlay.id}` : "—"}</strong></div>
+              <div className="inspector-kv"><span>Relation mode</span><strong>{relationMode}</strong></div>
               <div className="inspector-kv"><span>Direct components</span><strong>{highlight.directComponentIds.length}</strong></div>
               <div className="inspector-kv"><span>Highlighted traces</span><strong>{highlight.traceIds.length}</strong></div>
               <div className="inspector-kv"><span>Context nets</span><strong>{highlight.netIds.length}</strong></div>
