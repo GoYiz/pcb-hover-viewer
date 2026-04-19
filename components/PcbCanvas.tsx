@@ -402,6 +402,17 @@ export default function PcbCanvas({
           else params.delete("sc");
           if (selectedTraceList.length) params.set("st", selectedTraceList.join(","));
           else params.delete("st");
+          const selectedOverlayList = Array.from(selectedOverlayKeys);
+          if (selectedOverlayList.length) {
+            params.set("os", selectedOverlayList.join(","));
+            const parts = selectedOverlayList[0].split(":");
+            params.set("ok", parts[0]);
+            params.set("oi", parts.slice(1).join(":"));
+          } else {
+            params.delete("os");
+            params.delete("ok");
+            params.delete("oi");
+          }
           if (toolModeRef.value === "select") params.delete("tool");
           else params.set("tool", toolModeRef.value);
           if (selectionFilterRef.value === "all") params.delete("sf");
@@ -747,6 +758,14 @@ export default function PcbCanvas({
             const netSet = new Set<string>();
             for (const c of selectedCompObjs) for (const net of c.netIds || []) netSet.add(net);
             for (const tr of selectedTraceObjs) netSet.add(tr.netId);
+            const overlayBuckets = { zones, vias, pads, keepouts, silkscreen, boardOutlines, documentation, mechanical, graphics, drills } as any;
+            for (const key of selectedOverlayKeys) {
+              const parts = key.split(':');
+              const kind = parts[0];
+              const id = parts.slice(1).join(':');
+              const item = (overlayBuckets[kind] || []).find((entry: any) => entry.id === id);
+              if (item?.netId) netSet.add(item.netId);
+            }
             const relatedComponents = components.filter((c) => !selectedCompIds.has(c.id) && (c.netIds || []).some((net) => netSet.has(net)));
             const relatedTraces = traces.filter((tr) => !selectedTraceIds.has(tr.id) && netSet.has(tr.netId));
             inspectorBody.text = [
@@ -754,6 +773,7 @@ export default function PcbCanvas({
               `Selected Objects: ${totalSelected}`,
               `Selected Components: ${selectedCompList.length}`,
               `Selected Traces: ${selectedTraceList.length}`,
+              `Selected Overlays: ${selectedOverlayKeys.size}`,
               `Covered Nets: ${netSet.size}`,
               `Related Components: ${relatedComponents.length}`,
               `Related Traces: ${relatedTraces.length}`,
@@ -770,6 +790,7 @@ export default function PcbCanvas({
             `Traces: ${traces.length}`,
             `Selected Components: ${selectedCompList.length}`,
             `Selected Traces: ${selectedTraceList.length}`,
+            `Selected Overlays: ${selectedOverlayKeys.size}`,
             `Current Related Components: ${directIds.length}`,
             `Current Related Traces: ${traceHighlightIds.length}`,
             `Measures: ${measureHistory.length}`,
@@ -1580,6 +1601,27 @@ export default function PcbCanvas({
                 if (b.maxX >= wx1 && b.minX <= wx2 && b.maxY >= wy1 && b.minY <= wy2) selectedTraceIds.delete(id);
               }
             }
+            for (const [key, nodes] of overlayMap) {
+              let hit = false
+              for (const node of nodes) {
+                const x = Number(node.x || 0)
+                const y = Number(node.y || 0)
+                const w = Number(node.width || 0)
+                const h = Number(node.height || 0)
+                if (w > 0 && h > 0 && x + w >= sx && x <= ex && y + h >= sy && y <= ey) {
+                  hit = true
+                  break
+                }
+              }
+              if (hit) selectedOverlayKeys.delete(key)
+            }
+            const first = Array.from(selectedOverlayKeys)[0]
+            if (first) {
+              const parts = first.split(':')
+              onSelectFeature?.(parts[0] as HoverFeatureType, parts.slice(1).join(':'), Array.from(selectedOverlayKeys))
+            } else if (!selectedCompIds.size && !selectedTraceIds.size) {
+              onSelectFeature?.(undefined, undefined, [])
+            }
             refreshStyles();
             return;
           }
@@ -1617,6 +1659,8 @@ export default function PcbCanvas({
           if (first) {
             const parts = first.split(":");
             onSelectFeature?.(parts[0] as HoverFeatureType, parts.slice(1).join(":"), Array.from(selectedOverlayKeys));
+          } else if (!selectedCompIds.size && !selectedTraceIds.size) {
+            onSelectFeature?.(undefined, undefined, []);
           }
           refreshStyles();
         };
