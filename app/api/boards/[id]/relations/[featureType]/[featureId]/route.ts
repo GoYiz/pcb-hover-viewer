@@ -13,6 +13,8 @@ function weakDocumentRelationRadius(featureType: string) {
   if (featureType === 'graphics') return 1.0;
   if (featureType === 'mechanical') return 1.25;
   if (featureType === 'documentation') return 2.0;
+  if (featureType === 'silkscreen') return 1.6;
+  if (featureType === 'keepouts') return 1.25;
   return 0;
 }
 
@@ -148,7 +150,7 @@ export async function GET(
       })
     : [];
 
-  if (!overlays.length && (featureType === 'documentation' || featureType === 'mechanical' || featureType === 'graphics')) {
+  if (!overlays.length && (featureType === 'documentation' || featureType === 'mechanical' || featureType === 'graphics' || featureType === 'silkscreen' || featureType === 'keepouts')) {
     const target = await prisma.overlayGeometry.findFirst({
       where: { boardId: id, id: scopeId(id, featureId) },
       select: { id: true, layerId: true, pathJson: true },
@@ -160,7 +162,7 @@ export async function GET(
       const ys = targetPath.map((pt: number[]) => Number(pt[1] || 0));
       const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
       const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-      const kindValue = featureType === 'graphics' ? 'graphics' : featureType === 'mechanical' ? 'mechanical' : 'documentation';
+      const kindValue = featureType === 'graphics' ? 'graphics' : featureType === 'mechanical' ? 'mechanical' : featureType === 'silkscreen' ? 'silkscreen' : featureType === 'keepouts' ? 'keepout' : 'documentation';
       const candidates = await prisma.overlayGeometry.findMany({
         where: { boardId: id, kind: kindValue, layerId: target.layerId, NOT: { id: target.id } },
         select: { id: true, netId: true, layerId: true, kind: true, pathJson: true },
@@ -176,7 +178,7 @@ export async function GET(
         })
         .filter((item) => Number.isFinite(item.dist) && item.dist <= radius)
         .sort((a, b) => a.dist - b.dist)
-        .slice(0, 8);
+        .slice(0, featureType === 'keepouts' ? 4 : 8);
     }
   }
 

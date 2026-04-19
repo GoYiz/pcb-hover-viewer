@@ -102,6 +102,8 @@ function weakDocumentRelationRadius(featureType: string) {
   if (featureType === 'graphics') return 1.0;
   if (featureType === 'mechanical') return 1.25;
   if (featureType === 'documentation') return 2.0;
+  if (featureType === 'silkscreen') return 1.6;
+  if (featureType === 'keepouts') return 1.25;
   return 0;
 }
 
@@ -251,7 +253,7 @@ export function getHostedBoardRelationsById(id: string, featureType: string, fea
     .filter((item) => !(item.kind === featureType && item.id === featureId))
     .map((item) => ({ id: item.id, kind: item.kind, netId: String(item.netId || ""), layerId: String(item.layerId || "") }));
 
-  if (!overlays.length && (featureType === 'documentation' || featureType === 'mechanical' || featureType === 'graphics')) {
+  if (!overlays.length && (featureType === 'documentation' || featureType === 'mechanical' || featureType === 'graphics' || featureType === 'silkscreen' || featureType === 'keepouts')) {
     const target = (overlayBuckets[featureType] || []).find((item) => item.id === featureId);
     const radius = weakDocumentRelationRadius(featureType);
     if (target && radius > 0 && (target.path || []).length) {
@@ -271,7 +273,7 @@ export function getHostedBoardRelationsById(id: string, featureType: string, fea
         })
         .filter(({ dist }) => dist <= radius)
         .sort((a, b) => a.dist - b.dist)
-        .slice(0, 8)
+        .slice(0, featureType === 'keepouts' ? 4 : 8)
         .map(({ item }) => ({ id: item.id, kind: featureType, netId: String(item.netId || ''), layerId: String(item.layerId || '') }));
     }
   }
