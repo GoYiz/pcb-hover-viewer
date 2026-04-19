@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT / 'data' / 'raw'
 OUT_DIR = ROOT / 'public' / 'examples'
+NET_TOL = 1e-3
 
 
 def parse_matrix(text: str):
@@ -65,6 +66,25 @@ def parse_netlist(text: str):
         if m:
             net_map[m.group(1)] = m.group(2).strip()
     return net_map
+
+
+def parse_net_points(text: str, net_map: dict[str, str]):
+    points = []
+    for line in text.splitlines():
+        s = line.strip()
+        if not s or s.startswith('#') or s.startswith('$') or s.startswith('UNITS=') or s.startswith('H '):
+            continue
+        parts = s.split()
+        if len(parts) < 8:
+            continue
+        points.append({
+            'net': net_map.get(parts[0], parts[0]),
+            'x': float(parts[2]),
+            'y': float(parts[3]),
+            'side': parts[4],
+            'is_via': parts[-1] == 'v',
+        })
+    return points
 
 
 def parse_symbol_defs(text: str):
@@ -179,6 +199,69 @@ def layer_family(layer_name: str, layer_type: str):
     return 'other'
 
 
+def layer_side(layer_name: str):
+    upper = layer_name.upper()
+    if 'TOP' in upper or upper == 'COMP_+_TOP':
+        return 'T'
+    if 'BOTTOM' in upper or 'BOT' in upper:
+        return 'B'
+    if 'DRILL' in upper:
+        return 'D'
+    return None
+
+
+def exact_point_matches(net_points, x: float, y: float, side: str | None = None, via_only: bool = False):
+    matches = []
+    for point in net_points:
+        if side and point['side'] != side:
+            continue
+        if via_only and not point['is_via']:
+            continue
+        if math.hypot(x - point['x'], y - point['y']) <= NET_TOL:
+            matches.append(point)
+    return matches
+
+
+def unique_net(matches):
+    nets = sorted({m['net'] for m in matches if m.get('net')})
+    return nets[0] if len(nets) == 1 else None
+
+
+def classify_signal_net(net_points, x1: float, y1: float, x2: float, y2: float, side: str | None):
+    end1 = unique_net(exact_point_matches(net_points, x1, y1, side=side))
+    end2 = unique_net(exact_point_matches(net_points, x2, y2, side=side))
+    if end1 and end2 and end1 == end2:
+        return end1
+    if end1 and not end2:
+        return end1
+    if end2 and not end1:
+        return end2
+    return '$NONE$'
+
+
+def classify_zone_net(net_points, contour_pts, side: str | None):
+    nets = set()
+    for x, y in contour_pts:
+        net = unique_net(exact_point_matches(net_points, x, y, side=side))
+        if net:
+            nets.add(net)
+    return next(iter(nets)) if len(nets) == 1 else '$NONE$'
+
+
+def classify_pad_net(net_points, x: float, y: float, side: str | None):
+    net = unique_net(exact_point_matches(net_points, x, y, side=side))
+    if net:
+        return net
+    return unique_net(exact_point_matches(net_points, x, y)) or '$NONE$'
+
+
+def classify_via_net(net_points, x: float, y: float):
+    net = unique_net(exact_point_matches(net_points, x, y, via_only=True))
+    if net:
+        return net
+    return unique_net(exact_point_matches(net_points, x, y)) or '$VIA$'
+
+
 def parse_components(text: str, min_x: float, min_y: float, pad: float, net_map: dict[str, str]):
     comps = []
     current = None
@@ -249,7 +332,7 @@ def make_item(idx: int, net_id: str, layer_id: str, width: float, path):
     }
 
 
-def parse_feature_file(text: str, layer_name: str, family: str, min_x: float, min_y: float, pad: float, net_map: dict[str, str], symbol_defs: dict[str, tuple], start_idx: int):
+def parse_feature_file(text: str, layer_name: str, family: str, min_x: float, min_y: float, pad: float, symbol_defs: dict[str, tuple], start_idx: int, net_points):
     result = {
         'traces': [],
         'zones': [],
@@ -266,6 +349,7 @@ def parse_feature_file(text: str, layer_name: str, family: str, min_x: float, mi
     idx = start_idx
     contour = None
     contour_kind = None
+    side = layer_side(layer_name)
 
     def emit(kind: str, net_id: str, width: float, path_pts, layer_id: str | None = None):
         nonlocal idx
@@ -286,7 +370,9 @@ def parse_feature_file(text: str, layer_name: str, family: str, min_x: float, mi
             x2, y2 = map_xy(parts, 3, 4, min_x, min_y, pad)
             sym = parts[5]
             width = symbol_width(symbol_defs, sym)
-            net_id = net_map.get(parts[7], '$NONE$') if len(parts) >= 8 and parts[7].isdigit() else '$NONE$'
+            net_id = '$NONE$'
+            if family == 'signal':
+                net_id = classify_signal_net(net_points, float(parts[1]), float(parts[2]), float(parts[3]), float(parts[4]), side)
             path_pts = [round_point(x1, y1), round_point(x2, y2)]
             if family == 'signal':
                 emit('traces', net_id, width, path_pts, human_layer_name(layer_name))
@@ -310,6 +396,8 @@ def parse_feature_file(text: str, layer_name: str, family: str, min_x: float, mi
             else:
                 emit('graphics', '$NONE$', width, path_pts, human_layer_name(layer_name))
         elif op == 'P' and len(parts) >= 4:
+            raw_x = float(parts[1])
+            raw_y = float(parts[2])
             x, y = map_xy(parts, 1, 2, min_x, min_y, pad)
             sym = parts[3]
             path_pts = symbol_flash_path(symbol_defs, sym, x, y)
@@ -317,11 +405,13 @@ def parse_feature_file(text: str, layer_name: str, family: str, min_x: float, mi
             if family == 'pad':
                 emit('pads', '$NONE$', width, path_pts, human_layer_name(layer_name))
             elif family == 'drill':
+                via_net = classify_via_net(net_points, raw_x, raw_y)
                 emit('drills', '$HOLE$', width, path_pts, 'DRILL')
                 if 'PLATED' in layer_name.upper():
-                    emit('vias', '$VIA$', width, path_pts, 'Top Layer')
+                    emit('vias', via_net, width, path_pts, 'Top Layer')
             elif family == 'signal':
-                emit('pads', '$NONE$', width, path_pts, human_layer_name(layer_name))
+                pad_net = classify_pad_net(net_points, raw_x, raw_y, side)
+                emit('pads', pad_net, width, path_pts, human_layer_name(layer_name))
             elif family == 'silkscreen':
                 emit('silkscreen', '$NONE$', width, path_pts, human_layer_name(layer_name))
             else:
@@ -349,7 +439,9 @@ def parse_feature_file(text: str, layer_name: str, family: str, min_x: float, mi
                 elif contour_kind == 'silkscreen':
                     emit('silkscreen', '$NONE$', 0.1, contour, human_layer_name(layer_name))
                 elif contour_kind == 'zones':
-                    emit('zones', '$NONE$', 0.1, contour, human_layer_name(layer_name))
+                    raw_pts = [(pt[0] + min_x - pad, pt[1] + min_y - pad) for pt in contour]
+                    zone_net = classify_zone_net(net_points, raw_pts, side)
+                    emit('zones', zone_net, 0.1, contour, human_layer_name(layer_name))
                 else:
                     emit('graphics', '$NONE$', 0.1, contour, human_layer_name(layer_name))
             contour = None
@@ -369,6 +461,7 @@ def import_odb_zip(zip_path: Path, board_id: str, board_name: str):
     layers, layer_types = parse_matrix(matrix_text)
     width, height, min_x, min_y, profile_outline = parse_profile(profile_text)
     net_map = parse_netlist(netlist_text)
+    net_points = parse_net_points(netlist_text, net_map)
     symbol_defs = parse_symbol_defs(top_features_text)
     pad = 5.0
     components = parse_components(comp_text, min_x, min_y, pad, net_map)
@@ -393,7 +486,7 @@ def import_odb_zip(zip_path: Path, board_id: str, board_name: str):
         if feature_path not in z.namelist():
             continue
         family = layer_family(layer['name'], layer_types.get(layer['name'], ''))
-        parsed, trace_idx = parse_feature_file(read(feature_path), layer['name'], family, min_x, min_y, pad, net_map, symbol_defs, trace_idx)
+        parsed, trace_idx = parse_feature_file(read(feature_path), layer['name'], family, min_x, min_y, pad, symbol_defs, trace_idx, net_points)
         for key, items in parsed.items():
             geometry[key].extend(items)
 

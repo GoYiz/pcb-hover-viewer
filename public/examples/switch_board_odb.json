@@ -632,7 +632,7 @@
   "traces": [
     {
       "id": "T318",
-      "netId": "$NONE$",
+      "netId": "NetR8_2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -648,7 +648,7 @@
     },
     {
       "id": "T319",
-      "netId": "$NONE$",
+      "netId": "NetR7_2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -776,7 +776,7 @@
     },
     {
       "id": "T327",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -792,7 +792,7 @@
     },
     {
       "id": "T328",
-      "netId": "$NONE$",
+      "netId": "PA1_BTN2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -952,7 +952,7 @@
     },
     {
       "id": "T338",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1000,7 +1000,7 @@
     },
     {
       "id": "T341",
-      "netId": "$NONE$",
+      "netId": "PA4_BUZZER",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1016,7 +1016,7 @@
     },
     {
       "id": "T342",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1048,7 +1048,7 @@
     },
     {
       "id": "T344",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1128,7 +1128,7 @@
     },
     {
       "id": "T349",
-      "netId": "$NONE$",
+      "netId": "DISPLAY_TXD2_P302",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1144,7 +1144,7 @@
     },
     {
       "id": "T350",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1192,7 +1192,7 @@
     },
     {
       "id": "T353",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1240,7 +1240,7 @@
     },
     {
       "id": "T356",
-      "netId": "$NONE$",
+      "netId": "DISPLAY_TXD2_P302",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1256,7 +1256,7 @@
     },
     {
       "id": "T357",
-      "netId": "$NONE$",
+      "netId": "DISPLAY_RXD2_P301",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1336,7 +1336,7 @@
     },
     {
       "id": "T362",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1352,7 +1352,7 @@
     },
     {
       "id": "T363",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1448,7 +1448,7 @@
     },
     {
       "id": "T369",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1464,7 +1464,7 @@
     },
     {
       "id": "T370",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1496,7 +1496,7 @@
     },
     {
       "id": "T372",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1512,7 +1512,7 @@
     },
     {
       "id": "T373",
-      "netId": "$NONE$",
+      "netId": "NetR9_2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1528,7 +1528,7 @@
     },
     {
       "id": "T374",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1560,7 +1560,7 @@
     },
     {
       "id": "T376",
-      "netId": "$NONE$",
+      "netId": "NetR9_2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1576,7 +1576,7 @@
     },
     {
       "id": "T377",
-      "netId": "$NONE$",
+      "netId": "NetR9_2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1592,7 +1592,7 @@
     },
     {
       "id": "T378",
-      "netId": "$NONE$",
+      "netId": "NetR8_2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1608,7 +1608,7 @@
     },
     {
       "id": "T379",
-      "netId": "$NONE$",
+      "netId": "NetR7_2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1624,7 +1624,7 @@
     },
     {
       "id": "T380",
-      "netId": "$NONE$",
+      "netId": "NetR8_2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1640,7 +1640,7 @@
     },
     {
       "id": "T381",
-      "netId": "$NONE$",
+      "netId": "NetR7_2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1720,7 +1720,7 @@
     },
     {
       "id": "T386",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1736,7 +1736,7 @@
     },
     {
       "id": "T387",
-      "netId": "$NONE$",
+      "netId": "PA1_BTN2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1752,7 +1752,7 @@
     },
     {
       "id": "T388",
-      "netId": "$NONE$",
+      "netId": "PA1_BTN2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1784,7 +1784,7 @@
     },
     {
       "id": "T390",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1848,7 +1848,7 @@
     },
     {
       "id": "T394",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1880,7 +1880,7 @@
     },
     {
       "id": "T396",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -1960,7 +1960,7 @@
     },
     {
       "id": "T401",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -2024,7 +2024,7 @@
     },
     {
       "id": "T405",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -2040,7 +2040,7 @@
     },
     {
       "id": "T406",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -2104,7 +2104,7 @@
     },
     {
       "id": "T410",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -2120,7 +2120,7 @@
     },
     {
       "id": "T411",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -2168,7 +2168,7 @@
     },
     {
       "id": "T414",
-      "netId": "$NONE$",
+      "netId": "NetR5_2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -2184,7 +2184,7 @@
     },
     {
       "id": "T415",
-      "netId": "$NONE$",
+      "netId": "NetR5_2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -2200,7 +2200,7 @@
     },
     {
       "id": "T416",
-      "netId": "$NONE$",
+      "netId": "NetR5_2",
       "layerId": "Top Layer",
       "width": 0.254,
       "path": [
@@ -2344,7 +2344,7 @@
     },
     {
       "id": "T642",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Bottom Layer",
       "width": 1.2,
       "path": [
@@ -2392,7 +2392,7 @@
     },
     {
       "id": "T645",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Bottom Layer",
       "width": 1.2,
       "path": [
@@ -2472,7 +2472,7 @@
     },
     {
       "id": "T650",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Bottom Layer",
       "width": 1.2,
       "path": [
@@ -2488,7 +2488,7 @@
     },
     {
       "id": "T651",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Bottom Layer",
       "width": 1.2,
       "path": [
@@ -2536,7 +2536,7 @@
     },
     {
       "id": "T654",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Bottom Layer",
       "width": 1.2,
       "path": [
@@ -26404,7 +26404,7 @@
   "vias": [
     {
       "id": "T717",
-      "netId": "$VIA$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -26432,7 +26432,7 @@
     },
     {
       "id": "T719",
-      "netId": "$VIA$",
+      "netId": "NetJ2_1",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -26460,7 +26460,7 @@
     },
     {
       "id": "T721",
-      "netId": "$VIA$",
+      "netId": "PA0_BTN1",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -26520,7 +26520,7 @@
     },
     {
       "id": "T723",
-      "netId": "$VIA$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -26580,7 +26580,7 @@
     },
     {
       "id": "T725",
-      "netId": "$VIA$",
+      "netId": "PA2_BTN3",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -26640,7 +26640,7 @@
     },
     {
       "id": "T727",
-      "netId": "$VIA$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -26700,7 +26700,7 @@
     },
     {
       "id": "T729",
-      "netId": "$VIA$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -26760,7 +26760,7 @@
     },
     {
       "id": "T731",
-      "netId": "$VIA$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -26820,7 +26820,7 @@
     },
     {
       "id": "T733",
-      "netId": "$VIA$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -26880,7 +26880,7 @@
     },
     {
       "id": "T735",
-      "netId": "$VIA$",
+      "netId": "PA1_BTN2",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -26940,7 +26940,7 @@
     },
     {
       "id": "T737",
-      "netId": "$VIA$",
+      "netId": "PA2_BTN3",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -27000,7 +27000,7 @@
     },
     {
       "id": "T739",
-      "netId": "$VIA$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -27060,7 +27060,7 @@
     },
     {
       "id": "T741",
-      "netId": "$VIA$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -27120,7 +27120,7 @@
     },
     {
       "id": "T743",
-      "netId": "$VIA$",
+      "netId": "PA0_BTN1",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -31414,7 +31414,7 @@
     },
     {
       "id": "T419",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -31442,7 +31442,7 @@
     },
     {
       "id": "T420",
-      "netId": "$NONE$",
+      "netId": "NetR8_2",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -31470,7 +31470,7 @@
     },
     {
       "id": "T421",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -31498,7 +31498,7 @@
     },
     {
       "id": "T422",
-      "netId": "$NONE$",
+      "netId": "NetR7_2",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -31526,7 +31526,7 @@
     },
     {
       "id": "T423",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 2.2,
       "path": [
@@ -31554,7 +31554,7 @@
     },
     {
       "id": "T424",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 1.1,
       "path": [
@@ -31614,7 +31614,7 @@
     },
     {
       "id": "T425",
-      "netId": "$NONE$",
+      "netId": "NetJ2_1",
       "layerId": "Top Layer",
       "width": 1.1,
       "path": [
@@ -31642,7 +31642,7 @@
     },
     {
       "id": "T426",
-      "netId": "$NONE$",
+      "netId": "PA1_BTN2",
       "layerId": "Top Layer",
       "width": 1.3,
       "path": [
@@ -31670,7 +31670,7 @@
     },
     {
       "id": "T427",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Top Layer",
       "width": 1.3,
       "path": [
@@ -31726,7 +31726,7 @@
     },
     {
       "id": "T429",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 1.3,
       "path": [
@@ -31754,7 +31754,7 @@
     },
     {
       "id": "T430",
-      "netId": "$NONE$",
+      "netId": "PA4_BUZZER",
       "layerId": "Top Layer",
       "width": 1.3,
       "path": [
@@ -31810,7 +31810,7 @@
     },
     {
       "id": "T432",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 1.3,
       "path": [
@@ -31838,7 +31838,7 @@
     },
     {
       "id": "T433",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 1.3,
       "path": [
@@ -31866,7 +31866,7 @@
     },
     {
       "id": "T434",
-      "netId": "$NONE$",
+      "netId": "NetJ2_1",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -31894,7 +31894,7 @@
     },
     {
       "id": "T435",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Top Layer",
       "width": 1.3,
       "path": [
@@ -31950,7 +31950,7 @@
     },
     {
       "id": "T437",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 2.2,
       "path": [
@@ -31978,7 +31978,7 @@
     },
     {
       "id": "T438",
-      "netId": "$NONE$",
+      "netId": "PA4_BUZZER",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -32034,7 +32034,7 @@
     },
     {
       "id": "T440",
-      "netId": "$NONE$",
+      "netId": "DISPLAY_TXD2_P302",
       "layerId": "Top Layer",
       "width": 1.3,
       "path": [
@@ -32062,7 +32062,7 @@
     },
     {
       "id": "T441",
-      "netId": "$NONE$",
+      "netId": "DISPLAY_RXD2_P301",
       "layerId": "Top Layer",
       "width": 1.3,
       "path": [
@@ -32090,7 +32090,7 @@
     },
     {
       "id": "T442",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 0.62,
       "path": [
@@ -32178,7 +32178,7 @@
     },
     {
       "id": "T444",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -32238,7 +32238,7 @@
     },
     {
       "id": "T445",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -32298,7 +32298,7 @@
     },
     {
       "id": "T446",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.62,
       "path": [
@@ -32326,7 +32326,7 @@
     },
     {
       "id": "T447",
-      "netId": "$NONE$",
+      "netId": "DISPLAY_TXD2_P302",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -32386,7 +32386,7 @@
     },
     {
       "id": "T448",
-      "netId": "$NONE$",
+      "netId": "DISPLAY_RXD2_P301",
       "layerId": "Top Layer",
       "width": 1.0,
       "path": [
@@ -32446,7 +32446,7 @@
     },
     {
       "id": "T449",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 0.62,
       "path": [
@@ -32474,7 +32474,7 @@
     },
     {
       "id": "T450",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 0.62,
       "path": [
@@ -32502,7 +32502,7 @@
     },
     {
       "id": "T451",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -32530,7 +32530,7 @@
     },
     {
       "id": "T452",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -32558,7 +32558,7 @@
     },
     {
       "id": "T453",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -32586,7 +32586,7 @@
     },
     {
       "id": "T454",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -32614,7 +32614,7 @@
     },
     {
       "id": "T455",
-      "netId": "$NONE$",
+      "netId": "NetR9_2",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -32642,7 +32642,7 @@
     },
     {
       "id": "T456",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -32670,7 +32670,7 @@
     },
     {
       "id": "T457",
-      "netId": "$NONE$",
+      "netId": "NetR9_2",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -32698,7 +32698,7 @@
     },
     {
       "id": "T458",
-      "netId": "$NONE$",
+      "netId": "NetR9_2",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -32726,7 +32726,7 @@
     },
     {
       "id": "T459",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -32754,7 +32754,7 @@
     },
     {
       "id": "T460",
-      "netId": "$NONE$",
+      "netId": "NetR8_2",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -32782,7 +32782,7 @@
     },
     {
       "id": "T461",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -32810,7 +32810,7 @@
     },
     {
       "id": "T462",
-      "netId": "$NONE$",
+      "netId": "NetR7_2",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -32838,7 +32838,7 @@
     },
     {
       "id": "T463",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -32866,7 +32866,7 @@
     },
     {
       "id": "T464",
-      "netId": "$NONE$",
+      "netId": "PA1_BTN2",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -32894,7 +32894,7 @@
     },
     {
       "id": "T465",
-      "netId": "$NONE$",
+      "netId": "PA1_BTN2",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -32922,7 +32922,7 @@
     },
     {
       "id": "T466",
-      "netId": "$NONE$",
+      "netId": "NetR7_2",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -32950,7 +32950,7 @@
     },
     {
       "id": "T467",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -32978,7 +32978,7 @@
     },
     {
       "id": "T468",
-      "netId": "$NONE$",
+      "netId": "NetR8_2",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -33006,7 +33006,7 @@
     },
     {
       "id": "T469",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -33034,7 +33034,7 @@
     },
     {
       "id": "T470",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -33062,7 +33062,7 @@
     },
     {
       "id": "T471",
-      "netId": "$NONE$",
+      "netId": "PA1_BTN2",
       "layerId": "Top Layer",
       "width": 0.62,
       "path": [
@@ -33090,7 +33090,7 @@
     },
     {
       "id": "T472",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 0.62,
       "path": [
@@ -33118,7 +33118,7 @@
     },
     {
       "id": "T473",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Top Layer",
       "width": 0.62,
       "path": [
@@ -33146,7 +33146,7 @@
     },
     {
       "id": "T474",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 0.62,
       "path": [
@@ -33294,7 +33294,7 @@
     },
     {
       "id": "T477",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -33322,7 +33322,7 @@
     },
     {
       "id": "T478",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -33350,7 +33350,7 @@
     },
     {
       "id": "T479",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -33378,7 +33378,7 @@
     },
     {
       "id": "T480",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -33406,7 +33406,7 @@
     },
     {
       "id": "T481",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -33434,7 +33434,7 @@
     },
     {
       "id": "T482",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Top Layer",
       "width": 0.62,
       "path": [
@@ -33462,7 +33462,7 @@
     },
     {
       "id": "T483",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Top Layer",
       "width": 0.62,
       "path": [
@@ -33490,7 +33490,7 @@
     },
     {
       "id": "T484",
-      "netId": "$NONE$",
+      "netId": "NetR5_2",
       "layerId": "Top Layer",
       "width": 0.6,
       "path": [
@@ -33518,7 +33518,7 @@
     },
     {
       "id": "T485",
-      "netId": "$NONE$",
+      "netId": "NetR5_2",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -33546,7 +33546,7 @@
     },
     {
       "id": "T486",
-      "netId": "$NONE$",
+      "netId": "NetR5_2",
       "layerId": "Top Layer",
       "width": 1.2,
       "path": [
@@ -33574,7 +33574,7 @@
     },
     {
       "id": "T624",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Top Layer",
       "width": 0.7,
       "path": [
@@ -33634,7 +33634,7 @@
     },
     {
       "id": "T625",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 0.7,
       "path": [
@@ -33694,7 +33694,7 @@
     },
     {
       "id": "T626",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Top Layer",
       "width": 0.7,
       "path": [
@@ -33754,7 +33754,7 @@
     },
     {
       "id": "T627",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Top Layer",
       "width": 0.7,
       "path": [
@@ -33814,7 +33814,7 @@
     },
     {
       "id": "T628",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.7,
       "path": [
@@ -33874,7 +33874,7 @@
     },
     {
       "id": "T629",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.7,
       "path": [
@@ -33934,7 +33934,7 @@
     },
     {
       "id": "T630",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.7,
       "path": [
@@ -33994,7 +33994,7 @@
     },
     {
       "id": "T631",
-      "netId": "$NONE$",
+      "netId": "PA1_BTN2",
       "layerId": "Top Layer",
       "width": 0.7,
       "path": [
@@ -34054,7 +34054,7 @@
     },
     {
       "id": "T632",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Top Layer",
       "width": 0.7,
       "path": [
@@ -34114,7 +34114,7 @@
     },
     {
       "id": "T633",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.7,
       "path": [
@@ -34174,7 +34174,7 @@
     },
     {
       "id": "T634",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Top Layer",
       "width": 0.7,
       "path": [
@@ -34234,7 +34234,7 @@
     },
     {
       "id": "T635",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Top Layer",
       "width": 0.7,
       "path": [
@@ -34294,7 +34294,7 @@
     },
     {
       "id": "T655",
-      "netId": "$NONE$",
+      "netId": "PGND",
       "layerId": "Bottom Layer",
       "width": 1.3,
       "path": [
@@ -34322,7 +34322,7 @@
     },
     {
       "id": "T656",
-      "netId": "$NONE$",
+      "netId": "NetJ2_1",
       "layerId": "Bottom Layer",
       "width": 0.6,
       "path": [
@@ -34530,7 +34530,7 @@
     },
     {
       "id": "T696",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Bottom Layer",
       "width": 2.2,
       "path": [
@@ -34558,7 +34558,7 @@
     },
     {
       "id": "T697",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Bottom Layer",
       "width": 2.2,
       "path": [
@@ -34586,7 +34586,7 @@
     },
     {
       "id": "T698",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Bottom Layer",
       "width": 2.2,
       "path": [
@@ -34614,7 +34614,7 @@
     },
     {
       "id": "T699",
-      "netId": "$NONE$",
+      "netId": "PA3_BTN4",
       "layerId": "Bottom Layer",
       "width": 2.2,
       "path": [
@@ -34642,7 +34642,7 @@
     },
     {
       "id": "T700",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Bottom Layer",
       "width": 2.2,
       "path": [
@@ -34670,7 +34670,7 @@
     },
     {
       "id": "T701",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Bottom Layer",
       "width": 2.2,
       "path": [
@@ -34698,7 +34698,7 @@
     },
     {
       "id": "T702",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Bottom Layer",
       "width": 2.2,
       "path": [
@@ -34726,7 +34726,7 @@
     },
     {
       "id": "T703",
-      "netId": "$NONE$",
+      "netId": "PA1_BTN2",
       "layerId": "Bottom Layer",
       "width": 2.2,
       "path": [
@@ -34754,7 +34754,7 @@
     },
     {
       "id": "T704",
-      "netId": "$NONE$",
+      "netId": "PA2_BTN3",
       "layerId": "Bottom Layer",
       "width": 2.2,
       "path": [
@@ -34782,7 +34782,7 @@
     },
     {
       "id": "T705",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Bottom Layer",
       "width": 2.2,
       "path": [
@@ -34810,7 +34810,7 @@
     },
     {
       "id": "T706",
-      "netId": "$NONE$",
+      "netId": "+5V",
       "layerId": "Bottom Layer",
       "width": 2.2,
       "path": [
@@ -34838,7 +34838,7 @@
     },
     {
       "id": "T707",
-      "netId": "$NONE$",
+      "netId": "PA0_BTN1",
       "layerId": "Bottom Layer",
       "width": 2.2,
       "path": [
