@@ -452,6 +452,17 @@ export default function BoardViewerClient({
     return { classLabel: 'Target', sourceLabel: 'Overlay relation', rationale: 'Target-specific overlay relation context.' };
   }, [relationMode, effectiveTargetType, highlight.netIds, relationOverlayCount, hoveredOverlay, relationOverlaySummary.nets]);
 
+  const relationVisualTone = useMemo(() => {
+    if (relationMode === 'selection-union') return '#22d3ee';
+    if (relationDescriptor.classLabel === 'Electrical') return '#22d3ee';
+    if (relationDescriptor.classLabel === 'Structure') return '#a78bfa';
+    if (relationDescriptor.classLabel === 'Weak document') return '#22c55e';
+    if (relationDescriptor.classLabel === 'Weak fabrication') return '#f59e0b';
+    if (relationDescriptor.classLabel === 'Fabrication') return '#94a3b8';
+    if (relationDescriptor.classLabel === 'Pad stack') return '#fbbf24';
+    return '#22d3ee';
+  }, [relationMode, relationDescriptor.classLabel]);
+
   const summarizeOverlayEntries = (items: Array<{ kind: string; netId?: string | null; layerId?: string | null }>) => {
     const families = { copper: 0, fabrication: 0, documentation: 0, structure: 0 };
     const kindCounts = new Map<string, number>();
@@ -832,6 +843,7 @@ export default function BoardViewerClient({
                 overlayHighlightKeys={highlight.overlayKeys}
                 relationNetIds={highlight.netIds}
                 relationMode={relationMode}
+                relationVisualTone={relationVisualTone}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
                 onSelectFeature={(type, id, overlayKeys) => applySharedSelection(type, id, overlayKeys)}
               />
@@ -862,6 +874,7 @@ export default function BoardViewerClient({
                 traceHighlightIds={highlight.traceIds}
                 selectedComponentIds={urlSelection.sc}
                 selectedTraceIds={urlSelection.st}
+                relationVisualTone={relationVisualTone}
                 onHoverFeature={(type, id) => setHoveredFeature(type, id)}
                 onSelectFeature={(type, id, overlayKeys) => applySharedSelection(type, id, overlayKeys)}
               />

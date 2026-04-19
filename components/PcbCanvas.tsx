@@ -31,6 +31,7 @@ type Props = {
   overlayHighlightKeys?: string[];
   relationNetIds?: string[];
   relationMode?: 'none' | 'target' | 'selection-union';
+  relationVisualTone?: string;
   onHoverFeature: (type?: HoverFeatureType, id?: string) => void;
   onSelectFeature?: (type?: HoverFeatureType, id?: string, overlayKeys?: string[]) => void;
 };
@@ -74,6 +75,7 @@ export default function PcbCanvas({
   overlayHighlightKeys = [],
   relationNetIds = [],
   relationMode = 'none',
+  relationVisualTone = '#22d3ee',
   onHoverFeature,
   onSelectFeature,
 }: Props) {
@@ -1524,7 +1526,7 @@ export default function PcbCanvas({
             node.opacity = isTarget ? 1 : isSelected ? Math.min(baseOpacity + 0.18, 1) : isRelated ? Math.min(baseOpacity + 0.12, 0.96) : baseOpacity;
             node.strokeWidth = isTarget ? 1.8 : isSelected ? 1.5 : isRelated ? 1.35 : baseStrokeWidth;
             if (baseStroke) {
-              node.stroke = isTarget ? '#f43f5e' : isSelected ? '#f59e0b' : isRelated ? '#22d3ee' : baseStroke;
+              node.stroke = isTarget ? '#f43f5e' : isSelected ? '#f59e0b' : isRelated ? relationVisualTone : baseStroke;
             }
           }
         };

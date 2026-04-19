@@ -34,6 +34,7 @@ type Props = {
   selectedOverlayKind?: Exclude<HoverFeatureType, 'component' | 'trace'>;
   selectedOverlayId?: string;
   overlayHighlightKeys?: string[];
+  relationVisualTone?: string;
   onHoverFeature: (type?: HoverFeatureType, id?: string) => void;
   onSelectFeature?: (type?: HoverFeatureType, id?: string, overlayKeys?: string[]) => void;
 };
@@ -199,6 +200,7 @@ export default function ThreeBoardCanvas({
   selectedOverlayKind,
   selectedOverlayId,
   overlayHighlightKeys = [],
+  relationVisualTone = '#22d3ee',
   onHoverFeature,
   onSelectFeature,
 }: Props) {
@@ -540,10 +542,10 @@ export default function ThreeBoardCanvas({
       if (material?.color?.set) {
         if (isTarget) material.color.set('#f43f5e');
         else if (isSelected) material.color.set('#f59e0b');
-        else if (isRelated) material.color.set('#22d3ee');
+        else if (isRelated) material.color.set(relationVisualTone);
       }
     }
-  }, [hoveredId, hoveredType, directIds, traceHighlightIds, selectedComponentIds, selectedTraceIds, selectedOverlayKind, selectedOverlayId, overlayHighlightKeys]);
+  }, [hoveredId, hoveredType, directIds, traceHighlightIds, selectedComponentIds, selectedTraceIds, selectedOverlayKind, selectedOverlayId, overlayHighlightKeys, relationVisualTone]);
 
   useEffect(() => {
     setBridgeState((prev) => ({
