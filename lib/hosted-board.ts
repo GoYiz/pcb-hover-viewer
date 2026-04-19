@@ -263,7 +263,7 @@ export function getHostedBoardRelationsById(id: string, featureType: string, fea
       const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
       const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
       overlays = (overlayBuckets[featureType] || [])
-        .filter((item) => item.id !== featureId && String(item.layerId || '') === String(target.layerId || '') && (item.path || []).length)
+        .filter((item) => item.id !== featureId && (featureType === 'pads' || String(item.layerId || '') === String(target.layerId || '')) && (item.path || []).length)
         .map((item) => {
           const ox = (item.path || []).map((pt) => Number(pt[0] || 0));
           const oy = (item.path || []).map((pt) => Number(pt[1] || 0));

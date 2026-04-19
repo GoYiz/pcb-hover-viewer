@@ -165,7 +165,7 @@ export async function GET(
       const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
       const kindValue = featureType === 'graphics' ? 'graphics' : featureType === 'mechanical' ? 'mechanical' : featureType === 'silkscreen' ? 'silkscreen' : featureType === 'keepouts' ? 'keepout' : featureType === 'pads' ? 'pad' : 'documentation';
       const candidates = await prisma.overlayGeometry.findMany({
-        where: { boardId: id, kind: kindValue, layerId: target.layerId, NOT: { id: target.id } },
+        where: featureType === 'pads' ? { boardId: id, kind: kindValue, NOT: { id: target.id } } : { boardId: id, kind: kindValue, layerId: target.layerId, NOT: { id: target.id } },
         select: { id: true, netId: true, layerId: true, kind: true, pathJson: true },
       });
       overlays = candidates
