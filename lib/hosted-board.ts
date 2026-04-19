@@ -93,6 +93,11 @@ function exampleBoardToHosted(example: ExampleBoardData): HostedBoardData {
   };
 }
 
+function isRelationExpandableNet(netId: unknown) {
+  const value = String(netId || '').trim();
+  return !!value && value !== '$NONE$';
+}
+
 function normalizeLayerId(layer: string) {
   return String(layer || "").trim().toUpperCase();
 }
@@ -218,7 +223,7 @@ export function getHostedBoardRelationsById(id: string, featureType: string, fea
     netIds = trace?.netId ? [trace.netId] : [];
   } else {
     const overlay = (overlayBuckets[featureType] || []).find((item) => item.id === featureId);
-    netIds = overlay?.netId ? [String(overlay.netId)] : [];
+    netIds = overlay?.netId && isRelationExpandableNet(overlay.netId) ? [String(overlay.netId)] : [];
   }
 
   const traces = board.traces

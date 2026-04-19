@@ -3,6 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { getHostedBoardRelationsById } from "@/lib/hosted-board";
 import { scopeId, unscopeId } from "@/lib/db-scope";
 
+function isRelationExpandableNet(netId: unknown) {
+  const value = String(netId || '').trim();
+  return !!value && value !== '$NONE$';
+}
+
+
 export async function GET(
   _req: Request,
   {
@@ -53,13 +59,13 @@ export async function GET(
       where: { boardId: id, id: scopeId(id, featureId), kind: featureType === 'boardOutlines' ? 'board_outline' : featureType.slice(0, -1) === 'zone' ? 'zone' : undefined },
       select: { netId: true, kind: true },
     }).catch(() => null);
-    if (overlay?.netId) uniqueNetIds = [overlay.netId];
+    if (overlay?.netId && isRelationExpandableNet(overlay.netId)) uniqueNetIds = [overlay.netId];
     if (!uniqueNetIds.length) {
       const fallbackOverlay = await prisma.overlayGeometry.findFirst({
         where: { boardId: id, id: scopeId(id, featureId) },
         select: { netId: true },
       });
-      if (fallbackOverlay?.netId) uniqueNetIds = [fallbackOverlay.netId];
+      if (fallbackOverlay?.netId && isRelationExpandableNet(fallbackOverlay.netId)) uniqueNetIds = [fallbackOverlay.netId];
     }
   }
 
